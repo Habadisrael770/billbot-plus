@@ -24,5 +24,10 @@ export interface InvoiceRow {
   status: string;
   extractionConfidence?: string | null;
   vendorId?: string | null;
+  sourceType: string;
+  documentType: string;
+  suggestedCategory?: string | null;
+  finalCategory?: string | null;
+  categoryConfidence?: string | null;
   createdAt: string;
 }

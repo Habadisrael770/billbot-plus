@@ -5,6 +5,10 @@ import { normalizeVendorName } from "../utils/normalizeVendorName.js";
 import { computeFileHash } from "../utils/hashFile.js";
 import { findOrCreateVendor } from "./vendorService.js";
 import { detectDuplicate } from "./deduplicationService.js";
+import { suggestCategory } from "./categoryService.js";
+
+export type SourceType = "upload" | "camera" | "email";
+export type DocumentType = "supplier_invoice" | "receipt" | "credit_note" | "other";
 
 export interface ExtractedInvoiceData {
   vendor?: string | null;
@@ -21,6 +25,8 @@ export interface ProcessInvoiceInput {
   filePath: string;
   extracted: ExtractedInvoiceData;
   extractionConfidence?: number;
+  sourceType?: SourceType;
+  documentType?: DocumentType;
 }
 
 export interface ProcessInvoiceResult {
@@ -32,22 +38,29 @@ export interface ProcessInvoiceResult {
   duplicateOfInvoiceId: string | null;
   confidence: number;
   status: string;
+  suggestedCategory: string | null;
+  categoryConfidence: number;
 }
 
 /**
- * processInvoice
- *
- * Full invoice processing flow:
+ * processInvoice — full pipeline:
  *  1. Normalize vendor name
  *  2. Find or create vendor
  *  3. Compute file hash
  *  4. Detect duplicate
- *  5. Save invoice to database
+ *  5. Suggest category (deterministic, rule-based)
+ *  6. Save invoice to database
  */
 export async function processInvoice(
   input: ProcessInvoiceInput
 ): Promise<ProcessInvoiceResult> {
-  const { filePath, extracted, extractionConfidence } = input;
+  const {
+    filePath,
+    extracted,
+    extractionConfidence,
+    sourceType = "upload",
+    documentType = "supplier_invoice",
+  } = input;
 
   // Step 1: Normalize vendor name
   const rawVendorName = extracted.vendor ?? "";
@@ -82,7 +95,11 @@ export async function processInvoice(
     total: extracted.total != null ? String(extracted.total) : null,
   });
 
-  // Step 5: Save invoice to database
+  // Step 5: Suggest category (use canonical name for better matching)
+  const nameForCategory = canonicalVendorName || rawVendorName;
+  const categoryResult = await suggestCategory(nameForCategory, extracted.tax_id);
+
+  // Step 6: Save invoice to database
   const [savedInvoice] = await db
     .insert(invoicesTable)
     .values({
@@ -106,6 +123,14 @@ export async function processInvoice(
           : "flagged_duplicate",
       extraction_confidence:
         extractionConfidence != null ? String(extractionConfidence) : null,
+      source_type: sourceType,
+      document_type: documentType,
+      suggested_category: categoryResult.suggested_category,
+      final_category: categoryResult.suggested_category, // default = suggestion, user can override
+      category_confidence:
+        categoryResult.category_confidence > 0
+          ? String(categoryResult.category_confidence)
+          : null,
     })
     .returning();
 
@@ -120,12 +145,12 @@ export async function processInvoice(
     duplicateOfInvoiceId: duplicateResult.duplicate_of_invoice_id,
     confidence: duplicateResult.confidence,
     status: savedInvoice.status,
+    suggestedCategory: categoryResult.suggested_category,
+    categoryConfidence: categoryResult.category_confidence,
   };
 }
 
-/**
- * updateInvoiceStatus — approve, flag, etc.
- */
+/** updateInvoiceStatus — approve, flag, etc. */
 export async function updateInvoiceStatus(
   invoiceId: string,
   status: string
@@ -136,9 +161,7 @@ export async function updateInvoiceStatus(
     .where(eq(invoicesTable.id, invoiceId));
 }
 
-/**
- * markNotDuplicate — overrides the duplicate detection result.
- */
+/** markNotDuplicate — overrides the duplicate detection result. */
 export async function markNotDuplicate(invoiceId: string): Promise<void> {
   await db
     .update(invoicesTable)
@@ -148,5 +171,16 @@ export async function markNotDuplicate(invoiceId: string): Promise<void> {
       status: "pending_review",
       updated_at: new Date(),
     })
+    .where(eq(invoicesTable.id, invoiceId));
+}
+
+/** updateInvoiceCategory — user manually overrides the category. */
+export async function updateInvoiceCategory(
+  invoiceId: string,
+  finalCategory: string
+): Promise<void> {
+  await db
+    .update(invoicesTable)
+    .set({ final_category: finalCategory, updated_at: new Date() })
     .where(eq(invoicesTable.id, invoiceId));
 }

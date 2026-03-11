@@ -41,12 +41,29 @@ export const ListInvoicesResponseItem = zod.object({
   status: zod.string(),
   extractionConfidence: zod.string().nullish(),
   vendorId: zod.string().nullish(),
+  sourceType: zod.string(),
+  documentType: zod.string(),
+  suggestedCategory: zod.string().nullish(),
+  finalCategory: zod.string().nullish(),
+  categoryConfidence: zod.string().nullish(),
   createdAt: zod.string(),
 });
 export const ListInvoicesResponse = zod.array(ListInvoicesResponseItem);
 
 /**
- * @summary Process an extracted invoice
+ * @summary Get invoice summary stats for dashboard cards
+ */
+export const GetInvoiceSummaryResponse = zod.object({
+  total_documents: zod.number(),
+  supplier_invoices: zod.number(),
+  total_amount: zod.string(),
+  total_vat: zod.string(),
+  pending_review: zod.number(),
+  suspected_duplicates: zod.number(),
+});
+
+/**
+ * @summary Process an extracted invoice (JSON, file already on disk)
  */
 export const ProcessInvoiceBody = zod.object({
   filePath: zod.string().describe("Path to the invoice file on disk"),
@@ -61,6 +78,30 @@ export const ProcessInvoiceBody = zod.object({
     currency: zod.string().nullish(),
   }),
   extractionConfidence: zod.number().nullish(),
+  sourceType: zod.enum(["upload", "camera", "email"]).nullish(),
+  documentType: zod
+    .enum(["supplier_invoice", "receipt", "credit_note", "other"])
+    .nullish(),
+});
+
+/**
+ * @summary Upload an invoice file (PDF/JPG/PNG) and process it
+ */
+export const UploadInvoiceQueryParams = zod.object({
+  source: zod
+    .enum(["upload", "camera"])
+    .optional()
+    .describe("Source of the file (upload or camera)"),
+});
+
+export const UploadInvoiceBody = zod.object({
+  file: zod
+    .instanceof(File)
+    .describe("Invoice file (PDF, JPG, PNG — max 20MB)"),
+  extracted: zod
+    .string()
+    .optional()
+    .describe("Optional JSON string with pre-extracted fields"),
 });
 
 /**
@@ -83,6 +124,22 @@ export const MarkInvoiceNotDuplicateParams = zod.object({
 });
 
 export const MarkInvoiceNotDuplicateResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string(),
+});
+
+/**
+ * @summary Override the suggested category for an invoice
+ */
+export const UpdateInvoiceCategoryParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateInvoiceCategoryBody = zod.object({
+  finalCategory: zod.string(),
+});
+
+export const UpdateInvoiceCategoryResponse = zod.object({
   success: zod.boolean(),
   message: zod.string(),
 });

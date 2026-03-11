@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, numeric, date } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, numeric, date, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { vendorsTable } from "./vendors";
@@ -21,6 +21,12 @@ export const invoicesTable = pgTable("invoices", {
   duplicate_of_invoice_id: uuid("duplicate_of_invoice_id"),
   status: text("status").notNull().default("pending_review"),
   extraction_confidence: numeric("extraction_confidence", { precision: 5, scale: 2 }),
+  // New fields
+  source_type: text("source_type").notNull().default("upload"),
+  document_type: text("document_type").notNull().default("supplier_invoice"),
+  suggested_category: text("suggested_category"),
+  final_category: text("final_category"),
+  category_confidence: numeric("category_confidence", { precision: 5, scale: 2 }),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

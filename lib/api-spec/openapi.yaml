@@ -55,11 +55,24 @@ paths:
                 items:
                   $ref: "#/components/schemas/InvoiceRow"
 
+  /invoices/summary:
+    get:
+      operationId: getInvoiceSummary
+      tags: [invoices]
+      summary: Get invoice summary stats for dashboard cards
+      responses:
+        "200":
+          description: Summary stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceSummary"
+
   /invoices/process:
     post:
       operationId: processInvoice
       tags: [invoices]
-      summary: Process an extracted invoice
+      summary: Process an extracted invoice (JSON, file already on disk)
       requestBody:
         required: true
         content:
@@ -69,6 +82,49 @@ paths:
       responses:
         "201":
           description: Invoice processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessInvoiceResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /invoices/upload:
+    post:
+      operationId: uploadInvoice
+      tags: [invoices]
+      summary: Upload an invoice file (PDF/JPG/PNG) and process it
+      parameters:
+        - in: query
+          name: source
+          schema:
+            type: string
+            enum: [upload, camera]
+          required: false
+          description: Source of the file (upload or camera)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Invoice file (PDF, JPG, PNG — max 20MB)
+                extracted:
+                  type: string
+                  description: Optional JSON string with pre-extracted fields
+              required:
+                - file
+      responses:
+        "201":
+          description: Invoice uploaded and processed
           content:
             application/json:
               schema:
@@ -123,6 +179,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SuccessResponse"
+        "404":
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /invoices/{id}/category:
+    patch:
+      operationId: updateInvoiceCategory
+      tags: [invoices]
+      summary: Override the suggested category for an invoice
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCategoryRequest"
+      responses:
+        "200":
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Invoice not found
           content:
@@ -216,6 +309,14 @@ components:
         extractionConfidence:
           type: number
           nullable: true
+        sourceType:
+          type: string
+          enum: [upload, camera, email]
+          nullable: true
+        documentType:
+          type: string
+          enum: [supplier_invoice, receipt, credit_note, other]
+          nullable: true
       required:
         - filePath
         - extracted
@@ -271,11 +372,43 @@ components:
           type: number
         status:
           type: string
+        suggestedCategory:
+          type: string
+          nullable: true
+        categoryConfidence:
+          type: number
+        filePath:
+          type: string
+          nullable: true
       required:
         - invoiceId
         - duplicateStatus
         - confidence
         - status
+        - categoryConfidence
+
+    InvoiceSummary:
+      type: object
+      properties:
+        total_documents:
+          type: integer
+        supplier_invoices:
+          type: integer
+        total_amount:
+          type: string
+        total_vat:
+          type: string
+        pending_review:
+          type: integer
+        suspected_duplicates:
+          type: integer
+      required:
+        - total_documents
+        - supplier_invoices
+        - total_amount
+        - total_vat
+        - pending_review
+        - suspected_duplicates
 
     InvoiceRow:
       type: object
@@ -326,6 +459,19 @@ components:
         vendorId:
           type: string
           nullable: true
+        sourceType:
+          type: string
+        documentType:
+          type: string
+        suggestedCategory:
+          type: string
+          nullable: true
+        finalCategory:
+          type: string
+          nullable: true
+        categoryConfidence:
+          type: string
+          nullable: true
         createdAt:
           type: string
       required:
@@ -334,7 +480,17 @@ components:
         - filePath
         - duplicateStatus
         - status
+        - sourceType
+        - documentType
         - createdAt
+
+    UpdateCategoryRequest:
+      type: object
+      properties:
+        finalCategory:
+          type: string
+      required:
+        - finalCategory
 
     MergeAliasRequest:
       type: object

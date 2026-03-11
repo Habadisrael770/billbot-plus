@@ -6,10 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ExtractedInvoiceData } from "./extractedInvoiceData";
+import type { ProcessInvoiceRequestDocumentType } from "./processInvoiceRequestDocumentType";
+import type { ProcessInvoiceRequestSourceType } from "./processInvoiceRequestSourceType";
 
 export interface ProcessInvoiceRequest {
   /** Path to the invoice file on disk */
   filePath: string;
   extracted: ExtractedInvoiceData;
   extractionConfidence?: number | null;
+  sourceType?: ProcessInvoiceRequestSourceType;
+  documentType?: ProcessInvoiceRequestDocumentType;
 }

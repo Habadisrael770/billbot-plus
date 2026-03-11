@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import {
@@ -12,9 +12,14 @@ import {
   Merge,
   Check,
   MoreHorizontal,
-  ChevronRight,
+  Upload,
+  Camera,
+  ShoppingCart,
+  Banknote,
+  Tag,
+  Copy,
 } from "lucide-react";
-import { useInvoices, useInvoiceMutations } from "@/hooks/use-invoices";
+import { useInvoices, useInvoiceSummary, useInvoiceMutations } from "@/hooks/use-invoices";
 import { Layout } from "@/components/layout";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +42,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MergeAliasDialog } from "@/components/merge-alias-dialog";
+import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
 
 type FilterType = "all" | "pending" | "approved" | "duplicates";
 
@@ -45,13 +51,21 @@ type InvoiceRow = {
   invoiceNumber?: string | null;
   invoiceDate?: string | null;
   rawVendorName?: string | null;
+  normalizedVendorName?: string | null;
   canonicalVendorName?: string | null;
   taxId?: string | null;
+  subtotal?: string | null;
+  vat?: string | null;
   total?: string | null;
   currency: string;
   duplicateStatus: string;
   status: string;
   extractionConfidence?: string | null;
+  sourceType?: string | null;
+  documentType?: string | null;
+  suggestedCategory?: string | null;
+  finalCategory?: string | null;
+  categoryConfidence?: string | null;
 };
 
 const FILTERS: { key: FilterType; label: string }[] = [
@@ -61,28 +75,46 @@ const FILTERS: { key: FilterType; label: string }[] = [
   { key: "duplicates", label: "כפולות" },
 ];
 
+const CATEGORIES = [
+  "תקשורת",
+  "ציוד משרדי / מחשבים",
+  "תוכנה / AI / SaaS",
+  "תוכנת ענן",
+  "דלק / רכב",
+  "סופרמרקט / מזון",
+  "בנק / פיננסים",
+  "ביטוח",
+  "משלוחי אוכל",
+  "שיווק / פרסום",
+  "שירותים מקצועיים",
+  "נסיעות / תחבורה",
+  "ציוד / תשתיות",
+  "שכירות / נדל״ן",
+  "אחר",
+];
+
 function getDuplicateBadge(status: string) {
   switch (status) {
     case "unique":
       return (
-        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 whitespace-nowrap">
+        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 whitespace-nowrap text-xs">
           ייחודי
         </Badge>
       );
     case "exact_duplicate":
       return (
-        <Badge variant="outline" className="bg-rose-500/10 text-rose-400 border-rose-500/20 whitespace-nowrap">
+        <Badge variant="outline" className="bg-rose-500/10 text-rose-400 border-rose-500/20 whitespace-nowrap text-xs">
           כפול מדויק
         </Badge>
       );
     case "probable_duplicate":
       return (
-        <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/20 whitespace-nowrap">
+        <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/20 whitespace-nowrap text-xs">
           ייתכן כפול
         </Badge>
       );
     default:
-      return <Badge variant="outline">{status}</Badge>;
+      return <Badge variant="outline" className="text-xs">{status}</Badge>;
   }
 }
 
@@ -90,25 +122,34 @@ function getStatusBadge(status: string) {
   switch (status) {
     case "pending_review":
       return (
-        <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/20 whitespace-nowrap">
+        <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/20 whitespace-nowrap text-xs">
           ממתין
         </Badge>
       );
     case "approved":
       return (
-        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 whitespace-nowrap">
+        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 whitespace-nowrap text-xs">
           אושר
         </Badge>
       );
     case "flagged_duplicate":
       return (
-        <Badge variant="outline" className="bg-rose-500/10 text-rose-400 border-rose-500/20 whitespace-nowrap">
+        <Badge variant="outline" className="bg-rose-500/10 text-rose-400 border-rose-500/20 whitespace-nowrap text-xs">
           מסומן
         </Badge>
       );
     default:
-      return <Badge variant="outline">{status}</Badge>;
+      return <Badge variant="outline" className="text-xs">{status}</Badge>;
   }
+}
+
+function getCategoryBadge(category: string | null | undefined) {
+  if (!category) return <span className="text-xs text-muted-foreground">—</span>;
+  return (
+    <Badge variant="outline" className="bg-violet-500/10 text-violet-300 border-violet-500/20 whitespace-nowrap text-xs">
+      {category}
+    </Badge>
+  );
 }
 
 function formatCurrency(amount: string | null | undefined, currency: string) {
@@ -116,6 +157,7 @@ function formatCurrency(amount: string | null | undefined, currency: string) {
   return Number(amount).toLocaleString("he-IL", {
     style: "currency",
     currency: currency || "ILS",
+    maximumFractionDigits: 0,
   });
 }
 
@@ -125,12 +167,14 @@ function InvoiceCard({
   onApprove,
   onMarkNotDuplicate,
   onMerge,
+  onChangeCategory,
   isPending,
 }: {
   inv: InvoiceRow;
   onApprove: () => void;
   onMarkNotDuplicate: () => void;
   onMerge: () => void;
+  onChangeCategory: (category: string) => void;
   isPending: boolean;
 }) {
   return (
@@ -139,7 +183,6 @@ function InvoiceCard({
       animate={{ opacity: 1, y: 0 }}
       className="rounded-2xl border border-white/5 bg-card/30 backdrop-blur-sm p-4 space-y-3"
     >
-      {/* Top row */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-semibold text-white truncate">
@@ -156,7 +199,6 @@ function InvoiceCard({
         </p>
       </div>
 
-      {/* Vendor */}
       <div className="rounded-xl bg-white/5 px-3 py-2">
         <p className="text-xs text-muted-foreground">ספק</p>
         <p className="text-sm font-medium text-white truncate">
@@ -167,18 +209,18 @@ function InvoiceCard({
         )}
       </div>
 
-      {/* Badges row */}
+      {/* Category row */}
+      <div className="flex items-center gap-2">
+        <Tag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        <span className="text-xs text-muted-foreground">קטגוריה:</span>
+        {getCategoryBadge(inv.finalCategory || inv.suggestedCategory)}
+      </div>
+
       <div className="flex flex-wrap gap-2 items-center">
         {getDuplicateBadge(inv.duplicateStatus)}
         {getStatusBadge(inv.status)}
-        {inv.extractionConfidence && (
-          <span className="text-xs text-muted-foreground">
-            {(Number(inv.extractionConfidence) * 100).toFixed(0)}% דיוק
-          </span>
-        )}
       </div>
 
-      {/* Actions */}
       <div className="flex items-center gap-2 pt-1 border-t border-white/5">
         {inv.status === "pending_review" && (
           <Button
@@ -202,6 +244,30 @@ function InvoiceCard({
             <XCircle className="w-3.5 h-3.5 mr-1" /> לא כפול
           </Button>
         )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 px-3 border border-white/10 text-muted-foreground hover:text-white hover:bg-white/5 rounded-lg text-xs"
+            >
+              <Tag className="w-3.5 h-3.5 mr-1" /> קטגוריה
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="bg-card border-white/10 shadow-xl rounded-xl max-h-60 overflow-y-auto">
+            <DropdownMenuLabel className="text-xs text-muted-foreground">בחר קטגוריה</DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-white/5" />
+            {CATEGORIES.map((cat) => (
+              <DropdownMenuItem
+                key={cat}
+                className="focus:bg-white/5 cursor-pointer rounded-lg text-sm"
+                onClick={() => onChangeCategory(cat)}
+              >
+                {cat}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button
           size="sm"
           variant="ghost"
@@ -218,25 +284,18 @@ function InvoiceCard({
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { data: invoices, isLoading } = useInvoices();
-  const { approve, markNotDuplicate, mergeAlias, isPending } = useInvoiceMutations();
+  const { data: summary } = useInvoiceSummary();
+  const { approve, markNotDuplicate, mergeAlias, updateCategory, isPending } = useInvoiceMutations();
 
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadMode, setUploadMode] = useState<"upload" | "camera">("upload");
   const [mergeDialog, setMergeDialog] = useState<{
     isOpen: boolean;
     invoiceId: string | null;
     rawVendorName: string | null;
   }>({ isOpen: false, invoiceId: null, rawVendorName: null });
-
-  const stats = useMemo(() => {
-    if (!invoices) return { total: 0, pending: 0, flagged: 0, approved: 0 };
-    return {
-      total: invoices.length,
-      pending: invoices.filter((i) => i.status === "pending_review").length,
-      flagged: invoices.filter((i) => i.status === "flagged_duplicate").length,
-      approved: invoices.filter((i) => i.status === "approved").length,
-    };
-  }, [invoices]);
 
   const filteredInvoices = useMemo(() => {
     if (!invoices) return [];
@@ -250,34 +309,93 @@ export default function Dashboard() {
         (i) =>
           i.invoiceNumber?.toLowerCase().includes(q) ||
           i.rawVendorName?.toLowerCase().includes(q) ||
-          i.canonicalVendorName?.toLowerCase().includes(q)
+          i.canonicalVendorName?.toLowerCase().includes(q) ||
+          i.finalCategory?.toLowerCase().includes(q) ||
+          i.suggestedCategory?.toLowerCase().includes(q)
       );
     }
     return result;
   }, [invoices, filter, search]);
 
-  const openMerge = (inv: InvoiceRow) =>
-    setMergeDialog({ isOpen: true, invoiceId: inv.id, rawVendorName: inv.rawVendorName ?? null });
+  const openMerge = useCallback((inv: InvoiceRow) =>
+    setMergeDialog({ isOpen: true, invoiceId: inv.id, rawVendorName: inv.rawVendorName ?? null }),
+  []);
+
+  const openUpload = (mode: "upload" | "camera") => {
+    setUploadMode(mode);
+    setUploadOpen(true);
+  };
 
   return (
     <Layout>
-      {/* ── Stat cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
-        <StatCard title="סה״כ חשבוניות" value={stats.total} icon={<Files className="w-5 h-5 sm:w-6 sm:h-6" />} delay={0} />
-        <StatCard title="ממתינות לאישור" value={stats.pending} icon={<Clock className="w-5 h-5 sm:w-6 sm:h-6" />} delay={0.1} />
+      {/* ── Action buttons ── */}
+      <div className="flex items-center justify-end gap-2 mb-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="border border-white/10 text-muted-foreground hover:text-white hover:bg-white/5 rounded-xl gap-2"
+          onClick={() => openUpload("camera")}
+        >
+          <Camera className="w-4 h-4" />
+          <span className="hidden sm:inline">צלם חשבונית</span>
+        </Button>
+        <Button
+          size="sm"
+          className="rounded-xl gap-2 bg-primary hover:bg-primary/90 shadow-md shadow-primary/20"
+          onClick={() => openUpload("upload")}
+        >
+          <Upload className="w-4 h-4" />
+          <span>העלה חשבונית</span>
+        </Button>
+      </div>
+
+      {/* ── 6 Stat cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         <StatCard
-          title="כפולות שזוהו"
-          value={stats.flagged}
-          icon={<AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-rose-400" />}
-          trend={`${stats.total > 0 ? ((stats.flagged / stats.total) * 100).toFixed(1) : 0}%`}
-          trendUp={false}
+          title="סה״כ מסמכים"
+          value={summary?.total_documents ?? invoices?.length ?? 0}
+          icon={<Files className="w-5 h-5 sm:w-6 sm:h-6" />}
+          delay={0}
+        />
+        <StatCard
+          title="חשבוניות ספק"
+          value={summary?.supplier_invoices ?? 0}
+          icon={<ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />}
+          delay={0.05}
+        />
+        <StatCard
+          title="סה״כ חשבוניות"
+          value={summary?.total_amount
+            ? Number(summary.total_amount).toLocaleString("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 })
+            : "₪0"}
+          icon={<Banknote className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />}
+          delay={0.1}
+        />
+        <StatCard
+          title="סה״כ מע״מ"
+          value={summary?.total_vat
+            ? Number(summary.total_vat).toLocaleString("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 })
+            : "₪0"}
+          icon={<Tag className="w-5 h-5 sm:w-6 sm:h-6 text-violet-400" />}
+          delay={0.15}
+        />
+        <StatCard
+          title="ממתינות לאישור"
+          value={summary?.pending_review ?? 0}
+          icon={<Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />}
           delay={0.2}
         />
         <StatCard
-          title="אושרו"
-          value={stats.approved}
-          icon={<FileCheck className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />}
-          delay={0.3}
+          title="חשודות בכפילות"
+          value={summary?.suspected_duplicates ?? 0}
+          icon={<Copy className="w-5 h-5 sm:w-6 sm:h-6 text-rose-400" />}
+          trend={
+            summary && summary.total_documents > 0
+              ? `${((summary.suspected_duplicates / summary.total_documents) * 100).toFixed(1)}%`
+              : undefined
+          }
+          trendUp={false}
+          delay={0.25}
         />
       </div>
 
@@ -285,12 +403,11 @@ export default function Dashboard() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.4 }}
+        transition={{ duration: 0.5, delay: 0.35 }}
         className="rounded-2xl border border-white/5 bg-card/30 backdrop-blur-xl flex flex-col overflow-hidden"
       >
         {/* Controls */}
         <div className="p-4 sm:p-6 border-b border-white/5 flex flex-col gap-3">
-          {/* Filter pills — scrollable on mobile */}
           <div className="flex gap-1 overflow-x-auto pb-0.5 scrollbar-none">
             {FILTERS.map(({ key, label }) => (
               <button
@@ -307,11 +424,10 @@ export default function Dashboard() {
             ))}
           </div>
 
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="חיפוש חשבוניות..."
+              placeholder="חיפוש לפי חשבונית, ספק, קטגוריה..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 bg-black/20 border-white/10 focus:border-primary text-foreground rounded-xl"
@@ -342,6 +458,7 @@ export default function Dashboard() {
                   onApprove={() => approve(inv.id)}
                   onMarkNotDuplicate={() => markNotDuplicate(inv.id)}
                   onMerge={() => openMerge(inv)}
+                  onChangeCategory={(cat) => updateCategory(inv.id, cat)}
                 />
               ))}
             </div>
@@ -353,19 +470,22 @@ export default function Dashboard() {
           <Table>
             <TableHeader className="bg-black/20 border-b border-white/5">
               <TableRow className="hover:bg-transparent border-none">
-                <TableHead className="text-muted-foreground font-medium py-4 px-4 lg:px-6">חשבונית</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-4 px-4 lg:px-6">תאריך</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-4 px-4 lg:px-6">ספק</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-4 px-4 lg:px-6 text-right">סכום</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-4 px-4 lg:px-6">כפילות</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-4 px-4 lg:px-6">סטטוס</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-4 px-4 lg:px-6 text-right">פעולות</TableHead>
+                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs">ספק גולמי</TableHead>
+                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs">ספק מזוהה</TableHead>
+                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs">קטגוריה מוצעת</TableHead>
+                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs">קטגוריה סופית</TableHead>
+                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs">תאריך</TableHead>
+                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs text-right">סכום</TableHead>
+                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs text-right">מע״מ</TableHead>
+                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs">כפילות</TableHead>
+                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs">סטטוס</TableHead>
+                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs text-right">פעולות</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-64 text-center">
+                  <TableCell colSpan={10} className="h-64 text-center">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
                       טוען נתוני מערכת...
@@ -374,11 +494,11 @@ export default function Dashboard() {
                 </TableRow>
               ) : filteredInvoices.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-64 text-center">
+                  <TableCell colSpan={10} className="h-64 text-center">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <CheckCircle2 className="w-12 h-12 mb-4 opacity-20" />
                       <p className="text-lg font-medium text-white/70">לא נמצאו חשבוניות</p>
-                      <p className="text-sm mt-1">נסה לשנות את הסינון או החיפוש.</p>
+                      <p className="text-sm mt-1">העלה חשבונית ראשונה או שנה את הסינון.</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -388,56 +508,92 @@ export default function Dashboard() {
                     key={inv.id}
                     className="border-b border-white/5 hover:bg-white/5 transition-colors group"
                   >
-                    <TableCell className="py-4 px-4 lg:px-6">
-                      <div className="font-medium text-white">{inv.invoiceNumber || "—"}</div>
-                      {inv.extractionConfidence && (
-                        <div className="text-xs text-muted-foreground flex items-center mt-1">
-                          <span className="inline-block w-2 h-2 rounded-full bg-primary mr-1.5" />
-                          {(Number(inv.extractionConfidence) * 100).toFixed(0)}% דיוק
-                        </div>
+                    {/* Raw Vendor */}
+                    <TableCell className="py-3 px-4">
+                      <div className="text-xs text-muted-foreground max-w-[120px] truncate" title={inv.rawVendorName ?? ""}>
+                        {inv.rawVendorName || "—"}
+                      </div>
+                    </TableCell>
+
+                    {/* Matched Vendor */}
+                    <TableCell className="py-3 px-4">
+                      <div className="font-medium text-white text-sm max-w-[140px] truncate" title={inv.canonicalVendorName ?? ""}>
+                        {inv.canonicalVendorName || inv.normalizedVendorName || "—"}
+                      </div>
+                      {inv.taxId && (
+                        <div className="text-xs text-muted-foreground mt-0.5">ח.פ. {inv.taxId}</div>
                       )}
                     </TableCell>
-                    <TableCell className="py-4 px-4 lg:px-6 text-sm text-muted-foreground whitespace-nowrap">
+
+                    {/* Suggested Category */}
+                    <TableCell className="py-3 px-4">
+                      {getCategoryBadge(inv.suggestedCategory)}
+                    </TableCell>
+
+                    {/* Final Category */}
+                    <TableCell className="py-3 px-4">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="flex items-center gap-1 group/cat hover:opacity-80 transition-opacity">
+                            {getCategoryBadge(inv.finalCategory)}
+                            <Tag className="w-3 h-3 text-muted-foreground opacity-0 group-hover/cat:opacity-100 transition-opacity" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-card border-white/10 shadow-xl rounded-xl max-h-60 overflow-y-auto">
+                          <DropdownMenuLabel className="text-xs text-muted-foreground">שנה קטגוריה</DropdownMenuLabel>
+                          <DropdownMenuSeparator className="bg-white/5" />
+                          {CATEGORIES.map((cat) => (
+                            <DropdownMenuItem
+                              key={cat}
+                              className="focus:bg-white/5 cursor-pointer rounded-lg text-sm"
+                              onClick={() => updateCategory(inv.id, cat)}
+                            >
+                              {cat}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+
+                    {/* Date */}
+                    <TableCell className="py-3 px-4 text-xs text-muted-foreground whitespace-nowrap">
                       {inv.invoiceDate
                         ? format(new Date(inv.invoiceDate), "dd/MM/yyyy")
                         : "—"}
                     </TableCell>
-                    <TableCell className="py-4 px-4 lg:px-6">
-                      <div
-                        className="font-medium text-white max-w-[180px] truncate"
-                        title={inv.canonicalVendorName || inv.rawVendorName || "לא ידוע"}
-                      >
-                        {inv.canonicalVendorName || inv.rawVendorName || "ספק לא ידוע"}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5 flex gap-2">
-                        {inv.taxId && <span>ח.פ.: {inv.taxId}</span>}
-                        {inv.rawVendorName &&
-                          inv.canonicalVendorName &&
-                          inv.rawVendorName !== inv.canonicalVendorName && (
-                            <span className="text-primary/70">כינוי</span>
-                          )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-4 px-4 lg:px-6 text-right font-medium text-white whitespace-nowrap">
+
+                    {/* Total */}
+                    <TableCell className="py-3 px-4 text-right font-medium text-white text-sm whitespace-nowrap">
                       {formatCurrency(inv.total, inv.currency)}
                     </TableCell>
-                    <TableCell className="py-4 px-4 lg:px-6">
+
+                    {/* VAT */}
+                    <TableCell className="py-3 px-4 text-right text-xs text-muted-foreground whitespace-nowrap">
+                      {formatCurrency(inv.vat, inv.currency)}
+                    </TableCell>
+
+                    {/* Duplicate Status */}
+                    <TableCell className="py-3 px-4">
                       {getDuplicateBadge(inv.duplicateStatus)}
                     </TableCell>
-                    <TableCell className="py-4 px-4 lg:px-6">
+
+                    {/* Status */}
+                    <TableCell className="py-3 px-4">
                       {getStatusBadge(inv.status)}
                     </TableCell>
-                    <TableCell className="py-4 px-4 lg:px-6 text-right">
-                      <div className="flex items-center justify-end gap-2">
+
+                    {/* Actions */}
+                    <TableCell className="py-3 px-4 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
                         {inv.status === "pending_review" && (
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-8 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 rounded-lg"
+                            className="h-7 px-2 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 rounded-lg text-xs"
                             onClick={() => approve(inv.id)}
                             disabled={isPending}
                           >
-                            <Check className="w-4 h-4 mr-1" /> אשר
+                            <Check className="w-3.5 h-3.5 mr-1" /> אשר
                           </Button>
                         )}
                         <DropdownMenu>
@@ -445,10 +601,10 @@ export default function Dashboard() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                              className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity rounded-lg"
                             >
                               <span className="sr-only">פתח תפריט</span>
-                              <MoreHorizontal className="h-4 w-4" />
+                              <MoreHorizontal className="h-3.5 w-3.5" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent
@@ -456,26 +612,35 @@ export default function Dashboard() {
                             className="bg-card border-white/10 shadow-xl rounded-xl"
                           >
                             <DropdownMenuLabel className="text-xs text-muted-foreground">
-                              פעולות
+                              פעולות נוספות
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-white/5" />
                             {inv.duplicateStatus !== "unique" && (
                               <DropdownMenuItem
-                                className="focus:bg-white/5 cursor-pointer text-amber-400 focus:text-amber-300 rounded-lg"
+                                className="focus:bg-white/5 cursor-pointer text-amber-400 focus:text-amber-300 rounded-lg text-sm"
                                 onClick={() => markNotDuplicate(inv.id)}
                                 disabled={isPending}
                               >
                                 <XCircle className="w-4 h-4 mr-2" />
-                                לא כפול
+                                סמן כלא-כפול
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
-                              className="focus:bg-white/5 cursor-pointer rounded-lg"
+                              className="focus:bg-white/5 cursor-pointer rounded-lg text-sm"
                               onClick={() => openMerge(inv)}
                             >
                               <Merge className="w-4 h-4 mr-2 text-primary" />
                               מיזוג כינוי ספק
                             </DropdownMenuItem>
+                            {inv.filePath && (
+                              <DropdownMenuItem
+                                className="focus:bg-white/5 cursor-pointer rounded-lg text-sm"
+                                onClick={() => window.open(inv.filePath!, "_blank")}
+                              >
+                                <FileCheck className="w-4 h-4 mr-2 text-violet-400" />
+                                צפה בקובץ
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -488,6 +653,7 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
+      {/* ── Dialogs ── */}
       <MergeAliasDialog
         isOpen={mergeDialog.isOpen}
         onClose={() => setMergeDialog({ isOpen: false, invoiceId: null, rawVendorName: null })}
@@ -498,6 +664,11 @@ export default function Dashboard() {
           setMergeDialog({ isOpen: false, invoiceId: null, rawVendorName: null });
         }}
         isPending={isPending}
+      />
+
+      <UploadInvoiceModal
+        isOpen={uploadOpen}
+        onClose={() => setUploadOpen(false)}
       />
     </Layout>
   );

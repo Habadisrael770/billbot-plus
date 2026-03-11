@@ -1,15 +1,22 @@
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListInvoices,
+  useGetInvoiceSummary,
   useApproveInvoice,
   useMarkInvoiceNotDuplicate,
   useMergeVendorAlias,
+  useUpdateInvoiceCategory,
   getListInvoicesQueryKey,
+  getGetInvoiceSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { useToast } from "./use-toast";
 
 export function useInvoices() {
   return useListInvoices();
+}
+
+export function useInvoiceSummary() {
+  return useGetInvoiceSummary();
 }
 
 export function useInvoiceMutations() {
@@ -18,21 +25,19 @@ export function useInvoiceMutations() {
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetInvoiceSummaryQueryKey() });
   };
 
   const approveMutation = useApproveInvoice({
     mutation: {
       onSuccess: () => {
         invalidate();
-        toast({
-          title: "Invoice Approved",
-          description: "The invoice has been successfully approved.",
-        });
+        toast({ title: "חשבונית אושרה", description: "החשבונית אושרה בהצלחה." });
       },
       onError: (error) => {
         toast({
-          title: "Approval Failed",
-          description: error.error || "An unexpected error occurred.",
+          title: "שגיאת אישור",
+          description: error.error || "אירעה שגיאה בלתי צפויה.",
           variant: "destructive",
         });
       },
@@ -43,15 +48,12 @@ export function useInvoiceMutations() {
     mutation: {
       onSuccess: () => {
         invalidate();
-        toast({
-          title: "Marked as Unique",
-          description: "The invoice has been marked as not a duplicate.",
-        });
+        toast({ title: "סומנה כייחודית", description: "החשבונית סומנה כלא-כפולה." });
       },
       onError: (error) => {
         toast({
-          title: "Action Failed",
-          description: error.error || "Failed to update duplicate status.",
+          title: "הפעולה נכשלה",
+          description: error.error || "לא ניתן לעדכן סטטוס כפילות.",
           variant: "destructive",
         });
       },
@@ -62,15 +64,28 @@ export function useInvoiceMutations() {
     mutation: {
       onSuccess: () => {
         invalidate();
-        toast({
-          title: "Vendor Alias Merged",
-          description: "The vendor alias has been linked successfully.",
-        });
+        toast({ title: "כינוי ספק מוזג", description: "הכינוי קושר בהצלחה." });
       },
       onError: (error) => {
         toast({
-          title: "Merge Failed",
-          description: error.error || "Failed to merge vendor alias.",
+          title: "מיזוג נכשל",
+          description: error.error || "לא ניתן למזג כינוי ספק.",
+          variant: "destructive",
+        });
+      },
+    },
+  });
+
+  const updateCategoryMutation = useUpdateInvoiceCategory({
+    mutation: {
+      onSuccess: () => {
+        invalidate();
+        toast({ title: "קטגוריה עודכנה", description: "הקטגוריה עודכנה בהצלחה." });
+      },
+      onError: (error) => {
+        toast({
+          title: "עדכון נכשל",
+          description: error.error || "לא ניתן לעדכן קטגוריה.",
           variant: "destructive",
         });
       },
@@ -82,9 +97,12 @@ export function useInvoiceMutations() {
     markNotDuplicate: (id: string) => markNotDuplicateMutation.mutate({ id }),
     mergeAlias: (id: string, aliasName: string, targetVendorId: string) =>
       mergeAliasMutation.mutate({ id, data: { aliasName, targetVendorId } }),
+    updateCategory: (id: string, finalCategory: string) =>
+      updateCategoryMutation.mutate({ id, data: { finalCategory } }),
     isPending:
       approveMutation.isPending ||
       markNotDuplicateMutation.isPending ||
-      mergeAliasMutation.isPending,
+      mergeAliasMutation.isPending ||
+      updateCategoryMutation.isPending,
   };
 }

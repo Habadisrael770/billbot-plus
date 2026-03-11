@@ -20,11 +20,15 @@ import type {
   ErrorResponse,
   HealthStatus,
   InvoiceRow,
+  InvoiceSummary,
   ListInvoicesParams,
   MergeAliasRequest,
   ProcessInvoiceRequest,
   ProcessInvoiceResponse,
   SuccessResponse,
+  UpdateCategoryRequest,
+  UploadInvoiceBody,
+  UploadInvoiceParams,
   VendorWithAliases,
 } from "./api.schemas";
 
@@ -208,7 +212,82 @@ export function useListInvoices<
 }
 
 /**
- * @summary Process an extracted invoice
+ * @summary Get invoice summary stats for dashboard cards
+ */
+export const getGetInvoiceSummaryUrl = () => {
+  return `/api/invoices/summary`;
+};
+
+export const getInvoiceSummary = async (
+  options?: RequestInit,
+): Promise<InvoiceSummary> => {
+  return customFetch<InvoiceSummary>(getGetInvoiceSummaryUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetInvoiceSummaryQueryKey = () => {
+  return [`/api/invoices/summary`] as const;
+};
+
+export const getGetInvoiceSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInvoiceSummary>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getInvoiceSummary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetInvoiceSummaryQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getInvoiceSummary>>
+  > = ({ signal }) => getInvoiceSummary({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getInvoiceSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetInvoiceSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInvoiceSummary>>
+>;
+export type GetInvoiceSummaryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get invoice summary stats for dashboard cards
+ */
+
+export function useGetInvoiceSummary<
+  TData = Awaited<ReturnType<typeof getInvoiceSummary>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getInvoiceSummary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetInvoiceSummaryQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Process an extracted invoice (JSON, file already on disk)
  */
 export const getProcessInvoiceUrl = () => {
   return `/api/invoices/process`;
@@ -271,7 +350,7 @@ export type ProcessInvoiceMutationBody = BodyType<ProcessInvoiceRequest>;
 export type ProcessInvoiceMutationError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Process an extracted invoice
+ * @summary Process an extracted invoice (JSON, file already on disk)
  */
 export const useProcessInvoice = <
   TError = ErrorType<ErrorResponse>,
@@ -291,6 +370,110 @@ export const useProcessInvoice = <
   TContext
 > => {
   return useMutation(getProcessInvoiceMutationOptions(options));
+};
+
+/**
+ * @summary Upload an invoice file (PDF/JPG/PNG) and process it
+ */
+export const getUploadInvoiceUrl = (params?: UploadInvoiceParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/invoices/upload?${stringifiedParams}`
+    : `/api/invoices/upload`;
+};
+
+export const uploadInvoice = async (
+  uploadInvoiceBody: UploadInvoiceBody,
+  params?: UploadInvoiceParams,
+  options?: RequestInit,
+): Promise<ProcessInvoiceResponse> => {
+  const formData = new FormData();
+  formData.append(`file`, uploadInvoiceBody.file);
+  if (uploadInvoiceBody.extracted !== undefined) {
+    formData.append(`extracted`, uploadInvoiceBody.extracted);
+  }
+
+  return customFetch<ProcessInvoiceResponse>(getUploadInvoiceUrl(params), {
+    ...options,
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getUploadInvoiceMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadInvoice>>,
+    TError,
+    { data: BodyType<UploadInvoiceBody>; params?: UploadInvoiceParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadInvoice>>,
+  TError,
+  { data: BodyType<UploadInvoiceBody>; params?: UploadInvoiceParams },
+  TContext
+> => {
+  const mutationKey = ["uploadInvoice"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadInvoice>>,
+    { data: BodyType<UploadInvoiceBody>; params?: UploadInvoiceParams }
+  > = (props) => {
+    const { data, params } = props ?? {};
+
+    return uploadInvoice(data, params, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadInvoiceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadInvoice>>
+>;
+export type UploadInvoiceMutationBody = BodyType<UploadInvoiceBody>;
+export type UploadInvoiceMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Upload an invoice file (PDF/JPG/PNG) and process it
+ */
+export const useUploadInvoice = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadInvoice>>,
+    TError,
+    { data: BodyType<UploadInvoiceBody>; params?: UploadInvoiceParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadInvoice>>,
+  TError,
+  { data: BodyType<UploadInvoiceBody>; params?: UploadInvoiceParams },
+  TContext
+> => {
+  return useMutation(getUploadInvoiceMutationOptions(options));
 };
 
 /**
@@ -459,6 +642,93 @@ export const useMarkInvoiceNotDuplicate = <
   TContext
 > => {
   return useMutation(getMarkInvoiceNotDuplicateMutationOptions(options));
+};
+
+/**
+ * @summary Override the suggested category for an invoice
+ */
+export const getUpdateInvoiceCategoryUrl = (id: string) => {
+  return `/api/invoices/${id}/category`;
+};
+
+export const updateInvoiceCategory = async (
+  id: string,
+  updateCategoryRequest: UpdateCategoryRequest,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getUpdateInvoiceCategoryUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateCategoryRequest),
+  });
+};
+
+export const getUpdateInvoiceCategoryMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateInvoiceCategory>>,
+    TError,
+    { id: string; data: BodyType<UpdateCategoryRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateInvoiceCategory>>,
+  TError,
+  { id: string; data: BodyType<UpdateCategoryRequest> },
+  TContext
+> => {
+  const mutationKey = ["updateInvoiceCategory"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateInvoiceCategory>>,
+    { id: string; data: BodyType<UpdateCategoryRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateInvoiceCategory(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateInvoiceCategoryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateInvoiceCategory>>
+>;
+export type UpdateInvoiceCategoryMutationBody = BodyType<UpdateCategoryRequest>;
+export type UpdateInvoiceCategoryMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Override the suggested category for an invoice
+ */
+export const useUpdateInvoiceCategory = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateInvoiceCategory>>,
+    TError,
+    { id: string; data: BodyType<UpdateCategoryRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateInvoiceCategory>>,
+  TError,
+  { id: string; data: BodyType<UpdateCategoryRequest> },
+  TContext
+> => {
+  return useMutation(getUpdateInvoiceCategoryMutationOptions(options));
 };
 
 /**

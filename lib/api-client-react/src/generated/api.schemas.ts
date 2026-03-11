@@ -18,6 +18,27 @@ export interface SuccessResponse {
   message: string;
 }
 
+export type ProcessInvoiceRequestSourceType =
+  | (typeof ProcessInvoiceRequestSourceType)[keyof typeof ProcessInvoiceRequestSourceType]
+  | null;
+
+export const ProcessInvoiceRequestSourceType = {
+  upload: "upload",
+  camera: "camera",
+  email: "email",
+} as const;
+
+export type ProcessInvoiceRequestDocumentType =
+  | (typeof ProcessInvoiceRequestDocumentType)[keyof typeof ProcessInvoiceRequestDocumentType]
+  | null;
+
+export const ProcessInvoiceRequestDocumentType = {
+  supplier_invoice: "supplier_invoice",
+  receipt: "receipt",
+  credit_note: "credit_note",
+  other: "other",
+} as const;
+
 export interface ExtractedInvoiceData {
   vendor?: string | null;
   tax_id?: string | null;
@@ -34,6 +55,8 @@ export interface ProcessInvoiceRequest {
   filePath: string;
   extracted: ExtractedInvoiceData;
   extractionConfidence?: number | null;
+  sourceType?: ProcessInvoiceRequestSourceType;
+  documentType?: ProcessInvoiceRequestDocumentType;
 }
 
 export interface ProcessInvoiceResponse {
@@ -45,6 +68,18 @@ export interface ProcessInvoiceResponse {
   duplicateOfInvoiceId?: string | null;
   confidence: number;
   status: string;
+  suggestedCategory?: string | null;
+  categoryConfidence: number;
+  filePath?: string | null;
+}
+
+export interface InvoiceSummary {
+  total_documents: number;
+  supplier_invoices: number;
+  total_amount: string;
+  total_vat: string;
+  pending_review: number;
+  suspected_duplicates: number;
 }
 
 export interface InvoiceRow {
@@ -65,7 +100,16 @@ export interface InvoiceRow {
   status: string;
   extractionConfidence?: string | null;
   vendorId?: string | null;
+  sourceType: string;
+  documentType: string;
+  suggestedCategory?: string | null;
+  finalCategory?: string | null;
+  categoryConfidence?: string | null;
   createdAt: string;
+}
+
+export interface UpdateCategoryRequest {
+  finalCategory: string;
 }
 
 export interface MergeAliasRequest {
@@ -89,4 +133,26 @@ export interface VendorWithAliases {
 export type ListInvoicesParams = {
   status?: string;
   duplicate_status?: string;
+};
+
+export type UploadInvoiceParams = {
+  /**
+   * Source of the file (upload or camera)
+   */
+  source?: UploadInvoiceSource;
+};
+
+export type UploadInvoiceSource =
+  (typeof UploadInvoiceSource)[keyof typeof UploadInvoiceSource];
+
+export const UploadInvoiceSource = {
+  upload: "upload",
+  camera: "camera",
+} as const;
+
+export type UploadInvoiceBody = {
+  /** Invoice file (PDF, JPG, PNG — max 20MB) */
+  file: Blob;
+  /** Optional JSON string with pre-extracted fields */
+  extracted?: string;
 };

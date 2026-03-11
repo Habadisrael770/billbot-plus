@@ -15,4 +15,7 @@ export interface ProcessInvoiceResponse {
   duplicateOfInvoiceId?: string | null;
   confidence: number;
   status: string;
+  suggestedCategory?: string | null;
+  categoryConfidence: number;
+  filePath?: string | null;
 }
