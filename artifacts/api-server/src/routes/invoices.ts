@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
+import * as XLSX from "xlsx";
 import { db } from "@workspace/db";
 import { invoicesTable, vendorsTable } from "@workspace/db/schema";
 import { eq, sql } from "drizzle-orm";
@@ -331,6 +332,213 @@ router.patch("/:id/merge-alias", async (req, res) => {
   } catch (err) {
     console.error("Failed to merge alias:", err);
     res.status(500).json({ error: "Failed to merge alias" });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /api/invoices/scan-email
+// Accept pasted email text or .eml file, extract invoice data
+// ─────────────────────────────────────────────
+const emlUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+router.post("/scan-email", emlUpload.single("file"), async (req, res) => {
+  try {
+    const emailText: string = req.body.emailText ?? "";
+    const fileContent: string = req.file ? req.file.buffer.toString("utf-8") : "";
+    const rawText = (emailText + "\n" + fileContent).trim();
+
+    if (!rawText) {
+      res.status(400).json({ error: "לא סופק תוכן מייל" });
+      return;
+    }
+
+    // --- Simple regex extraction ---
+    const amountMatch = rawText.match(/(?:סכום|total|amount|סה"כ)[^\d]*([\d,]+(?:\.\d{1,2})?)/i);
+    const vatMatch    = rawText.match(/(?:מע"מ|vat|tax)[^\d]*([\d,]+(?:\.\d{1,2})?)/i);
+    const dateMatch   = rawText.match(/(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4})/);
+    const invNumMatch = rawText.match(/(?:חשבונית|invoice|inv)[^\d#]*[#]?\s*(\w+[-\w]*)/i);
+    const vendorMatch = rawText.match(/(?:from|מאת|שולח):?\s*([A-Za-z\u0590-\u05FF][\w\u0590-\u05FF\s&.'-]{2,40})/i);
+
+    const total   = amountMatch ? parseFloat(amountMatch[1]!.replace(/,/g, "")) : null;
+    const vat     = vatMatch    ? parseFloat(vatMatch[1]!.replace(/,/g, ""))    : null;
+    const rawDate = dateMatch   ? dateMatch[1]                                  : null;
+    const invNum  = invNumMatch ? invNumMatch[1]!.trim()                         : null;
+    const vendor  = vendorMatch ? vendorMatch[1]!.trim()                         : "מייל — לא זוהה ספק";
+
+    // Save as a new invoice entry
+    const [inserted] = await db.insert(invoicesTable).values({
+      raw_vendor_name: vendor,
+      invoice_number: invNum,
+      invoice_date: rawDate,
+      total: total ? String(total) : undefined,
+      vat: vat ? String(vat) : undefined,
+      subtotal: total && vat ? String(total - vat) : undefined,
+      currency: "ILS",
+      status: "pending_review",
+      duplicate_status: "unique",
+      source_type: "email",
+      document_type: "supplier_invoice",
+      file_path: "",
+      file_sha256: "",
+    }).returning({ id: invoicesTable.id });
+
+    res.json({ success: true, count: 1, id: inserted?.id, vendor, total });
+  } catch (err) {
+    console.error("scan-email error:", err);
+    res.status(500).json({ error: "שגיאה בעיבוד המייל" });
+  }
+});
+
+// ─────────────────────────────────────────────
+// GET /api/invoices/export
+// Export all invoices as XLSX
+// ─────────────────────────────────────────────
+router.get("/export", async (_req, res) => {
+  try {
+    const rows = await db
+      .select({
+        id: invoicesTable.id,
+        invoiceNumber: invoicesTable.invoice_number,
+        invoiceDate: invoicesTable.invoice_date,
+        rawVendor: invoicesTable.raw_vendor_name,
+        canonicalVendor: vendorsTable.canonical_name,
+        subtotal: invoicesTable.subtotal,
+        vat: invoicesTable.vat,
+        total: invoicesTable.total,
+        currency: invoicesTable.currency,
+        category: invoicesTable.final_category,
+        suggestedCategory: invoicesTable.suggested_category,
+        sourceType: invoicesTable.source_type,
+        documentType: invoicesTable.document_type,
+        status: invoicesTable.status,
+        duplicateStatus: invoicesTable.duplicate_status,
+        filePath: invoicesTable.file_path,
+      })
+      .from(invoicesTable)
+      .leftJoin(vendorsTable, eq(invoicesTable.vendor_id, vendorsTable.id))
+      .orderBy(sql`${invoicesTable.created_at} desc`);
+
+    const HOST = process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : "http://localhost:3000";
+
+    const wsData = rows.map((r, i) => ({
+      "#": i + 1,
+      "מספר חשבונית": r.invoiceNumber ?? "",
+      "תאריך": r.invoiceDate ?? "",
+      "ספק גולמי": r.rawVendor ?? "",
+      "ספק מזוהה": r.canonicalVendor ?? "",
+      "סכום לפני מע\"מ": r.subtotal ? Number(r.subtotal) : "",
+      "מע\"מ": r.vat ? Number(r.vat) : "",
+      "סה\"כ": r.total ? Number(r.total) : "",
+      "מטבע": r.currency,
+      "קטגוריה": r.category ?? r.suggestedCategory ?? "",
+      "מקור": r.sourceType ?? "",
+      "סוג מסמך": r.documentType ?? "",
+      "סטטוס": r.status,
+      "כפילות": r.duplicateStatus,
+      "קישור לקובץ": r.filePath ? `${HOST}/uploads/${path.basename(r.filePath)}` : "",
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(wsData, { skipHeader: false });
+
+    // Column widths
+    ws["!cols"] = [
+      { wch: 4 }, { wch: 16 }, { wch: 12 }, { wch: 26 }, { wch: 26 },
+      { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 8 }, { wch: 22 },
+      { wch: 10 }, { wch: 16 }, { wch: 12 }, { wch: 10 }, { wch: 50 },
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, "חשבוניות");
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="invoices_${Date.now()}.xlsx"`);
+    res.send(buffer);
+  } catch (err) {
+    console.error("export error:", err);
+    res.status(500).json({ error: "שגיאה בייצוא" });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /api/invoices/send-accountant
+// Send Excel report via Telegram
+// ─────────────────────────────────────────────
+router.post("/send-accountant", async (_req, res) => {
+  const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+  const CHAT_ID   = process.env.TELEGRAM_CHAT_ID;
+
+  if (!BOT_TOKEN || !CHAT_ID) {
+    res.status(503).json({ error: "טוקן טלגרם לא מוגדר. הוסף TELEGRAM_BOT_TOKEN ו-TELEGRAM_CHAT_ID." });
+    return;
+  }
+
+  try {
+    const rows = await db
+      .select({
+        invoiceNumber: invoicesTable.invoice_number,
+        invoiceDate: invoicesTable.invoice_date,
+        rawVendor: invoicesTable.raw_vendor_name,
+        canonicalVendor: vendorsTable.canonical_name,
+        total: invoicesTable.total,
+        vat: invoicesTable.vat,
+        currency: invoicesTable.currency,
+        category: invoicesTable.final_category,
+        suggestedCategory: invoicesTable.suggested_category,
+        status: invoicesTable.status,
+        duplicateStatus: invoicesTable.duplicate_status,
+        filePath: invoicesTable.file_path,
+      })
+      .from(invoicesTable)
+      .leftJoin(vendorsTable, eq(invoicesTable.vendor_id, vendorsTable.id))
+      .orderBy(sql`${invoicesTable.created_at} desc`);
+
+    const HOST = process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : "http://localhost:3000";
+
+    // Build Excel
+    const wsData = rows.map((r, i) => ({
+      "#": i + 1,
+      "מספר חשבונית": r.invoiceNumber ?? "",
+      "תאריך": r.invoiceDate ?? "",
+      "ספק": r.canonicalVendor ?? r.rawVendor ?? "",
+      "סה\"כ": r.total ? Number(r.total) : "",
+      "מע\"מ": r.vat ? Number(r.vat) : "",
+      "מטבע": r.currency,
+      "קטגוריה": r.category ?? r.suggestedCategory ?? "",
+      "סטטוס": r.status,
+      "קישור": r.filePath ? `${HOST}/uploads/${path.basename(r.filePath)}` : "",
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(wsData);
+    XLSX.utils.book_append_sheet(wb, ws, "חשבוניות");
+    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+
+    // Send Excel file via Telegram
+    const FormDataNode = (await import("form-data")).default;
+    const form = new FormDataNode();
+    form.append("chat_id", CHAT_ID);
+    form.append("caption", `📊 דוח חשבוניות — ${new Date().toLocaleDateString("he-IL")}\n${rows.length} חשבוניות`);
+    form.append("document", buffer, { filename: `חשבוניות_${Date.now()}.xlsx`, contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const tgRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, {
+      method: "POST",
+      body: form as any,
+      headers: form.getHeaders() as Record<string, string>,
+    });
+
+    const tgData = await tgRes.json() as { ok: boolean; description?: string };
+    if (!tgData.ok) throw new Error(tgData.description ?? "Telegram API error");
+
+    res.json({ success: true, message: "הדוח נשלח בהצלחה" });
+  } catch (err) {
+    console.error("send-accountant error:", err);
+    res.status(500).json({ error: err instanceof Error ? err.message : "שגיאה בשליחה" });
   }
 });
 

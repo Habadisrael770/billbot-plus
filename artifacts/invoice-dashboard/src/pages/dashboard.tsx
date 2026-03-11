@@ -19,6 +19,9 @@ import {
   Tag,
   Copy,
   Paperclip,
+  Mail,
+  MailPlus,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useInvoices, useInvoiceSummary, useInvoiceMutations } from "@/hooks/use-invoices";
 import { Layout } from "@/components/layout";
@@ -43,6 +46,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MergeAliasDialog } from "@/components/merge-alias-dialog";
 import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
+import { EmailScanModal } from "@/components/email-scan-modal";
+import { SendToAccountantModal } from "@/components/send-to-accountant-modal";
 
 type FilterType = "all" | "pending" | "approved" | "duplicates";
 
@@ -292,6 +297,9 @@ export default function Dashboard() {
   const [search, setSearch] = useState("");
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadMode, setUploadMode] = useState<"upload" | "camera">("upload");
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [emailMode, setEmailMode] = useState<"scan" | "attach">("scan");
+  const [accountantOpen, setAccountantOpen] = useState(false);
   const [mergeDialog, setMergeDialog] = useState<{
     isOpen: boolean;
     invoiceId: string | null;
@@ -327,6 +335,11 @@ export default function Dashboard() {
     setUploadOpen(true);
   };
 
+  const openEmail = (mode: "scan" | "attach") => {
+    setEmailMode(mode);
+    setEmailOpen(true);
+  };
+
   return (
     <Layout>
       {/* ── Top search bar ── */}
@@ -338,7 +351,7 @@ export default function Dashboard() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           dir="rtl"
-          className="w-full h-12 pr-12 pl-24 sm:pl-14 text-sm rounded-2xl border border-white/10 bg-card/60 backdrop-blur-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+          className="w-full h-12 pr-12 pl-48 sm:pl-32 text-sm rounded-2xl border border-white/10 bg-card/60 backdrop-blur-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
         />
         <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
           {/* Camera — mobile only */}
@@ -349,13 +362,29 @@ export default function Dashboard() {
           >
             <Camera className="w-5 h-5" />
           </button>
-          {/* Attach file — both mobile and desktop */}
+          {/* Attach file */}
           <button
             onClick={() => openUpload("upload")}
             className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
             title="צרף קובץ"
           >
             <Paperclip className="w-5 h-5" />
+          </button>
+          {/* Scan email */}
+          <button
+            onClick={() => openEmail("scan")}
+            className="p-2 rounded-xl text-muted-foreground hover:text-violet-400 hover:bg-violet-400/10 transition-all"
+            title="סרוק מייל"
+          >
+            <Mail className="w-5 h-5" />
+          </button>
+          {/* Attach email */}
+          <button
+            onClick={() => openEmail("attach")}
+            className="p-2 rounded-xl text-muted-foreground hover:text-violet-400 hover:bg-violet-400/10 transition-all"
+            title="צרף מייל"
+          >
+            <MailPlus className="w-5 h-5" />
           </button>
         </div>
       </div>
@@ -417,8 +446,8 @@ export default function Dashboard() {
         transition={{ duration: 0.5, delay: 0.35 }}
         className="rounded-2xl border border-white/5 bg-card/30 backdrop-blur-xl flex flex-col overflow-hidden"
       >
-        {/* Controls — filter tabs only */}
-        <div className="px-4 sm:px-6 py-3 border-b border-white/5">
+        {/* Controls — filter tabs + send to accountant */}
+        <div className="px-4 sm:px-6 py-3 border-b border-white/5 flex items-center justify-between gap-2">
           <div className="flex gap-1 overflow-x-auto pb-0.5 scrollbar-none">
             {FILTERS.map(({ key, label }) => (
               <button
@@ -434,6 +463,14 @@ export default function Dashboard() {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => setAccountantOpen(true)}
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-emerald-500/20 transition-all"
+            title="שלח לרואה חשבון"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span className="hidden sm:inline">שלח לרו"ח</span>
+          </button>
         </div>
 
         {/* ── Mobile: card list ── */}
@@ -670,6 +707,18 @@ export default function Dashboard() {
       <UploadInvoiceModal
         isOpen={uploadOpen}
         onClose={() => setUploadOpen(false)}
+      />
+
+      <EmailScanModal
+        isOpen={emailOpen}
+        mode={emailMode}
+        onClose={() => setEmailOpen(false)}
+      />
+
+      <SendToAccountantModal
+        isOpen={accountantOpen}
+        onClose={() => setAccountantOpen(false)}
+        invoiceCount={invoices?.length ?? 0}
       />
     </Layout>
   );
