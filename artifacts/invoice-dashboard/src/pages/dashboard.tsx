@@ -58,6 +58,7 @@ type InvoiceRow = {
   vat?: string | null;
   total?: string | null;
   currency: string;
+  filePath?: string | null;
   duplicateStatus: string;
   status: string;
   extractionConfidence?: string | null;

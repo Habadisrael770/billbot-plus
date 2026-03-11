@@ -4,6 +4,7 @@
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
+@custom-variant light (&:is(.light *));
 
 @theme inline {
   --color-background: hsl(var(--background));
@@ -66,11 +67,11 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* ── Dark Mode (default) ──────────────────────────────────────────────────── */
 :root {
-  /* Enforce Dark Mode for Enterprise Finance Dashboard */
   --background: 230 25% 6%;
   --foreground: 210 40% 98%;
-  
+
   --border: 230 25% 15%;
   --input: 230 25% 15%;
   --ring: 217 92% 51%;
@@ -115,7 +116,6 @@
 
   --app-font-sans: 'Plus Jakarta Sans', sans-serif;
   --app-font-display: 'Outfit', sans-serif;
-  
   --radius: 0.75rem;
 
   --shadow-2xs: 0px 2px 0px 0px hsl(230 25% 4% / 0.5);
@@ -126,8 +126,127 @@
   --shadow-lg: 0px 2px 0px 0px hsl(230 25% 4% / 0.5), 0px 4px 6px -1px hsl(230 25% 4% / 0.5);
   --shadow-xl: 0px 2px 0px 0px hsl(230 25% 4% / 0.5), 0px 8px 10px -1px hsl(230 25% 4% / 0.5);
   --shadow-2xl: 0px 2px 0px 0px hsl(230 25% 4% / 0.5);
+
+  /* Overlay tokens — used for adaptive separators */
+  --overlay-xs: rgb(255 255 255 / 0.04);
+  --overlay-sm: rgb(255 255 255 / 0.06);
+  --overlay-md: rgb(255 255 255 / 0.08);
+  --overlay-hover: rgb(255 255 255 / 0.05);
+  --overlay-text: rgb(255 255 255);
+  --overlay-text-muted: rgb(255 255 255 / 0.7);
+  --deep-bg: rgb(0 0 0 / 0.2);
 }
 
+/* ── Light Mode ───────────────────────────────────────────────────────────── */
+html.light {
+  --background: 220 20% 97%;
+  --foreground: 222 47% 11%;
+
+  --border: 220 13% 86%;
+  --input: 220 13% 90%;
+  --ring: 217 92% 51%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --card-border: 220 13% 88%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --popover-border: 220 13% 88%;
+
+  --primary: 217 92% 51%;
+  --primary-foreground: 210 40% 98%;
+
+  --secondary: 220 14% 92%;
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 220 14% 93%;
+  --muted-foreground: 220 9% 46%;
+
+  --accent: 220 14% 92%;
+  --accent-foreground: 222 47% 11%;
+
+  --destructive: 348 100% 55%;
+  --destructive-foreground: 210 40% 98%;
+
+  --sidebar: 220 20% 95%;
+  --sidebar-foreground: 222 47% 11%;
+  --sidebar-border: 220 13% 88%;
+  --sidebar-primary: 217 92% 51%;
+  --sidebar-primary-foreground: 210 40% 98%;
+  --sidebar-accent: 220 14% 92%;
+  --sidebar-accent-foreground: 222 47% 11%;
+  --sidebar-ring: 217 92% 51%;
+
+  --chart-1: 217 92% 51%;
+  --chart-2: 173 80% 36%;
+  --chart-3: 38 92% 45%;
+  --chart-4: 348 100% 55%;
+  --chart-5: 262 83% 52%;
+
+  --shadow-2xs: 0px 1px 2px 0px rgb(0 0 0 / 0.05);
+  --shadow-xs: 0px 1px 2px 0px rgb(0 0 0 / 0.07);
+  --shadow-sm: 0px 1px 3px 0px rgb(0 0 0 / 0.08), 0px 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow: 0px 2px 4px 0px rgb(0 0 0 / 0.08), 0px 1px 2px -1px rgb(0 0 0 / 0.06);
+  --shadow-md: 0px 4px 8px 0px rgb(0 0 0 / 0.08), 0px 2px 4px -1px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0px 8px 16px 0px rgb(0 0 0 / 0.08), 0px 4px 6px -1px rgb(0 0 0 / 0.06);
+  --shadow-xl: 0px 16px 32px 0px rgb(0 0 0 / 0.1), 0px 8px 10px -1px rgb(0 0 0 / 0.06);
+  --shadow-2xl: 0px 24px 48px 0px rgb(0 0 0 / 0.12);
+
+  /* Overlay tokens — light mode inverts to dark overlays */
+  --overlay-xs: rgb(0 0 0 / 0.03);
+  --overlay-sm: rgb(0 0 0 / 0.05);
+  --overlay-md: rgb(0 0 0 / 0.07);
+  --overlay-hover: rgb(0 0 0 / 0.04);
+  --overlay-text: hsl(222 47% 11%);
+  --overlay-text-muted: hsl(220 9% 30%);
+  --deep-bg: rgb(0 0 0 / 0.04);
+}
+
+/* ── Light mode: flip hardcoded white-overlay utility classes ─────────────── */
+html.light .border-white\/5  { border-color: rgb(0 0 0 / 0.06) !important; }
+html.light .border-white\/10 { border-color: rgb(0 0 0 / 0.1)  !important; }
+html.light .border-white\/25 { border-color: rgb(0 0 0 / 0.18) !important; }
+
+html.light .bg-white\/5  { background-color: rgb(0 0 0 / 0.03) !important; }
+html.light .bg-white\/10 { background-color: rgb(0 0 0 / 0.05) !important; }
+
+html.light .hover\:bg-white\/5:hover  { background-color: rgb(0 0 0 / 0.04) !important; }
+html.light .hover\:bg-white\/10:hover { background-color: rgb(0 0 0 / 0.06) !important; }
+
+html.light .bg-black\/20 { background-color: rgb(0 0 0 / 0.04) !important; }
+html.light .bg-black\/40 { background-color: rgb(0 0 0 / 0.06) !important; }
+html.light .bg-black\/60 { background-color: rgb(0 0 0 / 0.40) !important; }
+
+html.light .text-white        { color: hsl(var(--foreground)) !important; }
+html.light .text-white\/70    { color: hsl(var(--muted-foreground)) !important; }
+
+/* Card / panel refinements in light */
+html.light .glass-panel {
+  background-color: hsl(var(--card));
+  border-color: hsl(var(--border));
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.08), 0 0 0 1px hsl(var(--border));
+  backdrop-filter: none;
+}
+
+html.light .bg-card\/30 {
+  background-color: hsl(var(--card)) !important;
+}
+
+html.light .bg-background\/50 {
+  background-color: hsl(var(--background) / 0.9) !important;
+}
+
+/* Ambient glow hidden in light mode */
+html.light .bg-primary\/8 {
+  opacity: 0;
+}
+
+/* Scrollbar */
+html.dark  { color-scheme: dark; }
+html.light { color-scheme: light; }
+
+/* ── Base ─────────────────────────────────────────────────────────────────── */
 @layer base {
   * {
     @apply border-border;
@@ -136,14 +255,14 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
-  
+
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-display);
     @apply font-bold tracking-tight;
   }
 }
 
-/* Glassmorphism utility */
+/* ── Glassmorphism utility ────────────────────────────────────────────────── */
 .glass-panel {
   @apply bg-card/60 backdrop-blur-xl border border-white/5 shadow-2xl;
 }

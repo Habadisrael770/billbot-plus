@@ -34,7 +34,7 @@ export function useInvoiceMutations() {
         invalidate();
         toast({ title: "חשבונית אושרה", description: "החשבונית אושרה בהצלחה." });
       },
-      onError: (error) => {
+      onError: (error: { error?: string }) => {
         toast({
           title: "שגיאת אישור",
           description: error.error || "אירעה שגיאה בלתי צפויה.",
@@ -50,7 +50,7 @@ export function useInvoiceMutations() {
         invalidate();
         toast({ title: "סומנה כייחודית", description: "החשבונית סומנה כלא-כפולה." });
       },
-      onError: (error) => {
+      onError: (error: { error?: string }) => {
         toast({
           title: "הפעולה נכשלה",
           description: error.error || "לא ניתן לעדכן סטטוס כפילות.",
@@ -66,7 +66,7 @@ export function useInvoiceMutations() {
         invalidate();
         toast({ title: "כינוי ספק מוזג", description: "הכינוי קושר בהצלחה." });
       },
-      onError: (error) => {
+      onError: (error: { error?: string }) => {
         toast({
           title: "מיזוג נכשל",
           description: error.error || "לא ניתן למזג כינוי ספק.",
@@ -82,7 +82,7 @@ export function useInvoiceMutations() {
         invalidate();
         toast({ title: "קטגוריה עודכנה", description: "הקטגוריה עודכנה בהצלחה." });
       },
-      onError: (error) => {
+      onError: (error: { error?: string }) => {
         toast({
           title: "עדכון נכשל",
           description: error.error || "לא ניתן לעדכן קטגוריה.",

@@ -1,2 +1,20 @@
 export * from "./generated/api";
-export * from "./generated/types";
+export type {
+  ErrorResponse,
+  ExtractedInvoiceData,
+  HealthStatus,
+  InvoiceRow,
+  InvoiceSummary,
+  ListInvoicesParams,
+  MergeAliasRequest,
+  ProcessInvoiceRequest,
+  ProcessInvoiceRequestDocumentType,
+  ProcessInvoiceRequestSourceType,
+  ProcessInvoiceResponse,
+  SuccessResponse,
+  UpdateCategoryRequest,
+  UploadInvoiceParams,
+  UploadInvoiceSource,
+  VendorWithAliases,
+  VendorWithAliasesAliasesItem,
+} from "./generated/types";

@@ -2,7 +2,7 @@ import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useEffect } from "react";
+import { ThemeProvider, useTheme } from "@/context/theme-context";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Profile from "@/pages/profile";
@@ -26,20 +26,27 @@ function AppRouter() {
   );
 }
 
-function App() {
-  useEffect(() => {
-    document.documentElement.classList.add("dark");
-  }, []);
+function ThemedShell({ children }: { children: React.ReactNode }) {
+  const { theme } = useTheme();
+  return (
+    <div className={`${theme} min-h-screen bg-background text-foreground selection:bg-primary/30`}>
+      {children}
+    </div>
+  );
+}
 
+function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <div className="dark min-h-screen bg-background text-foreground selection:bg-primary/30">
-            <AppRouter />
-          </div>
-        </WouterRouter>
-        <Toaster />
+        <ThemeProvider>
+          <ThemedShell>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <AppRouter />
+            </WouterRouter>
+          </ThemedShell>
+          <Toaster />
+        </ThemeProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );
