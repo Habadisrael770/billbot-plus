@@ -31,7 +31,7 @@ const NAV_ITEMS = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/profile", icon: User, label: "אזור אישי" },
   { href: "/vendors", icon: Building2, label: "Vendors", disabled: true },
-  { href: "/settings", icon: Settings, label: "הגדרות", disabled: true },
+  { href: "/settings", icon: Shield, label: "סופר אדמין" },
 ];
 
 function NavItem({

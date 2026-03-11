@@ -6,6 +6,8 @@ import { ThemeProvider, useTheme } from "@/context/theme-context";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Profile from "@/pages/profile";
+import SettingsPage from "@/pages/settings";
+import { AIChat } from "@/components/ai-chat";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,6 +23,7 @@ function AppRouter() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/profile" component={Profile} />
+      <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -31,6 +34,7 @@ function ThemedShell({ children }: { children: React.ReactNode }) {
   return (
     <div className={`${theme} min-h-screen bg-background text-foreground selection:bg-primary/30`}>
       {children}
+      <AIChat />
     </div>
   );
 }

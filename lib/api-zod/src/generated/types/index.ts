@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./createOpenrouterConversationBody";
 export * from "./errorResponse";
 export * from "./extractedInvoiceData";
 export * from "./healthStatus";
@@ -13,10 +14,15 @@ export * from "./invoiceRow";
 export * from "./invoiceSummary";
 export * from "./listInvoicesParams";
 export * from "./mergeAliasRequest";
+export * from "./openrouterConversation";
+export * from "./openrouterConversationWithMessages";
+export * from "./openrouterError";
+export * from "./openrouterMessage";
 export * from "./processInvoiceRequest";
 export * from "./processInvoiceRequestDocumentType";
 export * from "./processInvoiceRequestSourceType";
 export * from "./processInvoiceResponse";
+export * from "./sendOpenrouterMessageBody";
 export * from "./successResponse";
 export * from "./updateCategoryRequest";
 export * from "./uploadInvoiceBody";
