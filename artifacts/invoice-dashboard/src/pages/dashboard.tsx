@@ -18,13 +18,13 @@ import {
   Banknote,
   Tag,
   Copy,
+  Paperclip,
 } from "lucide-react";
 import { useInvoices, useInvoiceSummary, useInvoiceMutations } from "@/hooks/use-invoices";
 import { Layout } from "@/components/layout";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -329,25 +329,35 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      {/* ── Action buttons ── */}
-      <div className="flex items-center justify-end gap-2 mb-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="border border-white/10 text-muted-foreground hover:text-white hover:bg-white/5 rounded-xl gap-2"
-          onClick={() => openUpload("camera")}
-        >
-          <Camera className="w-4 h-4" />
-          <span className="hidden sm:inline">צלם חשבונית</span>
-        </Button>
-        <Button
-          size="sm"
-          className="rounded-xl gap-2 bg-primary hover:bg-primary/90 shadow-md shadow-primary/20"
-          onClick={() => openUpload("upload")}
-        >
-          <Upload className="w-4 h-4" />
-          <span>העלה חשבונית</span>
-        </Button>
+      {/* ── Top search bar ── */}
+      <div className="relative mb-4">
+        <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
+        <input
+          type="text"
+          placeholder="חיפוש לפי חשבונית, ספק, קטגוריה..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          dir="rtl"
+          className="w-full h-12 pr-12 pl-24 sm:pl-14 text-sm rounded-2xl border border-white/10 bg-card/60 backdrop-blur-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+        />
+        <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
+          {/* Camera — mobile only */}
+          <button
+            onClick={() => openUpload("camera")}
+            className="sm:hidden p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+            title="צלם חשבונית"
+          >
+            <Camera className="w-5 h-5" />
+          </button>
+          {/* Attach file — both mobile and desktop */}
+          <button
+            onClick={() => openUpload("upload")}
+            className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
+            title="צרף קובץ"
+          >
+            <Paperclip className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* ── 6 Stat cards ── */}
@@ -407,8 +417,8 @@ export default function Dashboard() {
         transition={{ duration: 0.5, delay: 0.35 }}
         className="rounded-2xl border border-white/5 bg-card/30 backdrop-blur-xl flex flex-col overflow-hidden"
       >
-        {/* Controls */}
-        <div className="p-4 sm:p-6 border-b border-white/5 flex flex-col gap-3">
+        {/* Controls — filter tabs only */}
+        <div className="px-4 sm:px-6 py-3 border-b border-white/5">
           <div className="flex gap-1 overflow-x-auto pb-0.5 scrollbar-none">
             {FILTERS.map(({ key, label }) => (
               <button
@@ -423,16 +433,6 @@ export default function Dashboard() {
                 {label}
               </button>
             ))}
-          </div>
-
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="חיפוש לפי חשבונית, ספק, קטגוריה..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 bg-black/20 border-white/10 focus:border-primary text-foreground rounded-xl"
-            />
           </div>
         </div>
 
