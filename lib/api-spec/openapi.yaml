@@ -3,13 +3,17 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Invoice Automation System API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: invoices
+    description: Invoice management
+  - name: vendors
+    description: Vendor management
 paths:
   /healthz:
     get:
@@ -24,6 +28,154 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /invoices:
+    get:
+      operationId: listInvoices
+      tags: [invoices]
+      summary: List all invoices
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+          required: false
+        - in: query
+          name: duplicate_status
+          schema:
+            type: string
+          required: false
+      responses:
+        "200":
+          description: List of invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InvoiceRow"
+
+  /invoices/process:
+    post:
+      operationId: processInvoice
+      tags: [invoices]
+      summary: Process an extracted invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProcessInvoiceRequest"
+      responses:
+        "201":
+          description: Invoice processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProcessInvoiceResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /invoices/{id}/approve:
+    patch:
+      operationId: approveInvoice
+      tags: [invoices]
+      summary: Approve an invoice
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invoice approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "404":
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /invoices/{id}/mark-not-duplicate:
+    patch:
+      operationId: markInvoiceNotDuplicate
+      tags: [invoices]
+      summary: Mark invoice as not a duplicate
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invoice marked as not duplicate
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "404":
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /invoices/{id}/merge-alias:
+    patch:
+      operationId: mergeVendorAlias
+      tags: [invoices]
+      summary: Merge a vendor alias for an invoice
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MergeAliasRequest"
+      responses:
+        "200":
+          description: Alias merged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /vendors:
+    get:
+      operationId: listVendors
+      tags: [vendors]
+      summary: List all vendors with aliases
+      responses:
+        "200":
+          description: List of vendors
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VendorWithAliases"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +186,193 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message
+
+    ProcessInvoiceRequest:
+      type: object
+      properties:
+        filePath:
+          type: string
+          description: Path to the invoice file on disk
+        extracted:
+          $ref: "#/components/schemas/ExtractedInvoiceData"
+        extractionConfidence:
+          type: number
+          nullable: true
+      required:
+        - filePath
+        - extracted
+
+    ExtractedInvoiceData:
+      type: object
+      properties:
+        vendor:
+          type: string
+          nullable: true
+        tax_id:
+          type: string
+          nullable: true
+        invoice_number:
+          type: string
+          nullable: true
+        date:
+          type: string
+          nullable: true
+        subtotal:
+          type: number
+          nullable: true
+        vat:
+          type: number
+          nullable: true
+        total:
+          type: number
+          nullable: true
+        currency:
+          type: string
+          nullable: true
+
+    ProcessInvoiceResponse:
+      type: object
+      properties:
+        invoiceId:
+          type: string
+        vendorId:
+          type: string
+          nullable: true
+        canonicalVendorName:
+          type: string
+          nullable: true
+        vendorMatchMethod:
+          type: string
+          nullable: true
+        duplicateStatus:
+          type: string
+        duplicateOfInvoiceId:
+          type: string
+          nullable: true
+        confidence:
+          type: number
+        status:
+          type: string
+      required:
+        - invoiceId
+        - duplicateStatus
+        - confidence
+        - status
+
+    InvoiceRow:
+      type: object
+      properties:
+        id:
+          type: string
+        rawVendorName:
+          type: string
+          nullable: true
+        normalizedVendorName:
+          type: string
+          nullable: true
+        canonicalVendorName:
+          type: string
+          nullable: true
+        taxId:
+          type: string
+          nullable: true
+        invoiceNumber:
+          type: string
+          nullable: true
+        invoiceDate:
+          type: string
+          nullable: true
+        subtotal:
+          type: string
+          nullable: true
+        vat:
+          type: string
+          nullable: true
+        total:
+          type: string
+          nullable: true
+        currency:
+          type: string
+        filePath:
+          type: string
+        duplicateStatus:
+          type: string
+        duplicateOfInvoiceId:
+          type: string
+          nullable: true
+        status:
+          type: string
+        extractionConfidence:
+          type: string
+          nullable: true
+        vendorId:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - currency
+        - filePath
+        - duplicateStatus
+        - status
+        - createdAt
+
+    MergeAliasRequest:
+      type: object
+      properties:
+        aliasName:
+          type: string
+        targetVendorId:
+          type: string
+      required:
+        - aliasName
+        - targetVendorId
+
+    VendorWithAliases:
+      type: object
+      properties:
+        id:
+          type: string
+        canonicalName:
+          type: string
+        taxId:
+          type: string
+          nullable: true
+        aliases:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              aliasName:
+                type: string
+              normalizedAlias:
+                type: string
+            required:
+              - id
+              - aliasName
+              - normalizedAlias
+      required:
+        - id
+        - canonicalName
+        - aliases
