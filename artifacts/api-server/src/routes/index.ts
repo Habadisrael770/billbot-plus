@@ -9,6 +9,7 @@ import emailConnectorsRouter from "./email-connectors.js";
 import externalApiRouter from "./external-api.js";
 import categoriesRouter from "./categories.js";
 import entitiesRouter from "./entities.js";
+import businessProfileRouter from "./businessProfile.js";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use("/email-connectors", emailConnectorsRouter);
 router.use("/external-api", externalApiRouter);
 router.use("/categories", categoriesRouter);
 router.use("/entities", entitiesRouter);
+router.use("/business-profile", businessProfileRouter);
 
 export default router;

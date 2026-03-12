@@ -1,432 +1,623 @@
-import React, { useState } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
-  Clock,
-  Mail,
-  Calculator,
-  Search,
-  X,
-  ChevronRight,
-  Loader2,
+  Plus, X, Check, ChevronLeft, ChevronRight,
+  Building2, Tag, Settings2, Rocket, Loader2,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-type Step = "gmail" | "historical" | "finish";
+const API_BASE = `${import.meta.env.BASE_URL}api`.replace(/\/+/g, "/").replace(/\/$/, "");
 
-const STEPS: Step[] = ["gmail", "historical", "finish"];
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const BASE_CATEGORIES = [
+  "משרד", "נסיעות", "טלפון", "חשמל", "אינטרנט",
+  "ביטוח", "אחזקה", "שונות",
+];
+
+const BUSINESS_TYPES = [
+  "חברה בע\"מ", "עוסק מורשה", "עצמאי / פרילנסר",
+  "שותפות", "עמותה / מלכ\"ר", "אחר",
+];
+
+const INDUSTRIES = [
+  "טכנולוגיה ותוכנה", "בינה מלאכותית", "ייעוץ ושירותים מקצועיים",
+  "שיווק ופרסום", "בריאות ורפואה", "חינוך והדרכה",
+  "נדל\"ן ובנייה", "קמעונאות ומסחר", "תחבורה ולוגיסטיקה",
+  "מסעדנות ואירוח", "שירותים פיננסיים", "אחר",
+];
+
+const STEPS = [
+  { icon: Building2, label: "זיהוי עסקי", color: "text-blue-400", bg: "bg-blue-500/10" },
+  { icon: Tag,       label: "קטגוריות",   color: "text-violet-400", bg: "bg-violet-500/10" },
+  { icon: Settings2, label: "פרופיל",      color: "text-amber-400", bg: "bg-amber-500/10" },
+  { icon: Rocket,    label: "סיום",        color: "text-emerald-400", bg: "bg-emerald-500/10" },
+];
 
 const SLIDE = {
-  initial: { opacity: 0, x: -30 },
+  initial: (dir: number) => ({ opacity: 0, x: dir > 0 ? 60 : -60 }),
   animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: 30 },
-  transition: { duration: 0.3 },
+  exit:    (dir: number) => ({ opacity: 0, x: dir > 0 ? -60 : 60 }),
 };
 
-// ── Gmail Step ────────────────────────────────────────────────────────────────
-function GmailStep({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) {
-  const [connecting, setConnecting] = useState(false);
+// ── Shared UI helpers ─────────────────────────────────────────────────────────
 
-  function handleConnect() {
-    setConnecting(true);
-    setTimeout(() => {
-      setConnecting(false);
-      onNext();
-    }, 1800);
-  }
+function TagPill({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/15 border border-primary/25 text-primary text-xs font-medium">
+      {label}
+      <button onClick={onRemove} className="hover:text-rose-400 transition-colors">
+        <X className="w-3 h-3" />
+      </button>
+    </span>
+  );
+}
+
+function TextHint({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2 rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-xs text-blue-300/80 leading-relaxed" dir="rtl">
+      <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-400" />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+function SliderField({
+  label, hint, value, onChange,
+}: { label: string; hint: string; value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <label className="text-xs text-muted-foreground">{label}</label>
+        <span className="text-sm font-bold text-primary dir-ltr">{value}%</span>
+      </div>
+      <input
+        type="range" min={0} max={100} step={5} value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full h-1.5 rounded-full accent-primary cursor-pointer"
+      />
+      <p className="text-[11px] text-muted-foreground/60">{hint}</p>
+    </div>
+  );
+}
+
+// ── Step 1: Business Identification ──────────────────────────────────────────
+
+function Step1({
+  taxIds, setTaxIds, bizNames, setBizNames,
+}: {
+  taxIds: string[]; setTaxIds: (v: string[]) => void;
+  bizNames: string[]; setBizNames: (v: string[]) => void;
+}) {
+  const [taxInput, setTaxInput]   = useState("");
+  const [nameInput, setNameInput] = useState("");
+
+  const addTax = () => {
+    const v = taxInput.replace(/\D/g, "").slice(0, 9);
+    if (v && !taxIds.includes(v)) setTaxIds([...taxIds, v]);
+    setTaxInput("");
+  };
+
+  const addName = () => {
+    const v = nameInput.trim();
+    if (v && !bizNames.includes(v)) setBizNames([...bizNames, v]);
+    setNameInput("");
+  };
 
   return (
-    <div className="flex flex-col items-center text-center max-w-2xl mx-auto px-4">
-      <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
-        חיבור Gmail לזיהוי אוטומטי
-      </h1>
-      <p className="text-muted-foreground text-base mb-10">
-        המערכת תסרוק את המייל ותזהה חשבוניות באופן אוטומטי
-      </p>
+    <div className="space-y-5" dir="rtl">
+      <TextHint>
+        בואו נזהה את העסק שלך! הוסף את שמות העסק ומספרי הזיהוי בדיוק כפי שמופיעים על המסמכים שלך.
+        זה עוזר ל-BillBOT+ להבדיל אוטומטית בין חשבוניות שהוצאת לקבלות שקיבלת.
+      </TextHint>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mb-8">
-        {/* Why connect card */}
-        <div className="rounded-2xl border border-border bg-card/60 p-6 text-right space-y-4">
-          <div className="flex items-center justify-end gap-2 text-foreground font-semibold">
-            <span>?למה לחבר Gmail</span>
-            <CheckCircle2 className="w-5 h-5 text-primary" />
-          </div>
-          <ul className="space-y-3">
-            {[
-              { bold: "אפס מאמץ:", text: "החשבוניות נכנסות למערכת לבד" },
-              { bold: "זמן אמת:", text: "ברגע שהמייל מגיע, החשבונית אצלנו" },
-              { bold: "סדר מלא:", text: "לא מפספסים אף הוצאה לדיווח" },
-            ].map((item, i) => (
-              <li key={i} className="flex items-start justify-end gap-2 text-sm text-muted-foreground">
-                <span>
-                  <strong className="text-foreground">{item.bold}</strong> {item.text}
-                </span>
-                <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-              </li>
+      {/* Tax IDs */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-foreground">מספרי זיהוי (ח.פ / ע.מ / ת.ז)</label>
+        <div className="flex gap-2">
+          <input
+            value={taxInput}
+            onChange={(e) => setTaxInput(e.target.value.replace(/\D/g, "").slice(0, 9))}
+            onKeyDown={(e) => e.key === "Enter" && addTax()}
+            placeholder="מספר 9 ספרות..."
+            dir="ltr"
+            className="flex-1 h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 text-left"
+          />
+          <button
+            onClick={addTax}
+            disabled={taxInput.length < 5}
+            className="h-10 px-4 rounded-xl bg-primary/15 border border-primary/20 text-primary hover:bg-primary/25 disabled:opacity-40 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        {taxIds.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {taxIds.map((t) => (
+              <TagPill key={t} label={t} onRemove={() => setTaxIds(taxIds.filter((x) => x !== t))} />
             ))}
-          </ul>
-        </div>
-
-        {/* Connect card */}
-        <div className="rounded-2xl border border-border bg-card/60 p-6 flex flex-col items-center justify-center gap-4">
-          {/* Gmail M logo */}
-          <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-md">
-            <svg viewBox="0 0 48 48" className="w-10 h-10">
-              <path fill="#EA4335" d="M24 20.89L6 8H42L24 20.89Z" />
-              <path fill="#4285F4" d="M42 8v32L30 28 42 8Z" />
-              <path fill="#34A853" d="M6 40V8L18 28 6 40Z" />
-              <path fill="#FBBC04" d="M6 40l18-12 18 12H6Z" />
-              <path fill="#C5221F" d="M24 20.89L6 8h36L24 20.89Z" opacity=".5" />
-            </svg>
           </div>
-          <div className="text-center">
-            <p className="font-semibold text-foreground mb-1">חיבור חשבון Gmail</p>
-            <p className="text-sm text-muted-foreground">
-              חיבור בטוח באמצעות Google OAuth. אנחנו קוראים רק מיילים רלוונטיים לחשבוניות.
-            </p>
-          </div>
-          <Button
-            onClick={handleConnect}
-            disabled={connecting}
-            className="w-full bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl h-11"
-          >
-            {connecting ? (
-              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> מתחבר...</>
-            ) : (
-              "חבר את ה-Gmail שלי"
-            )}
-          </Button>
-        </div>
+        )}
       </div>
 
-      <button onClick={onSkip} className="text-sm text-muted-foreground hover:text-foreground underline transition-colors">
-        דלג לעת עתה
-      </button>
-      <p className="text-xs text-muted-foreground mt-2">
-        * חיבור יותר ממחשבון אחד דורש מנוי לחשבונות
-      </p>
+      {/* Business names */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-foreground">שם העסק על החשבוניות</label>
+        <div className="flex gap-2">
+          <input
+            value={nameInput}
+            onChange={(e) => setNameInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addName()}
+            placeholder="שם חברה, מותג, שם עצמאי..."
+            dir="rtl"
+            className="flex-1 h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+          />
+          <button
+            onClick={addName}
+            disabled={!nameInput.trim()}
+            className="h-10 px-4 rounded-xl bg-primary/15 border border-primary/20 text-primary hover:bg-primary/25 disabled:opacity-40 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        {bizNames.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {bizNames.map((n) => (
+              <TagPill key={n} label={n} onRemove={() => setBizNames(bizNames.filter((x) => x !== n))} />
+            ))}
+          </div>
+        )}
+        <p className="text-[11px] text-muted-foreground/60">ניתן להוסיף מספר שמות אם העסק פועל תחת שמות שונים</p>
+      </div>
     </div>
   );
 }
 
-// ── Historical Scan Step ──────────────────────────────────────────────────────
-function HistoricalStep({ onNext, onSkip }: { onNext: () => void; onSkip: () => void }) {
-  const [scanning, setScanning] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [startDate, setStartDate] = useState("2025-12-12");
-  const [emailMe, setEmailMe] = useState(true);
+// ── Step 2: Expense Categories ────────────────────────────────────────────────
 
-  function handleScan() {
-    setShowModal(false);
-    setScanning(true);
-    setTimeout(() => {
-      setScanning(false);
-      onNext();
-    }, 3000);
-  }
+function Step2({
+  selected, setSelected,
+}: { selected: string[]; setSelected: (v: string[]) => void }) {
+  const [customInput, setCustomInput] = useState("");
+
+  const toggle = (cat: string) => {
+    setSelected(
+      selected.includes(cat) ? selected.filter((c) => c !== cat) : [...selected, cat]
+    );
+  };
+
+  const addCustom = () => {
+    const v = customInput.trim();
+    if (v && !selected.includes(v)) setSelected([...selected, v]);
+    setCustomInput("");
+  };
+
+  const isCustom = (c: string) => !BASE_CATEGORIES.includes(c);
 
   return (
-    <div className="flex flex-col items-center text-center max-w-lg mx-auto px-4">
-      <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
-        נשלוף חשבוניות מהעבר?
-      </h1>
-      <p className="text-muted-foreground text-base mb-10">
-        בואו נסרוק את המייל שלכם לאחור ונאסוף את כל ההוצאות שכבר קיבלתם
-      </p>
+    <div className="space-y-5" dir="rtl">
+      <TextHint>
+        כיצד נסווג את ההוצאות שלך? בחר את הקטגוריות הבסיסיות המתאימות לעסק שלך, או הוסף קטגוריות
+        מותאמות אישית. נשתמש בהן לארגון אוטומטי של ההוצאות שלך.
+      </TextHint>
 
-      <div className="w-full rounded-2xl border border-dashed border-border bg-card/40 p-10 flex flex-col items-center gap-5 mb-8">
-        <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center">
-          <Clock className="w-8 h-8 text-muted-foreground" />
-        </div>
-        <div>
-          <p className="text-xl font-bold text-foreground mb-2">סריקה היסטורית מהירה</p>
-          <p className="text-sm text-muted-foreground max-w-xs">
-            אנחנו נחפש חשבוניות מהחודשים האחרונים כדי למלא את המערכת במידע באופן אוטומטי
-          </p>
-        </div>
-        <Button
-          onClick={() => setShowModal(true)}
-          disabled={scanning}
-          className="bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl h-11 px-8 gap-2"
-        >
-          {scanning ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> סורק...</>
-          ) : (
-            <><Clock className="w-4 h-4" /> התחל סריקה היסטורית</>
-          )}
-        </Button>
-        <p className="text-xs text-muted-foreground">
-          במסגרת תקופת הניסיון ניתן לסרוק עד 3 חודשים אחורה. למנוי{" "}
-          <button className="text-primary underline font-medium">Premium</button>{" "}
-          ניתן לסרוק עד 4 שנים!
-        </p>
-      </div>
-
-      <button onClick={onSkip} className="text-sm text-muted-foreground hover:text-foreground underline transition-colors">
-        בוא נמשיך, אעשה זאת אחר כך
-      </button>
-
-      {/* Scan Modal */}
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-card border border-border rounded-2xl p-6 w-full max-w-md shadow-2xl text-right"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <button onClick={() => setShowModal(false)} className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5">
-                  <X className="w-5 h-5" />
-                </button>
-                <div>
-                  <h3 className="font-bold text-foreground text-lg">סריקה היסטורית של מיילים</h3>
-                  <p className="text-sm text-muted-foreground">סרוק את תיבת הדואר שלך לאחור כדי למצוא חשבוניות ישנות</p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="text-right">
-                  <label className="text-sm font-medium text-foreground block mb-1">סרוק החל מתאריך</label>
-                  <div className="flex items-center justify-end gap-2 p-3 rounded-xl border border-border bg-background">
-                    <input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      className="bg-transparent text-foreground text-sm focus:outline-none"
-                    />
-                    <Clock className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1 text-left">
-                    ניתן לסרוק עד 3 חודשים אחורה •{" "}
-                    <button className="text-primary underline">שדרג לסריקה מורחבת</button>
-                  </p>
-                </div>
-
-                <label className="flex items-center justify-end gap-3 p-3 rounded-xl border border-border bg-background cursor-pointer">
-                  <span className="text-sm text-foreground">שלח לי מייל כשהסריקה תסתיים</span>
-                  <Mail className="w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="checkbox"
-                    checked={emailMe}
-                    onChange={(e) => setEmailMe(e.target.checked)}
-                    className="w-4 h-4 accent-primary"
-                  />
-                </label>
-
-                <div className="rounded-xl bg-primary/10 border border-primary/20 p-4 text-right space-y-2">
-                  <p className="text-sm font-medium text-primary flex items-center justify-end gap-2">
-                    <span>:טיפ</span>
-                    <span>💡</span>
-                  </p>
-                  <ul className="text-xs text-muted-foreground space-y-1">
-                    <li>הסריקה מתבצעת ברקע — ניתן לסגור את החלון ולהמשיך לעבוד</li>
-                    <li>יעובדו רק מיילים עם קבצים מצורפים או מילות מפתח רלוונטיות</li>
-                    <li>חשבוניות כפולות יזוהו אוטומטית ולא יוכפלו</li>
-                  </ul>
-                </div>
-
-                <div className="flex items-center gap-3 pt-1">
-                  <button onClick={() => setShowModal(false)} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    ביטול
-                  </button>
-                  <Button
-                    onClick={handleScan}
-                    className="flex-1 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl h-11 gap-2"
-                  >
-                    <Search className="w-4 h-4" /> התחל סריקה
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Scanning overlay */}
-      <AnimatePresence>
-        {scanning && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-card border border-border rounded-2xl p-8 w-full max-w-sm shadow-2xl text-right"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <button onClick={() => setScanning(false)} className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/5">
-                  <X className="w-5 h-5" />
-                </button>
-                <div>
-                  <h3 className="font-bold text-foreground text-lg">סריקה היסטורית של מיילים</h3>
-                  <p className="text-sm text-muted-foreground">מחפש מיילים רלוונטיים...</p>
-                </div>
-              </div>
-              <div className="flex flex-col items-center gap-4 py-6">
-                <div className="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-                <p className="text-sm text-muted-foreground">מחפש מיילים עם חשבוניות...</p>
-              </div>
-              <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                ביטול
+      {/* Base categories grid */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-foreground">קטגוריות בסיסיות</label>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {BASE_CATEGORIES.map((cat) => {
+            const on = selected.includes(cat);
+            return (
+              <button
+                key={cat}
+                onClick={() => toggle(cat)}
+                className={`flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                  on
+                    ? "bg-primary/15 border-primary/40 text-primary"
+                    : "bg-white/3 border-white/8 text-muted-foreground hover:border-white/20 hover:text-foreground"
+                }`}
+              >
+                <span>{cat}</span>
+                <span className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                  on ? "bg-primary border-primary" : "border-white/20"
+                }`}>
+                  {on && <Check className="w-2.5 h-2.5 text-white" />}
+                </span>
               </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ── Finish Step ───────────────────────────────────────────────────────────────
-function FinishStep({ onDone }: { onDone: () => void }) {
-  return (
-    <div className="flex flex-col items-center text-center max-w-lg mx-auto px-4">
-      <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
-        עוד רגע מסיימים...
-      </h1>
-      <p className="text-muted-foreground text-base mb-10">
-        הגדרות אחרונות כדי שהכל יהיה באוטומציה מלאה
-      </p>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mb-10">
-        {/* Accounting software */}
-        <div className="rounded-2xl border border-border bg-card/60 p-6 text-right flex flex-col gap-4">
-          <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center mx-auto">
-            <Calculator className="w-6 h-6 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="font-semibold text-foreground mb-1">תוכנות הנהלת חשבונות</p>
-            <p className="text-sm text-muted-foreground">
-              סנכרון מלא עם Sumit, Morning, Rivhit, Dokka ועוד...
-            </p>
-          </div>
-          <button
-            onClick={() => {}}
-            className="w-full py-2 px-4 rounded-xl border border-border text-sm text-foreground hover:bg-white/5 transition-colors"
-          >
-            ראה אינטגרציות
-          </button>
-        </div>
-
-        {/* Accountant */}
-        <div className="rounded-2xl border border-border bg-card/60 p-6 text-right flex flex-col gap-4">
-          <div className="w-12 h-12 rounded-xl bg-muted/50 flex items-center justify-center mx-auto">
-            <Mail className="w-6 h-6 text-muted-foreground" />
-          </div>
-          <div>
-            <p className="font-semibold text-foreground mb-1">חיבור רואה חשבון</p>
-            <p className="text-sm text-muted-foreground">
-              המערכת תשלח לרואה החשבון שלך את כל הדוחות והחשבוניות בכל חודש.
-            </p>
-          </div>
-          <button
-            onClick={() => {}}
-            className="w-full py-2 px-4 rounded-xl border border-border text-sm text-foreground hover:bg-white/5 transition-colors"
-          >
-            הגדר אימייל
-          </button>
+            );
+          })}
         </div>
       </div>
 
-      <Button
-        onClick={onDone}
-        size="lg"
-        className="w-full max-w-xs bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl h-12 gap-2 text-base"
-      >
-        <ArrowLeft className="w-5 h-5" />
-        סיום והמשך למערכת
-      </Button>
+      {/* Custom categories */}
+      <div className="space-y-2">
+        <label className="text-sm font-medium text-foreground">קטגוריות מותאמות אישית</label>
+        <div className="flex gap-2">
+          <input
+            value={customInput}
+            onChange={(e) => setCustomInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addCustom()}
+            placeholder="שם קטגוריה חדשה..."
+            dir="rtl"
+            className="flex-1 h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+          />
+          <button
+            onClick={addCustom}
+            disabled={!customInput.trim()}
+            className="h-10 px-4 rounded-xl bg-primary/15 border border-primary/20 text-primary hover:bg-primary/25 disabled:opacity-40 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        {selected.filter(isCustom).length > 0 && (
+          <div className="flex flex-wrap gap-1.5 pt-1">
+            {selected.filter(isCustom).map((c) => (
+              <TagPill key={c} label={c} onRemove={() => setSelected(selected.filter((x) => x !== c))} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <p className="text-[11px] text-muted-foreground/60 text-center">
+        {selected.length} קטגוריות נבחרו
+      </p>
     </div>
   );
 }
 
-// ── Main Onboarding Wizard ───────────────────────────────────────────────────
-export default function Onboarding({ onComplete }: { onComplete?: () => void }) {
-  const [step, setStep] = useState<Step>("gmail");
+// ── Step 3: Business Profile & Tax Settings ───────────────────────────────────
 
-  const stepIndex = STEPS.indexOf(step);
-  const progress = ((stepIndex + 1) / STEPS.length) * 100;
-
-  function complete() {
-    onComplete?.();
-  }
-
-  function goNext() {
-    const next = STEPS[stepIndex + 1];
-    if (next) setStep(next);
-    else complete();
-  }
+function Step3({ form, setForm }: {
+  form: {
+    business_type: string; industry: string;
+    home_office_usage_percent: number; vehicle_business_usage_percent: number;
+    estimated_annual_revenue: string; is_vat_registered: boolean; has_employees: boolean;
+  };
+  setForm: (f: typeof form) => void;
+}) {
+  const set = <K extends keyof typeof form>(k: K, v: typeof form[K]) =>
+    setForm({ ...form, [k]: v });
 
   return (
-    <div className="min-h-screen bg-background flex flex-col" dir="rtl">
-      {/* Top bar */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border/50">
-        <button
-          onClick={stepIndex > 0 ? () => setStep(STEPS[stepIndex - 1]) : undefined}
-          className={`flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors ${stepIndex === 0 ? "invisible" : ""}`}
-        >
-          חזרה לשלב הקודם
-          <ArrowRight className="w-4 h-4" />
-        </button>
-        <span dir="ltr" className="text-xl font-black bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent">
-          BillBOT+
-        </span>
-      </header>
+    <div className="space-y-5" dir="rtl">
+      <TextHint>
+        ספר לנו קצת על העסק שלך. מידע זה עוזר לנו להבין טוב יותר את הפעילות שלך ולשפר את
+        הסיווג האוטומטי של ההוצאות וחישובי המס.
+      </TextHint>
 
-      {/* Progress bar */}
-      <div className="h-1 bg-muted/30">
-        <motion.div
-          className="h-full bg-primary rounded-full"
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.4, ease: "easeInOut" }}
+      {/* Business type + Industry */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">סוג עסק</label>
+          <select
+            value={form.business_type}
+            onChange={(e) => set("business_type", e.target.value)}
+            dir="rtl"
+            className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+          >
+            <option value="">בחר סוג...</option>
+            {BUSINESS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs text-muted-foreground">תחום פעילות</label>
+          <select
+            value={form.industry}
+            onChange={(e) => set("industry", e.target.value)}
+            dir="rtl"
+            className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+          >
+            <option value="">בחר תחום...</option>
+            {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Sliders */}
+      <div className="rounded-xl border border-white/8 bg-white/3 p-4 space-y-4">
+        <SliderField
+          label="% שימוש עסקי בבית"
+          hint="אם הוצאה מתחלקת בין בית לעסק — מה אחוז העסקי? (למשל: ארנונה, חשמל)"
+          value={form.home_office_usage_percent}
+          onChange={(v) => set("home_office_usage_percent", v)}
+        />
+        <div className="border-t border-white/8" />
+        <SliderField
+          label="% שימוש עסקי ברכב"
+          hint="אם הרכב משמש גם לצרכים פרטיים — מה אחוז השימוש העסקי?"
+          value={form.vehicle_business_usage_percent}
+          onChange={(v) => set("vehicle_business_usage_percent", v)}
         />
       </div>
 
-      {/* Step content */}
-      <div className="flex-1 flex items-center justify-center py-12 px-4">
-        <AnimatePresence mode="wait">
-          <motion.div key={step} {...SLIDE} className="w-full">
-            {step === "gmail" && (
-              <GmailStep onNext={goNext} onSkip={goNext} />
-            )}
-            {step === "historical" && (
-              <HistoricalStep onNext={goNext} onSkip={goNext} />
-            )}
-            {step === "finish" && (
-              <FinishStep onDone={complete} />
-            )}
-          </motion.div>
-        </AnimatePresence>
+      {/* Revenue */}
+      <div className="space-y-1.5">
+        <label className="text-xs text-muted-foreground">הכנסה שנתית משוערת (₪)</label>
+        <input
+          value={form.estimated_annual_revenue}
+          onChange={(e) => set("estimated_annual_revenue", e.target.value)}
+          placeholder="למשל: 500,000"
+          dir="ltr"
+          className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 text-left"
+        />
       </div>
 
-      {/* Step dots */}
-      <div className="flex items-center justify-center gap-2 pb-8">
-        {STEPS.map((s, i) => (
-          <div
-            key={s}
-            className={`rounded-full transition-all duration-300 ${
-              i === stepIndex
-                ? "w-6 h-2 bg-primary"
-                : i < stepIndex
-                ? "w-2 h-2 bg-primary/50"
-                : "w-2 h-2 bg-muted"
+      {/* Toggles */}
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { key: "is_vat_registered" as const, label: "רשום לפי ע.מ (מע\"מ)", sub: "מגיש דוחות מע\"מ" },
+          { key: "has_employees" as const, label: "יש עובדים", sub: "משלם משכורות" },
+        ].map(({ key, label, sub }) => (
+          <button
+            key={key}
+            onClick={() => set(key, !form[key])}
+            className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-right ${
+              form[key]
+                ? "bg-emerald-500/10 border-emerald-500/30"
+                : "bg-white/3 border-white/8 hover:border-white/20"
             }`}
-          />
+          >
+            <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
+              form[key] ? "bg-emerald-500 border-emerald-500" : "border-white/20"
+            }`}>
+              {form[key] && <Check className="w-3 h-3 text-white" />}
+            </div>
+            <div>
+              <p className={`text-xs font-medium ${form[key] ? "text-emerald-300" : "text-foreground"}`}>{label}</p>
+              <p className="text-[10px] text-muted-foreground">{sub}</p>
+            </div>
+          </button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Step 4: Finish ────────────────────────────────────────────────────────────
+
+function Step4({ saving }: { saving: boolean }) {
+  return (
+    <div className="flex flex-col items-center text-center py-4 gap-6" dir="rtl">
+      <motion.div
+        initial={{ scale: 0.5, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 200, damping: 14 }}
+        className="w-24 h-24 rounded-3xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center"
+      >
+        <Rocket className="w-12 h-12 text-emerald-400" />
+      </motion.div>
+
+      <div className="space-y-2">
+        <h2 className="text-2xl font-bold text-foreground">הכל מוכן!</h2>
+        <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+          BillBOT+ מוגדר עבורך ומוכן לעבוד. תוכל לעדכן את כל הפרטים בכל עת בפרופיל העסקי בהגדרות.
+        </p>
+      </div>
+
+      <div className="w-full max-w-xs space-y-2.5" dir="rtl">
+        {[
+          "ח.פ ושמות עסק — נשמרו",
+          "קטגוריות הוצאה — מוגדרות",
+          "פרופיל עסקי ומע\"מ — עודכן",
+        ].map((item) => (
+          <div key={item} className="flex items-center justify-end gap-2 text-sm text-emerald-300">
+            <span>{item}</span>
+            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+          </div>
+        ))}
+      </div>
+
+      {saving && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>שומר נתונים...</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Wizard ───────────────────────────────────────────────────────────────
+
+export default function Onboarding({ onComplete }: { onComplete: () => void }) {
+  const [step, setStep]   = useState(0);
+  const [dir,  setDir]    = useState(1);
+  const [saving, setSaving] = useState(false);
+
+  // Step 1
+  const [taxIds,   setTaxIds]   = useState<string[]>([]);
+  const [bizNames, setBizNames] = useState<string[]>([]);
+
+  // Step 2
+  const [categories, setCategories] = useState<string[]>([...BASE_CATEGORIES]);
+
+  // Step 3
+  const [form, setForm] = useState({
+    business_type: "",
+    industry: "",
+    home_office_usage_percent: 0,
+    vehicle_business_usage_percent: 0,
+    estimated_annual_revenue: "",
+    is_vat_registered: false,
+    has_employees: false,
+  });
+
+  const goTo = (next: number) => {
+    setDir(next > step ? 1 : -1);
+    setStep(next);
+  };
+
+  const canNext = useCallback(() => {
+    if (step === 0) return taxIds.length > 0 || bizNames.length > 0;
+    if (step === 1) return categories.length > 0;
+    return true;
+  }, [step, taxIds, bizNames, categories]);
+
+  const handleFinish = async () => {
+    setSaving(true);
+    try {
+      await fetch(`${API_BASE}/business-profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          business_tax_ids: taxIds,
+          business_names: bizNames,
+          expense_categories: categories,
+          ...form,
+          onboarding_completed: true,
+        }),
+      });
+    } catch (e) {
+      console.error("Failed to save profile:", e);
+    } finally {
+      setSaving(false);
+      onComplete();
+    }
+  };
+
+  const isLast = step === STEPS.length - 1;
+
+  return (
+    <div className="fixed inset-0 z-50 bg-background flex flex-col" dir="rtl">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-white/8">
+        <span className="text-lg font-bold text-foreground" dir="ltr">BillBOT+</span>
+        <div className="flex items-center gap-2">
+          {STEPS.map((s, i) => {
+            const Icon = s.icon;
+            const done = i < step;
+            const active = i === step;
+            return (
+              <div key={i} className="flex items-center gap-1">
+                <div className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all ${
+                  done    ? "bg-emerald-500/20 border border-emerald-500/40" :
+                  active  ? `${s.bg} border border-${s.color.replace("text-", "")}/40` :
+                  "bg-white/5 border border-white/8"
+                }`}>
+                  {done
+                    ? <Check className="w-3.5 h-3.5 text-emerald-400" />
+                    : <Icon className={`w-3.5 h-3.5 ${active ? s.color : "text-muted-foreground"}`} />
+                  }
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div className={`w-8 h-px ${i < step ? "bg-emerald-500/40" : "bg-white/10"}`} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <span className="text-xs text-muted-foreground">שלב {step + 1} מתוך {STEPS.length}</span>
+      </div>
+
+      {/* ── Progress bar ── */}
+      <div className="h-1 bg-white/5">
+        <motion.div
+          className="h-full bg-primary"
+          animate={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        />
+      </div>
+
+      {/* ── Content ── */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-6 py-8">
+          {/* Step header */}
+          <div className="mb-6 text-right">
+            {(() => {
+              const s = STEPS[step];
+              const Icon = s.icon;
+              return (
+                <div className="flex items-center gap-3 mb-1">
+                  <div className={`p-2 rounded-xl ${s.bg}`}>
+                    <Icon className={`w-5 h-5 ${s.color}`} />
+                  </div>
+                  <h1 className="text-xl font-bold text-foreground">{s.label}</h1>
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Animated step content */}
+          <AnimatePresence mode="wait" custom={dir}>
+            <motion.div
+              key={step}
+              custom={dir}
+              variants={SLIDE}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ duration: 0.28, ease: "easeOut" }}
+            >
+              {step === 0 && (
+                <Step1
+                  taxIds={taxIds} setTaxIds={setTaxIds}
+                  bizNames={bizNames} setBizNames={setBizNames}
+                />
+              )}
+              {step === 1 && (
+                <Step2 selected={categories} setSelected={setCategories} />
+              )}
+              {step === 2 && (
+                <Step3 form={form} setForm={setForm} />
+              )}
+              {step === 3 && (
+                <Step4 saving={saving} />
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* ── Footer ── */}
+      <div className="border-t border-white/8 px-6 py-4 flex items-center justify-between">
+        {step > 0 && !isLast ? (
+          <Button
+            variant="ghost"
+            onClick={() => goTo(step - 1)}
+            className="gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            הקודם
+          </Button>
+        ) : (
+          <div />
+        )}
+
+        <div className="flex items-center gap-3">
+          {/* Skip (steps 1-2 only) */}
+          {step < 2 && (
+            <button
+              onClick={() => goTo(step + 1)}
+              className="text-sm text-muted-foreground hover:text-foreground underline transition-colors"
+            >
+              דלג
+            </button>
+          )}
+
+          {!isLast ? (
+            <Button
+              onClick={() => goTo(step + 1)}
+              disabled={!canNext()}
+              className="gap-2 bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl h-10 px-6 disabled:opacity-50"
+            >
+              הבא
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          ) : (
+            <Button
+              onClick={handleFinish}
+              disabled={saving}
+              className="gap-2 bg-emerald-500 hover:bg-emerald-500/90 text-white font-semibold rounded-xl h-10 px-6"
+            >
+              {saving ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> שומר...</>
+              ) : (
+                <><Rocket className="w-4 h-4" /> שמור ועבור לדשבורד</>
+              )}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

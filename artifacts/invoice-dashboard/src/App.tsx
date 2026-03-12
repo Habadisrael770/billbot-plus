@@ -23,14 +23,14 @@ const queryClient = new QueryClient({
 
 function AppRouter() {
   const [onboarded, setOnboarded] = useState(
-    () => localStorage.getItem("vatrix_onboarded") === "1"
+    () => localStorage.getItem("bb_wizard_done") === "1"
   );
 
   if (!onboarded) {
     return (
       <Onboarding
         onComplete={() => {
-          localStorage.setItem("vatrix_onboarded", "1");
+          localStorage.setItem("bb_wizard_done", "1");
           setOnboarded(true);
         }}
       />

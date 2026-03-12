@@ -33,6 +33,11 @@ import {
   HardDrive,
   Star,
   Check,
+  Info,
+  Globe,
+  Percent,
+  DollarSign,
+  X,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
@@ -117,6 +122,26 @@ export default function Settings() {
   const [newEntityRegType, setNewEntityRegType] = useState<"chp" | "osek">("osek");
   const [entityLoading, setEntityLoading] = useState(false);
 
+  // ── Business Profile state ────────────────────────────────────────────────
+  const BIZ_TYPES  = ["חברה בע\"מ", "עוסק מורשה", "עצמאי / פרילנסר", "שותפות", "עמותה / מלכ\"ר", "אחר"];
+  const INDUSTRIES = ["טכנולוגיה ותוכנה", "בינה מלאכותית", "ייעוץ ושירותים מקצועיים", "שיווק ופרסום", "בריאות ורפואה", "חינוך והדרכה", "נדל\"ן ובנייה", "קמעונאות ומסחר", "תחבורה ולוגיסטיקה", "מסעדנות ואירוח", "שירותים פיננסיים", "אחר"];
+  interface BusinessProfile {
+    business_tax_ids: string[]; business_names: string[];
+    expense_categories: string[]; business_type: string; industry: string;
+    home_office_usage_percent: number; vehicle_business_usage_percent: number;
+    estimated_annual_revenue: string; is_vat_registered: boolean; has_employees: boolean;
+  }
+  const [profile, setProfile] = useState<BusinessProfile>({
+    business_tax_ids: [], business_names: [], expense_categories: [],
+    business_type: "", industry: "", home_office_usage_percent: 0,
+    vehicle_business_usage_percent: 0, estimated_annual_revenue: "",
+    is_vat_registered: false, has_employees: false,
+  });
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileSaving,  setProfileSaving]  = useState(false);
+  const [profileTaxInput,  setProfileTaxInput]  = useState("");
+  const [profileNameInput, setProfileNameInput] = useState("");
+
   const loadCategories = useCallback(async () => {
     setCatLoading(true);
     try {
@@ -192,6 +217,40 @@ export default function Settings() {
     } catch { toast({ title: "שגיאה", variant: "destructive" }); }
   };
 
+  // ── Business Profile load / save ─────────────────────────────────────────
+  const loadBusinessProfile = useCallback(async () => {
+    setProfileLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/business-profile`);
+      const data = await r.json();
+      setProfile({
+        business_tax_ids: data.business_tax_ids ?? [],
+        business_names:   data.business_names   ?? [],
+        expense_categories: data.expense_categories ?? [],
+        business_type:    data.business_type    ?? "",
+        industry:         data.industry         ?? "",
+        home_office_usage_percent: data.home_office_usage_percent ?? 0,
+        vehicle_business_usage_percent: data.vehicle_business_usage_percent ?? 0,
+        estimated_annual_revenue: data.estimated_annual_revenue ?? "",
+        is_vat_registered: data.is_vat_registered ?? false,
+        has_employees:    data.has_employees    ?? false,
+      });
+    } catch { /* ignore */ } finally { setProfileLoading(false); }
+  }, []);
+
+  const saveBusinessProfile = async () => {
+    setProfileSaving(true);
+    try {
+      await fetch(`${API_BASE}/business-profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(profile),
+      });
+      toast({ title: "✅ פרופיל עסקי נשמר" });
+    } catch { toast({ title: "שגיאה", variant: "destructive" }); }
+    finally { setProfileSaving(false); }
+  };
+
   const [connectors, setConnectors] = useState(INITIAL);
   const [showPass, setShowPass] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -248,7 +307,8 @@ export default function Settings() {
     fetchWhatsAppStatus();
     loadCategories();
     loadEntities();
-  }, [fetchGmailStatus, fetchTelegramStatus, fetchWhatsAppStatus, loadCategories, loadEntities]);
+    loadBusinessProfile();
+  }, [fetchGmailStatus, fetchTelegramStatus, fetchWhatsAppStatus, loadCategories, loadEntities, loadBusinessProfile]);
 
   // --- API Connections state ---
   const [apiConnections, setApiConnections] = useState<ApiConnection[]>([]);
@@ -1077,6 +1137,238 @@ export default function Settings() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Business Profile ── */}
+        <div className="rounded-2xl border border-white/10 bg-card/30 p-5 space-y-5" dir="rtl">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                <Building2 className="w-5 h-5 text-blue-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground text-sm">פרופיל עסקי</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">פרטי זיהוי, סוג עסק, ומדדי מס</p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={saveBusinessProfile}
+              disabled={profileSaving || profileLoading}
+              className="gap-1.5 rounded-xl bg-primary/15 border border-primary/20 text-primary hover:bg-primary/25 text-xs"
+            >
+              {profileSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+              שמור
+            </Button>
+          </div>
+
+          {profileLoading ? (
+            <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <div className="space-y-5">
+              {/* Info hint */}
+              <div className="flex items-start gap-2 rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-xs text-blue-300/80 leading-relaxed">
+                <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-400" />
+                <span>פרטים אלו עוזרים ל-BillBOT+ לסווג חשבוניות אוטומטית ולהפריד בין הוצאות עסקיות לאישיות.</span>
+              </div>
+
+              {/* Tax IDs */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-foreground">מספרי זיהוי עסקי (ח.פ / ע.מ / ת.ז)</label>
+                <div className="flex gap-2">
+                  <input
+                    value={profileTaxInput}
+                    onChange={(e) => setProfileTaxInput(e.target.value.replace(/\D/g, "").slice(0, 9))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && profileTaxInput.length >= 5) {
+                        if (!profile.business_tax_ids.includes(profileTaxInput))
+                          setProfile({ ...profile, business_tax_ids: [...profile.business_tax_ids, profileTaxInput] });
+                        setProfileTaxInput("");
+                      }
+                    }}
+                    placeholder="מספר 9 ספרות..."
+                    dir="ltr"
+                    className="flex-1 h-9 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 text-left"
+                  />
+                  <button
+                    onClick={() => {
+                      if (profileTaxInput.length >= 5 && !profile.business_tax_ids.includes(profileTaxInput)) {
+                        setProfile({ ...profile, business_tax_ids: [...profile.business_tax_ids, profileTaxInput] });
+                        setProfileTaxInput("");
+                      }
+                    }}
+                    disabled={profileTaxInput.length < 5}
+                    className="h-9 px-3 rounded-xl bg-primary/15 border border-primary/20 text-primary hover:bg-primary/25 disabled:opacity-40 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                {profile.business_tax_ids.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {profile.business_tax_ids.map((t) => (
+                      <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/15 border border-primary/25 text-primary text-xs font-medium">
+                        {t}
+                        <button onClick={() => setProfile({ ...profile, business_tax_ids: profile.business_tax_ids.filter((x) => x !== t) })} className="hover:text-rose-400 transition-colors">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Business names */}
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-foreground">שמות העסק על החשבוניות</label>
+                <div className="flex gap-2">
+                  <input
+                    value={profileNameInput}
+                    onChange={(e) => setProfileNameInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && profileNameInput.trim()) {
+                        const v = profileNameInput.trim();
+                        if (!profile.business_names.includes(v))
+                          setProfile({ ...profile, business_names: [...profile.business_names, v] });
+                        setProfileNameInput("");
+                      }
+                    }}
+                    placeholder="שם חברה / מותג..."
+                    dir="rtl"
+                    className="flex-1 h-9 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  />
+                  <button
+                    onClick={() => {
+                      const v = profileNameInput.trim();
+                      if (v && !profile.business_names.includes(v)) {
+                        setProfile({ ...profile, business_names: [...profile.business_names, v] });
+                        setProfileNameInput("");
+                      }
+                    }}
+                    disabled={!profileNameInput.trim()}
+                    className="h-9 px-3 rounded-xl bg-primary/15 border border-primary/20 text-primary hover:bg-primary/25 disabled:opacity-40 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                {profile.business_names.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {profile.business_names.map((n) => (
+                      <span key={n} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/8 border border-white/15 text-foreground text-xs">
+                        {n}
+                        <button onClick={() => setProfile({ ...profile, business_names: profile.business_names.filter((x) => x !== n) })} className="hover:text-rose-400 transition-colors">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Type + Industry */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">סוג עסק</label>
+                  <select
+                    value={profile.business_type}
+                    onChange={(e) => setProfile({ ...profile, business_type: e.target.value })}
+                    dir="rtl"
+                    className="w-full h-9 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  >
+                    <option value="">בחר סוג...</option>
+                    {BIZ_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">תחום פעילות</label>
+                  <select
+                    value={profile.industry}
+                    onChange={(e) => setProfile({ ...profile, industry: e.target.value })}
+                    dir="rtl"
+                    className="w-full h-9 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  >
+                    <option value="">בחר תחום...</option>
+                    {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              {/* Sliders */}
+              <div className="rounded-xl border border-white/8 bg-white/3 p-4 space-y-4">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Percent className="w-3.5 h-3.5" /> שימוש עסקי בבית
+                    </label>
+                    <span className="text-sm font-bold text-primary" dir="ltr">{profile.home_office_usage_percent}%</span>
+                  </div>
+                  <input type="range" min={0} max={100} step={5}
+                    value={profile.home_office_usage_percent}
+                    onChange={(e) => setProfile({ ...profile, home_office_usage_percent: Number(e.target.value) })}
+                    className="w-full h-1.5 rounded-full accent-primary cursor-pointer"
+                  />
+                  <p className="text-[11px] text-muted-foreground/60">אם הוצאה מתחלקת בין בית לעסק — מה אחוז העסקי?</p>
+                </div>
+                <div className="border-t border-white/8" />
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <Percent className="w-3.5 h-3.5" /> שימוש עסקי ברכב
+                    </label>
+                    <span className="text-sm font-bold text-primary" dir="ltr">{profile.vehicle_business_usage_percent}%</span>
+                  </div>
+                  <input type="range" min={0} max={100} step={5}
+                    value={profile.vehicle_business_usage_percent}
+                    onChange={(e) => setProfile({ ...profile, vehicle_business_usage_percent: Number(e.target.value) })}
+                    className="w-full h-1.5 rounded-full accent-primary cursor-pointer"
+                  />
+                  <p className="text-[11px] text-muted-foreground/60">אם הרכב משמש גם לצרכים פרטיים — מה אחוז השימוש העסקי?</p>
+                </div>
+              </div>
+
+              {/* Revenue */}
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <DollarSign className="w-3.5 h-3.5" /> הכנסה שנתית משוערת (₪)
+                </label>
+                <input
+                  value={profile.estimated_annual_revenue}
+                  onChange={(e) => setProfile({ ...profile, estimated_annual_revenue: e.target.value })}
+                  placeholder="למשל: 500,000"
+                  dir="ltr"
+                  className="w-full h-9 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 text-left"
+                />
+              </div>
+
+              {/* Toggles */}
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  { key: "is_vat_registered" as const, label: "רשום לפי ע.מ (מע\"מ)", sub: "מגיש דוחות מע\"מ" },
+                  { key: "has_employees"      as const, label: "יש עובדים",            sub: "משלם משכורות" },
+                ] as const).map(({ key, label, sub }) => (
+                  <button
+                    key={key}
+                    onClick={() => setProfile({ ...profile, [key]: !profile[key] })}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-right ${
+                      profile[key]
+                        ? "bg-emerald-500/10 border-emerald-500/30"
+                        : "bg-white/3 border-white/8 hover:border-white/20"
+                    }`}
+                  >
+                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
+                      profile[key] ? "bg-emerald-500 border-emerald-500" : "border-white/20"
+                    }`}>
+                      {profile[key] && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <div>
+                      <p className={`text-xs font-medium ${profile[key] ? "text-emerald-300" : "text-foreground"}`}>{label}</p>
+                      <p className="text-[10px] text-muted-foreground">{sub}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
