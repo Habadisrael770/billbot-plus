@@ -20,6 +20,12 @@ import {
   Webhook,
   Smartphone,
   ScanText,
+  Plug,
+  Plus,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  FlaskConical,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +43,25 @@ interface EmailConnector {
   status: ConnectorStatus;
   lastSync?: string;
   errorMsg?: string;
+}
+
+interface ApiConnection {
+  id: string;
+  service: string;
+  display_name: string;
+  api_key: string;
+  api_secret?: string | null;
+  base_url?: string | null;
+  is_active: boolean;
+  last_tested_at?: string | null;
+  last_test_ok?: boolean | null;
+  last_test_error?: string | null;
+}
+
+interface ServiceDef {
+  id: string;
+  name: string;
+  hasBaseUrl: boolean;
 }
 
 interface GmailOAuthStatus {
@@ -119,6 +144,92 @@ export default function Settings() {
     fetchTelegramStatus();
     fetchWhatsAppStatus();
   }, [fetchGmailStatus, fetchTelegramStatus, fetchWhatsAppStatus]);
+
+  // --- API Connections state ---
+  const [apiConnections, setApiConnections] = useState<ApiConnection[]>([]);
+  const [availableServices, setAvailableServices] = useState<ServiceDef[]>([]);
+  const [showAddApi, setShowAddApi] = useState(false);
+  const [newApi, setNewApi] = useState({ service: "green_invoice", api_key: "", api_secret: "", base_url: "", display_name: "" });
+  const [showApiKey, setShowApiKey] = useState<Record<string, boolean>>({});
+  const [testingApi, setTestingApi] = useState<Record<string, boolean>>({});
+  const [deletingApi, setDeletingApi] = useState<Record<string, boolean>>({});
+  const [isSavingApi, setIsSavingApi] = useState(false);
+
+  const fetchApiConnections = useCallback(async () => {
+    try {
+      const [connsRes, svcsRes] = await Promise.all([
+        fetch(`${API_BASE}/external-api/connections`),
+        fetch(`${API_BASE}/external-api/services`),
+      ]);
+      const connsData = await connsRes.json() as { connections: ApiConnection[] };
+      const svcsData = await svcsRes.json() as { services: ServiceDef[] };
+      setApiConnections(connsData.connections ?? []);
+      setAvailableServices(svcsData.services ?? []);
+    } catch {
+      // silent
+    }
+  }, []);
+
+  useEffect(() => { fetchApiConnections(); }, [fetchApiConnections]);
+
+  const saveApiConnection = async () => {
+    if (!newApi.api_key.trim()) {
+      toast({ title: "API Key חסר", variant: "destructive" });
+      return;
+    }
+    setIsSavingApi(true);
+    try {
+      const res = await fetch(`${API_BASE}/external-api/connections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newApi),
+      });
+      const data = await res.json() as { ok: boolean; error?: string };
+      if (data.ok) {
+        toast({ title: "החיבור נשמר!" });
+        setNewApi({ service: "green_invoice", api_key: "", api_secret: "", base_url: "", display_name: "" });
+        setShowAddApi(false);
+        fetchApiConnections();
+      } else {
+        toast({ title: "שגיאה", description: data.error, variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "שגיאת רשת", variant: "destructive" });
+    } finally {
+      setIsSavingApi(false);
+    }
+  };
+
+  const testApiConnection = async (conn: ApiConnection) => {
+    setTestingApi((p) => ({ ...p, [conn.id]: true }));
+    try {
+      const res = await fetch(`${API_BASE}/external-api/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ service: conn.service, api_key: conn.api_key, api_secret: conn.api_secret, base_url: conn.base_url, connectionId: conn.id }),
+      });
+      const data = await res.json() as { ok: boolean; message?: string; error?: string };
+      toast({ title: data.ok ? "החיבור הצליח ✓" : "בדיקה נכשלה", description: data.message ?? data.error, variant: data.ok ? "default" : "destructive" });
+      fetchApiConnections();
+    } catch {
+      toast({ title: "שגיאת רשת", variant: "destructive" });
+    } finally {
+      setTestingApi((p) => ({ ...p, [conn.id]: false }));
+    }
+  };
+
+  const deleteApiConnection = async (id: string) => {
+    setDeletingApi((p) => ({ ...p, [id]: true }));
+    try {
+      await fetch(`${API_BASE}/external-api/connections/${id}`, { method: "DELETE" });
+      toast({ title: "החיבור נמחק" });
+      fetchApiConnections();
+    } catch {
+      toast({ title: "שגיאת רשת", variant: "destructive" });
+    } finally {
+      setDeletingApi((p) => ({ ...p, [id]: false }));
+    }
+  };
 
   const scanGmail = async () => {
     setIsScanningGmail(true);
@@ -624,6 +735,201 @@ export default function Settings() {
               כל שיחות ה-AI נשמרות במסד הנתונים ונגישות בכל עת. ה-AI זוכר את כל ההיסטוריה בתוך שיחה.
             </p>
           </div>
+        </div>
+
+        {/* External API Connections */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Plug className="w-4 h-4 text-orange-400" />
+              <h2 className="text-sm font-semibold text-white">חיבורי API חיצוני</h2>
+              <span className="text-xs text-muted-foreground">— חשבשבת, Green Invoice, iCount ועוד</span>
+            </div>
+            <button
+              onClick={() => setShowAddApi((p) => !p)}
+              className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-all"
+            >
+              {showAddApi ? <ChevronUp className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+              {showAddApi ? "סגור" : "הוסף חיבור"}
+            </button>
+          </div>
+
+          {/* Add new connection form */}
+          {showAddApi && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border border-orange-500/20 bg-orange-500/5 p-5 flex flex-col gap-4 mb-4"
+            >
+              <p className="text-xs text-orange-400 font-medium">חיבור API חדש</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">שירות</label>
+                  <select
+                    value={newApi.service}
+                    onChange={(e) => setNewApi((p) => ({ ...p, service: e.target.value }))}
+                    className="h-10 px-3 rounded-xl border border-white/10 bg-black/30 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  >
+                    {availableServices.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">שם תצוגה (אופציונלי)</label>
+                  <input
+                    type="text"
+                    value={newApi.display_name}
+                    onChange={(e) => setNewApi((p) => ({ ...p, display_name: e.target.value }))}
+                    placeholder="למשל: חשבונות שנה 2025"
+                    className="h-10 px-3 rounded-xl border border-white/10 bg-black/30 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-muted-foreground flex items-center gap-1"><Key className="w-3 h-3" /> API Key</label>
+                <input
+                  type="text"
+                  value={newApi.api_key}
+                  onChange={(e) => setNewApi((p) => ({ ...p, api_key: e.target.value }))}
+                  placeholder="הכנס את ה-API Key שלך"
+                  dir="ltr"
+                  className="h-10 px-3 rounded-xl border border-white/10 bg-black/30 text-sm text-white font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">API Secret (אופציונלי)</label>
+                  <input
+                    type="password"
+                    value={newApi.api_secret}
+                    onChange={(e) => setNewApi((p) => ({ ...p, api_secret: e.target.value }))}
+                    placeholder="Secret / Password"
+                    dir="ltr"
+                    className="h-10 px-3 rounded-xl border border-white/10 bg-black/30 text-sm text-white font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-muted-foreground">Base URL (אופציונלי)</label>
+                  <input
+                    type="url"
+                    value={newApi.base_url}
+                    onChange={(e) => setNewApi((p) => ({ ...p, base_url: e.target.value }))}
+                    placeholder="https://api.example.com"
+                    dir="ltr"
+                    className="h-10 px-3 rounded-xl border border-white/10 bg-black/30 text-sm text-white font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                </div>
+              </div>
+
+              <Button
+                onClick={saveApiConnection}
+                disabled={isSavingApi || !newApi.api_key.trim()}
+                size="sm"
+                className="rounded-xl bg-orange-500/80 hover:bg-orange-500 gap-1.5 text-xs w-full"
+              >
+                {isSavingApi ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                שמור חיבור
+              </Button>
+            </motion.div>
+          )}
+
+          {/* Existing connections list */}
+          {apiConnections.length === 0 ? (
+            <div className="rounded-2xl border border-white/5 bg-card/20 p-6 text-center">
+              <Plug className="w-8 h-8 text-white/20 mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">אין חיבורי API עדיין</p>
+              <p className="text-xs text-muted-foreground mt-1">לחץ "הוסף חיבור" כדי לחבר שירות חיצוני</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {apiConnections.map((conn) => (
+                <div key={conn.id} className="rounded-2xl border border-white/5 bg-card/20 p-4 flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                        <Plug className="w-4 h-4 text-orange-400" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-white">{conn.display_name}</p>
+                        <p className="text-xs text-muted-foreground">{conn.base_url || conn.service}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {conn.last_test_ok === true && (
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                          <span className="text-xs text-emerald-400">תקין</span>
+                        </div>
+                      )}
+                      {conn.last_test_ok === false && (
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/10 border border-red-500/20">
+                          <AlertCircle className="w-3 h-3 text-red-400" />
+                          <span className="text-xs text-red-400">שגיאה</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Masked API key */}
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/20 border border-white/5">
+                    <Key className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                    <p className="text-xs text-white/60 font-mono flex-1" dir="ltr">
+                      {showApiKey[conn.id]
+                        ? conn.api_key
+                        : conn.api_key.slice(0, 6) + "••••••••" + conn.api_key.slice(-4)}
+                    </p>
+                    <button
+                      onClick={() => setShowApiKey((p) => ({ ...p, [conn.id]: !p[conn.id] }))}
+                      className="text-muted-foreground hover:text-white transition-all"
+                    >
+                      {showApiKey[conn.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                    <button
+                      onClick={() => copyToClipboard(conn.api_key)}
+                      className="text-muted-foreground hover:text-white transition-all"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {conn.last_test_error && (
+                    <p className="text-xs text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg">{conn.last_test_error}</p>
+                  )}
+                  {conn.last_tested_at && (
+                    <p className="text-xs text-muted-foreground">
+                      בדיקה אחרונה: {new Date(conn.last_tested_at).toLocaleString("he-IL")}
+                    </p>
+                  )}
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => testApiConnection(conn)}
+                      disabled={testingApi[conn.id]}
+                      className="flex-1 rounded-xl border border-white/10 gap-1.5 text-xs"
+                    >
+                      {testingApi[conn.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FlaskConical className="w-3.5 h-3.5" />}
+                      בדוק חיבור
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteApiConnection(conn.id)}
+                      disabled={deletingApi[conn.id]}
+                      className="rounded-xl border border-red-500/20 text-red-400 hover:bg-red-500/10 gap-1.5 text-xs px-3"
+                    >
+                      {deletingApi[conn.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Save */}

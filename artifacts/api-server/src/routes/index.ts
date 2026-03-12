@@ -6,6 +6,7 @@ import openrouterRouter from "./openrouter/index.js";
 import telegramRouter from "./telegram.js";
 import whatsappRouter from "./whatsapp.js";
 import emailConnectorsRouter from "./email-connectors.js";
+import externalApiRouter from "./external-api.js";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use("/openrouter", openrouterRouter);
 router.use("/telegram", telegramRouter);
 router.use("/whatsapp", whatsappRouter);
 router.use("/email-connectors", emailConnectorsRouter);
+router.use("/external-api", externalApiRouter);
 
 export default router;
