@@ -14,7 +14,6 @@ import {
   LogOut,
   Bell,
   ChevronDown,
-  Search,
   Sun,
   Moon,
   Gift,
@@ -271,19 +270,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <PersonalAreaDropdown />
             </div>
 
-            {/* Search */}
-            <div className="flex-1 max-w-md mx-auto">
-              <div className="relative">
-                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="חיפוש לפי חשבונית, ספק, קטגוריה..."
-                  className="w-full h-9 pr-9 pl-16 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/30 transition-all"
-                  dir="rtl"
-                />
-                <kbd className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground bg-white/5 border border-white/10 rounded px-1.5 py-0.5">⌘K</kbd>
-              </div>
-            </div>
+            {/* Spacer */}
+            <div className="flex-1" />
 
             {/* Right: theme + bell + BillBOT+ logo */}
             <div className="flex items-center gap-2">

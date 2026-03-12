@@ -22,6 +22,7 @@ import {
   Mail,
   MailPlus,
   FileSpreadsheet,
+  CalendarDays,
 } from "lucide-react";
 import { useInvoices, useInvoiceSummary, useInvoiceMutations } from "@/hooks/use-invoices";
 import { Layout } from "@/components/layout";
@@ -340,52 +341,49 @@ export default function Dashboard() {
     setEmailOpen(true);
   };
 
+  const now = new Date();
+  const monthStart = format(new Date(now.getFullYear(), now.getMonth(), 1), "d MMM yyyy");
+  const monthEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), "d MMM yyyy");
+
   return (
     <Layout>
-      {/* ── Top search bar ── */}
-      <div className="relative mb-4">
-        <Search className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none z-10" />
-        <input
-          type="text"
-          placeholder="חיפוש לפי חשבונית, ספק, קטגוריה..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          dir="rtl"
-          className="w-full h-12 pr-12 pl-48 sm:pl-32 text-sm rounded-2xl border border-white/10 bg-card/60 backdrop-blur-xl text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-        />
-        <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5">
-          {/* Camera — mobile only */}
-          <button
-            onClick={() => openUpload("camera")}
-            className="sm:hidden p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
-            title="צלם חשבונית"
-          >
-            <Camera className="w-5 h-5" />
-          </button>
-          {/* Attach file */}
+      {/* ── Page title + action bar ── */}
+      <div className="flex items-center justify-between gap-4 mb-6" dir="rtl">
+        {/* Right: title */}
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">דשבורד</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">סקירה כללית של פעילות החשבוניות שלך</p>
+        </div>
+
+        {/* Left: action bar */}
+        <div className="flex items-center gap-2 shrink-0" dir="ltr">
+          {/* Upload button */}
           <button
             onClick={() => openUpload("upload")}
-            className="p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all"
-            title="צרף קובץ"
+            className="flex items-center gap-2 h-10 px-4 rounded-xl bg-primary text-white font-medium text-sm hover:bg-primary/90 transition-colors shrink-0"
           >
-            <Paperclip className="w-5 h-5" />
+            <Upload className="w-4 h-4" />
+            העלה חשבוניות
           </button>
-          {/* Scan email */}
-          <button
-            onClick={() => openEmail("scan")}
-            className="p-2 rounded-xl text-muted-foreground hover:text-violet-400 hover:bg-violet-400/10 transition-all"
-            title="סרוק מייל"
-          >
-            <Mail className="w-5 h-5" />
+
+          {/* Calendar / date range */}
+          <button className="flex items-center gap-2 h-10 px-4 rounded-xl border border-white/10 bg-card/60 text-foreground text-sm hover:bg-white/5 transition-colors shrink-0 whitespace-nowrap" dir="rtl">
+            <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
+            <span>{monthStart} - {monthEnd}</span>
           </button>
-          {/* Attach email */}
-          <button
-            onClick={() => openEmail("attach")}
-            className="p-2 rounded-xl text-muted-foreground hover:text-violet-400 hover:bg-violet-400/10 transition-all"
-            title="צרף מייל"
-          >
-            <MailPlus className="w-5 h-5" />
-          </button>
+
+          {/* Search — ~2 stat-card widths */}
+          <div className="relative w-52">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              placeholder="חיפוש..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              dir="rtl"
+              className="w-full h-10 pr-9 pl-3 text-sm rounded-xl border border-white/10 bg-card/60 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all"
+            />
+          </div>
         </div>
       </div>
 
