@@ -101,7 +101,7 @@ const INITIAL: Record<"outlook", EmailConnector> = {
 export default function Settings() {
   // ── Categories state ──────────────────────────────────────────────────────
   interface Category { id: string; name: string; color: string; is_deletable: boolean; is_default: boolean; }
-  interface Entity { id: string; name: string; type: string; tax_id: string | null; is_default: boolean; }
+  interface Entity { id: string; name: string; type: string; tax_id: string | null; registration_type: string | null; is_default: boolean; }
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [newCatName, setNewCatName] = useState("");
@@ -114,6 +114,7 @@ export default function Settings() {
   const [newEntityName, setNewEntityName] = useState("");
   const [newEntityType, setNewEntityType] = useState<"business" | "personal">("business");
   const [newEntityTaxId, setNewEntityTaxId] = useState("");
+  const [newEntityRegType, setNewEntityRegType] = useState<"chp" | "osek">("osek");
   const [entityLoading, setEntityLoading] = useState(false);
 
   const loadCategories = useCallback(async () => {
@@ -161,7 +162,16 @@ export default function Settings() {
   const addEntity = async () => {
     if (!newEntityName.trim()) return;
     try {
-      const r = await fetch(`${API_BASE}/entities`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newEntityName.trim(), type: newEntityType, tax_id: newEntityTaxId || null }) });
+      const r = await fetch(`${API_BASE}/entities`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newEntityName.trim(),
+          type: newEntityType,
+          tax_id: newEntityTaxId || null,
+          registration_type: newEntityTaxId ? newEntityRegType : null,
+        }),
+      });
       const entity = await r.json();
       setEntities((p) => [...p, entity]);
       setNewEntityName(""); setNewEntityTaxId("");
@@ -1177,7 +1187,20 @@ export default function Settings() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground">{entity.name}</p>
-                    {entity.tax_id && <p className="text-xs text-muted-foreground font-mono" dir="ltr">{entity.tax_id}</p>}
+                    {entity.tax_id && (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {entity.registration_type && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium border ${
+                            entity.registration_type === "chp"
+                              ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                              : "bg-violet-500/10 text-violet-400 border-violet-500/20"
+                          }`}>
+                            {entity.registration_type === "chp" ? "ח.פ" : "ע.מ"}
+                          </span>
+                        )}
+                        <p className="text-xs text-muted-foreground font-mono" dir="ltr">{entity.tax_id}</p>
+                      </div>
+                    )}
                   </div>
                   {entity.is_default && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
@@ -1200,7 +1223,10 @@ export default function Settings() {
           )}
 
           {/* Add entity */}
-          <div className="space-y-2 pt-1">
+          <div className="space-y-2 pt-1 border-t border-white/8">
+            <p className="text-xs text-muted-foreground pt-1">הוספת ישות חדשה</p>
+
+            {/* Row 1: type + name */}
             <div className="flex gap-2">
               <select
                 value={newEntityType}
@@ -1214,28 +1240,64 @@ export default function Settings() {
               <input
                 value={newEntityName}
                 onChange={(e) => setNewEntityName(e.target.value)}
-                placeholder="שם הישות..."
+                placeholder="שם הישות / העסק..."
                 dir="rtl"
                 className="flex-1 h-9 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all"
               />
             </div>
+
+            {/* Row 2: registration type toggle + tax id number */}
             <div className="flex gap-2">
+              {/* ח.פ / עוסק מורשה toggle */}
+              <div className="flex rounded-xl border border-white/10 overflow-hidden shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setNewEntityRegType("osek")}
+                  className={`h-9 px-3 text-xs font-medium transition-colors ${
+                    newEntityRegType === "osek"
+                      ? "bg-violet-500/20 text-violet-300 border-l border-white/10"
+                      : "text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  ע.מ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewEntityRegType("chp")}
+                  className={`h-9 px-3 text-xs font-medium transition-colors ${
+                    newEntityRegType === "chp"
+                      ? "bg-blue-500/20 text-blue-300"
+                      : "text-muted-foreground hover:text-white"
+                  }`}
+                >
+                  ח.פ
+                </button>
+              </div>
+
               <input
                 value={newEntityTaxId}
-                onChange={(e) => setNewEntityTaxId(e.target.value)}
-                placeholder="ח.פ / ע.מ (אופציונלי)"
-                dir="rtl"
-                className="flex-1 h-9 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all"
+                onChange={(e) => setNewEntityTaxId(e.target.value.replace(/\D/g, "").slice(0, 9))}
+                placeholder={newEntityRegType === "chp" ? "מספר ח.פ (9 ספרות)" : "מספר עוסק מורשה"}
+                dir="ltr"
+                maxLength={9}
+                className="flex-1 h-9 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all text-left"
               />
               <button
                 onClick={addEntity}
                 disabled={!newEntityName.trim()}
-                className="h-9 px-4 rounded-xl bg-primary/15 border border-primary/20 text-primary text-sm hover:bg-primary/25 transition-colors disabled:opacity-40 flex items-center gap-1.5"
+                className="h-9 px-4 rounded-xl bg-primary/15 border border-primary/20 text-primary text-sm hover:bg-primary/25 transition-colors disabled:opacity-40 flex items-center gap-1.5 shrink-0"
               >
                 <Plus className="w-4 h-4" />
                 הוסף
               </button>
             </div>
+
+            {/* Helper text */}
+            <p className="text-[11px] text-muted-foreground/60">
+              {newEntityRegType === "chp"
+                ? "ח.פ — חברה בע\"מ / עמותה (9 ספרות)"
+                : "ע.מ — עוסק מורשה / עצמאי (9 ספרות)"}
+            </p>
           </div>
         </div>
 

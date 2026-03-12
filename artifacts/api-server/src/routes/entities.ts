@@ -27,11 +27,16 @@ router.get("/", async (_req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { name, type, tax_id } = req.body;
+    const { name, type, tax_id, registration_type } = req.body;
     if (!name?.trim()) return res.status(400).json({ error: "name required" });
     const [entity] = await db
       .insert(entitiesTable)
-      .values({ name: name.trim(), type: type || "business", tax_id: tax_id || null })
+      .values({
+        name: name.trim(),
+        type: type || "business",
+        tax_id: tax_id || null,
+        registration_type: registration_type || null,
+      })
       .returning();
     res.json(entity);
   } catch {

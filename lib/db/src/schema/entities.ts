@@ -5,6 +5,7 @@ export const entitiesTable = pgTable("entities", {
   name: text("name").notNull(),
   type: text("type").notNull().default("business"),
   tax_id: text("tax_id"),
+  registration_type: text("registration_type"),
   is_default: boolean("is_default").notNull().default(false),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
