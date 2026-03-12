@@ -13,6 +13,7 @@ import {
   updateInvoiceCategory,
 } from "../services/invoiceProcessingService.js";
 import { mergeVendorAlias } from "../services/vendorService.js";
+import { extractInvoiceFromFile } from "../services/aiExtractService.js";
 
 const router: IRouter = Router();
 
@@ -191,17 +192,22 @@ router.post(
     const sourceType = (req.query["source"] as string) === "camera" ? "camera" : "upload";
     const filePath = req.file.path;
 
-    // Extract minimal metadata from request body (optional manual override)
-    const extracted = req.body?.extracted
-      ? (JSON.parse(req.body.extracted as string) as Record<string, unknown>)
-      : {};
-
     try {
+      // AI extraction — reads the file and extracts invoice data via vision model
+      const aiResult = await extractInvoiceFromFile(filePath);
+      // Allow manual override from request body
+      const manualExtracted = req.body?.extracted
+        ? (JSON.parse(req.body.extracted as string) as Record<string, unknown>)
+        : {};
+      const extracted = { ...aiResult, ...manualExtracted };
+      const extractionConfidence = aiResult.confidence;
+
       const result = await processInvoice({
         filePath,
         extracted,
+        extractionConfidence,
         sourceType,
-        documentType: "supplier_invoice",
+        documentType: (aiResult.document_type as "supplier_invoice" | "receipt" | "credit_note" | "other") ?? "supplier_invoice",
       });
       res.status(201).json({ ...result, filePath });
     } catch (err) {

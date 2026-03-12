@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import path from "path";
 import fs from "fs";
 import { processInvoice } from "../services/invoiceProcessingService.js";
+import { extractInvoiceFromFile } from "../services/aiExtractService.js";
 
 const router: IRouter = Router();
 
@@ -120,13 +121,26 @@ router.post("/webhook", async (req, res) => {
       month: "long",
     });
 
+    // AI extraction — pull vendor, total, date, etc. from the image
+    const aiResult = await extractInvoiceFromFile(filePath);
+    const extracted = {
+      ...aiResult,
+      // fallback date if AI didn't find one
+      date: aiResult.date ?? now.toISOString().split("T")[0],
+    };
+
     const result = await processInvoice({
       filePath,
-      extracted: { date: now.toISOString().split("T")[0] },
+      extracted,
+      extractionConfidence: aiResult.confidence,
       sourceType: "camera",
+      documentType:
+        (aiResult.document_type as "supplier_invoice" | "receipt" | "credit_note" | "other") ??
+        "supplier_invoice",
     });
 
     const vendor = result.canonicalVendorName || "לא זוהה";
+    const totalStr = extracted.total != null ? `\n💰 סכום: ₪${extracted.total}` : "";
     const dupWarn =
       result.duplicateStatus === "duplicate"
         ? "\n\n⚠️ <b>שים לב:</b> ייתכן כפילות עם חשבונית קיימת!"
@@ -134,7 +148,7 @@ router.post("/webhook", async (req, res) => {
 
     await sendMessage(
       chatId,
-      `✅ <b>החשבונית נשמרה!</b>\n\n📁 תיקייה: <b>${monthLabel}</b>\n🏢 ספק: ${vendor}\n🆔 מזהה: <code>${result.invoiceId.slice(0, 8)}</code>${dupWarn}`
+      `✅ <b>החשבונית נשמרה!</b>\n\n📁 תיקייה: <b>${monthLabel}</b>\n🏢 ספק: ${vendor}${totalStr}\n🆔 מזהה: <code>${result.invoiceId.slice(0, 8)}</code>${dupWarn}`
     );
   } catch (err) {
     console.error("Telegram webhook error:", err);
