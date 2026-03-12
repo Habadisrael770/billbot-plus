@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { format } from "date-fns";
+import { format, parseISO, isValid } from "date-fns";
 import {
   Search,
   Download,
@@ -16,7 +16,22 @@ import {
   LayoutGrid,
   ChevronDown,
   X,
+  TrendingUp,
+  PieChart as PieIcon,
 } from "lucide-react";
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
 import { useInvoices, useInvoiceMutations } from "@/hooks/use-invoices";
 import { Layout } from "@/components/layout";
 import {
@@ -30,8 +45,8 @@ import { useToast } from "@/hooks/use-toast";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function fmtAmount(v: string | null | undefined) {
-  if (!v) return "—";
+function fmtAmount(v: string | number | null | undefined) {
+  if (v === null || v === undefined || v === "") return "—";
   return `₪${Number(v).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`;
 }
 
@@ -47,6 +62,7 @@ const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
   telegram: { label: "Telegram", color: "bg-sky-500/15 text-sky-400 border-sky-500/20" },
   manual: { label: "ידני", color: "bg-white/10 text-muted-foreground border-white/10" },
   email: { label: "Gmail", color: "bg-blue-500/15 text-blue-400 border-blue-500/20" },
+  camera: { label: "מצלמה", color: "bg-violet-500/15 text-violet-400 border-violet-500/20" },
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -55,7 +71,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "ציוד משרדי": "bg-cyan-500/10 text-cyan-300 border-cyan-500/15",
   שיווק: "bg-pink-500/10 text-pink-300 border-pink-500/15",
   תוכנה: "bg-emerald-500/10 text-emerald-300 border-emerald-500/15",
-  "שכ״ד": "bg-orange-500/10 text-orange-300 border-orange-500/15",
+  'שכ"ד': "bg-orange-500/10 text-orange-300 border-orange-500/15",
   חשמל: "bg-yellow-500/10 text-yellow-300 border-yellow-500/15",
 };
 
@@ -77,6 +93,40 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: React.Rea
   },
 };
 
+// ── chart palette ─────────────────────────────────────────────────────────────
+const CAT_PALETTE = [
+  "#6366f1", "#22d3ee", "#f59e0b", "#10b981",
+  "#f43f5e", "#a855f7", "#fb923c", "#84cc16",
+];
+
+// ── Custom Tooltip for trend chart ───────────────────────────────────────────
+function TrendTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl border border-white/10 bg-card/90 backdrop-blur px-3 py-2 text-xs shadow-xl" dir="rtl">
+      <p className="font-medium text-foreground mb-1">{label}</p>
+      {payload.map((p: any) => (
+        <p key={p.dataKey} style={{ color: p.color }}>
+          {p.name}: <span dir="ltr">₪{Number(p.value).toLocaleString("he-IL", { maximumFractionDigits: 0 })}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
+// ── Custom Tooltip for category chart ────────────────────────────────────────
+function CatTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl border border-white/10 bg-card/90 backdrop-blur px-3 py-2 text-xs shadow-xl" dir="rtl">
+      <p className="font-medium text-foreground mb-1">{label}</p>
+      <p style={{ color: payload[0]?.color }}>
+        סכום: <span dir="ltr">₪{Number(payload[0]?.value || 0).toLocaleString("he-IL", { maximumFractionDigits: 0 })}</span>
+      </p>
+    </div>
+  );
+}
+
 // ── component ─────────────────────────────────────────────────────────────────
 
 export default function ExpensesPage() {
@@ -84,7 +134,7 @@ export default function ExpensesPage() {
   const { approve } = useInvoiceMutations();
   const { toast } = useToast();
 
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("הכל");
   const [view, setView] = useState<"list" | "grid">("list");
@@ -99,10 +149,9 @@ export default function ExpensesPage() {
       const q = search.toLowerCase();
       r = r.filter(
         (i) =>
-          i.vendorName?.toLowerCase().includes(q) ||
-          i.vendorNameNormalized?.toLowerCase().includes(q) ||
-          i.invoiceNumber?.toLowerCase().includes(q) ||
-          i.suggestedCategory?.toLowerCase().includes(q)
+          (i.canonicalVendorName ?? i.normalizedVendorName ?? i.rawVendorName ?? "").toLowerCase().includes(q) ||
+          (i.invoiceNumber ?? "").toLowerCase().includes(q) ||
+          (i.finalCategory ?? i.suggestedCategory ?? "").toLowerCase().includes(q)
       );
     }
     return r;
@@ -112,8 +161,42 @@ export default function ExpensesPage() {
   const totalAmt = filtered.reduce((s, i) => s + Number(i.total || 0), 0);
   const totalVat = filtered.reduce((s, i) => s + Number(i.vat || 0), 0);
 
+  // ── chart data: expenses + VAT by day ──
+  const dailyData = useMemo(() => {
+    const map: Record<string, { date: string; total: number; vat: number }> = {};
+    invoices.forEach((inv) => {
+      if (!inv.invoiceDate) return;
+      try {
+        const d = parseISO(inv.invoiceDate);
+        if (!isValid(d)) return;
+        const key = format(d, "dd/MM");
+        if (!map[key]) map[key] = { date: key, total: 0, vat: 0 };
+        map[key].total += Number(inv.total || 0);
+        map[key].vat   += Number(inv.vat   || 0);
+      } catch {}
+    });
+    return Object.values(map).sort((a, b) => {
+      const [ad, am] = a.date.split("/").map(Number);
+      const [bd, bm] = b.date.split("/").map(Number);
+      return am !== bm ? am - bm : ad - bd;
+    });
+  }, [invoices]);
+
+  // ── chart data: expenses by category ──
+  const categoryData = useMemo(() => {
+    const map: Record<string, number> = {};
+    invoices.forEach((inv) => {
+      const cat = inv.finalCategory ?? inv.suggestedCategory ?? "אחר";
+      map[cat] = (map[cat] || 0) + Number(inv.total || 0);
+    });
+    return Object.entries(map)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 8);
+  }, [invoices]);
+
   // ── select helpers ──
-  const toggleRow = (id: number) =>
+  const toggleRow = (id: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -125,9 +208,11 @@ export default function ExpensesPage() {
     );
 
   // ── actions ──
-  const handleApprove = (id: number) => approve(id);
+  const handleApprove = (id: string) => approve(id);
   const handleDownload = () =>
     toast({ title: "הורדה", description: "הורדת קובץ PDF תתחיל בקרוב." });
+
+  const hasData = invoices.length > 0;
 
   return (
     <Layout>
@@ -148,10 +233,106 @@ export default function ExpensesPage() {
         </button>
       </div>
 
+      {/* ── Charts ── */}
+      {hasData && (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4"
+          dir="rtl"
+        >
+          {/* Trend chart */}
+          <div className="glass-panel rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">מגמת הוצאות ומע״מ</h3>
+              <span className="text-xs text-muted-foreground mr-auto">לפי ימים</span>
+            </div>
+            {dailyData.length < 2 ? (
+              <div className="h-48 flex items-center justify-center text-muted-foreground text-xs">
+                אין מספיק נתונים להצגת גרף
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <AreaChart data={dailyData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gradTotal" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gradVat" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%"  stopColor="#22d3ee" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="date" tick={{ fill: "#888", fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    tick={{ fill: "#888", fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `₪${(v / 1000).toFixed(0)}k`}
+                    width={45}
+                  />
+                  <Tooltip content={<TrendTooltip />} />
+                  <Legend
+                    wrapperStyle={{ fontSize: 11, paddingTop: 8, direction: "rtl" }}
+                    formatter={(v) => v === "total" ? "הוצאות" : 'מע"מ'}
+                  />
+                  <Area type="monotone" dataKey="total" name="total" stroke="#6366f1" strokeWidth={2} fill="url(#gradTotal)" dot={false} />
+                  <Area type="monotone" dataKey="vat"   name="vat"   stroke="#22d3ee" strokeWidth={2} fill="url(#gradVat)"   dot={false} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Category chart */}
+          <div className="glass-panel rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <PieIcon className="w-4 h-4 text-amber-400" />
+              <h3 className="text-sm font-semibold text-foreground">הוצאות לפי קטגוריה</h3>
+            </div>
+            {categoryData.length === 0 ? (
+              <div className="h-48 flex items-center justify-center text-muted-foreground text-xs">
+                אין נתונים
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={categoryData} layout="vertical" margin={{ top: 0, right: 4, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.05)" />
+                  <XAxis
+                    type="number"
+                    tick={{ fill: "#888", fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) => `₪${(v / 1000).toFixed(0)}k`}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tick={{ fill: "#ccc", fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={80}
+                  />
+                  <Tooltip content={<CatTooltip />} />
+                  <Bar dataKey="value" name="סכום" radius={[0, 4, 4, 0]}>
+                    {categoryData.map((_, i) => (
+                      <Cell key={i} fill={CAT_PALETTE[i % CAT_PALETTE.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </motion.div>
+      )}
+
       {/* ── Filter bar ── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
         className="glass-panel rounded-2xl p-4 mb-4"
         dir="rtl"
       >
@@ -226,7 +407,6 @@ export default function ExpensesPage() {
             {/* Head */}
             <thead>
               <tr className="border-b border-white/8 bg-white/3">
-                {/* Checkbox */}
                 <th className="w-10 px-4 py-3">
                   <input
                     type="checkbox"
@@ -240,9 +420,9 @@ export default function ExpensesPage() {
                 <th className="px-4 py-3 text-center font-semibold text-muted-foreground">תאריך</th>
                 <th className="px-4 py-3 text-right font-semibold text-muted-foreground">קטגוריה</th>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">סכום</th>
-                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">מע״מ</th>
+                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">מע״מ %</th>
                 <th className="px-4 py-3 text-center font-semibold text-muted-foreground">מקור</th>
-                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">ביטחון</th>
+                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">סטטוס</th>
                 <th className="px-4 py-3 text-center font-semibold text-muted-foreground">תפעול</th>
               </tr>
             </thead>
@@ -259,20 +439,19 @@ export default function ExpensesPage() {
               {filtered.map((inv, idx) => {
                 const isSelected = selected.has(inv.id);
                 const statusInfo = STATUS_MAP[inv.status] ?? STATUS_MAP["pending_review"];
-                const pct = vatPct(inv.total, inv.vat);
+                const pct = vatPct(inv.total ?? null, inv.vat ?? null);
                 const srcKey = (inv.sourceType ?? "upload").toLowerCase();
                 const srcInfo = SOURCE_LABELS[srcKey] ?? SOURCE_LABELS.upload;
                 const cat = inv.finalCategory ?? inv.suggestedCategory ?? "לא מסווג";
-                const catColor =
-                  CATEGORY_COLORS[cat] ??
-                  "bg-white/8 text-muted-foreground border-white/10";
+                const catColor = CATEGORY_COLORS[cat] ?? "bg-white/8 text-muted-foreground border-white/10";
+                const vendorDisplay = inv.canonicalVendorName ?? inv.normalizedVendorName ?? inv.rawVendorName ?? "—";
 
                 return (
                   <motion.tr
                     key={inv.id}
                     initial={{ opacity: 0, x: 8 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.04 }}
+                    transition={{ delay: idx * 0.03 }}
                     className={`border-b border-white/5 transition-colors group ${
                       isSelected ? "bg-primary/5" : "hover:bg-white/3"
                     }`}
@@ -289,9 +468,7 @@ export default function ExpensesPage() {
 
                     {/* Supplier */}
                     <td className="px-4 py-3.5 text-right">
-                      <span className="font-medium text-foreground">
-                        {inv.vendorName ?? inv.vendorNameNormalized ?? "—"}
-                      </span>
+                      <span className="font-medium text-foreground">{vendorDisplay}</span>
                     </td>
 
                     {/* Document # */}
@@ -308,9 +485,7 @@ export default function ExpensesPage() {
 
                     {/* Category */}
                     <td className="px-4 py-3.5 text-right">
-                      <span
-                        className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full border ${catColor}`}
-                      >
+                      <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full border ${catColor}`}>
                         {cat}
                       </span>
                     </td>
@@ -334,9 +509,7 @@ export default function ExpensesPage() {
 
                     {/* Source */}
                     <td className="px-4 py-3.5 text-center">
-                      <span
-                        className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${srcInfo.color}`}
-                      >
+                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${srcInfo.color}`}>
                         <Mail className="w-3 h-3" />
                         {srcInfo.label}
                       </span>
@@ -344,9 +517,7 @@ export default function ExpensesPage() {
 
                     {/* Status */}
                     <td className="px-4 py-3.5 text-center">
-                      <span
-                        className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${statusInfo.color}`}
-                      >
+                      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${statusInfo.color}`}>
                         {statusInfo.icon}
                         {statusInfo.label}
                       </span>
@@ -408,11 +579,11 @@ export default function ExpensesPage() {
                 <span className="text-foreground font-medium">{filtered.length}</span> הוצאות בסכום
                 כולל של{" "}
                 <span className="text-foreground font-medium" dir="ltr">
-                  {fmtAmount(String(totalAmt))}
+                  {fmtAmount(totalAmt)}
                 </span>{" "}
                 מתוכם{" "}
                 <span className="text-emerald-400 font-medium" dir="ltr">
-                  {fmtAmount(String(totalVat))}
+                  {fmtAmount(totalVat)}
                 </span>{" "}
                 מע״מ
               </>

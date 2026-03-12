@@ -505,136 +505,155 @@ export default function Dashboard() {
         </div>
 
         {/* ── Desktop: table ── */}
-        <div className="hidden sm:block overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-black/20 border-b border-white/5">
-              <TableRow className="hover:bg-transparent border-none">
-                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs">ספק גולמי</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs">ספק מזוהה</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs">קטגוריה מוצעת</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs">קטגוריה סופית</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs">תאריך</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs text-right">סכום</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs text-right">מע״מ</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs">כפילות</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs">סטטוס</TableHead>
-                <TableHead className="text-muted-foreground font-medium py-3 px-4 text-xs text-right">פעולות</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        <div className="hidden sm:block overflow-x-auto" dir="rtl">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/8 bg-white/3">
+                <th className="px-4 py-3 text-right font-semibold text-muted-foreground">ספק</th>
+                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">מס׳ מסמך</th>
+                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">תאריך</th>
+                <th className="px-4 py-3 text-right font-semibold text-muted-foreground">קטגוריה</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">סכום</th>
+                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">מע״מ %</th>
+                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">מקור</th>
+                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">סטטוס</th>
+                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">תפעול</th>
+              </tr>
+            </thead>
+            <tbody>
               {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={10} className="h-64 text-center">
+                <tr>
+                  <td colSpan={9} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
                       טוען נתוני מערכת...
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ) : filteredInvoices.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={10} className="h-64 text-center">
+                <tr>
+                  <td colSpan={9} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center justify-center text-muted-foreground">
                       <CheckCircle2 className="w-12 h-12 mb-4 opacity-20" />
                       <p className="text-lg font-medium text-white/70">לא נמצאו חשבוניות</p>
                       <p className="text-sm mt-1">העלה חשבונית ראשונה או שנה את הסינון.</p>
                     </div>
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ) : (
-                filteredInvoices.map((inv) => (
-                  <TableRow
-                    key={inv.id}
-                    className="border-b border-white/5 hover:bg-white/5 transition-colors group"
-                  >
-                    {/* Raw Vendor */}
-                    <TableCell className="py-3 px-4">
-                      <div className="text-xs text-muted-foreground max-w-[120px] truncate" title={inv.rawVendorName ?? ""}>
-                        {inv.rawVendorName || "—"}
-                      </div>
-                    </TableCell>
+                filteredInvoices.map((inv) => {
+                  const vatNum = inv.total && inv.vat && Number(inv.total) > 0
+                    ? Math.round((Number(inv.vat) / Number(inv.total)) * 100)
+                    : null;
+                  const srcKey = (inv.sourceType ?? "upload").toLowerCase();
+                  const srcLabels: Record<string, { label: string; color: string }> = {
+                    gmail:    { label: "Gmail",    color: "bg-blue-500/15 text-blue-400 border-blue-500/20" },
+                    email:    { label: "Gmail",    color: "bg-blue-500/15 text-blue-400 border-blue-500/20" },
+                    outlook:  { label: "Outlook",  color: "bg-blue-700/15 text-blue-300 border-blue-700/20" },
+                    telegram: { label: "Telegram", color: "bg-sky-500/15 text-sky-400 border-sky-500/20" },
+                    camera:   { label: "מצלמה",   color: "bg-violet-500/15 text-violet-400 border-violet-500/20" },
+                    upload:   { label: "העלאה",   color: "bg-white/10 text-muted-foreground border-white/10" },
+                    manual:   { label: "ידני",    color: "bg-white/10 text-muted-foreground border-white/10" },
+                  };
+                  const srcInfo = srcLabels[srcKey] ?? srcLabels.upload;
+                  const cat = inv.finalCategory ?? inv.suggestedCategory ?? "לא מסווג";
+                  const catColors: Record<string, string> = {
+                    תקשורת: "bg-amber-500/10 text-amber-300 border-amber-500/15",
+                    "נסיעות והובלה": "bg-violet-500/10 text-violet-300 border-violet-500/15",
+                    "ציוד משרדי": "bg-cyan-500/10 text-cyan-300 border-cyan-500/15",
+                    שיווק: "bg-pink-500/10 text-pink-300 border-pink-500/15",
+                    תוכנה: "bg-emerald-500/10 text-emerald-300 border-emerald-500/15",
+                  };
+                  const catColor = catColors[cat] ?? "bg-violet-500/10 text-violet-300 border-violet-500/15";
+                  const statusMap: Record<string, { label: string; color: string }> = {
+                    approved:       { label: "אושר",   color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" },
+                    pending_review: { label: "ממתין",  color: "bg-amber-500/15 text-amber-400 border-amber-500/20" },
+                    rejected:       { label: "נדחה",   color: "bg-rose-500/15 text-rose-400 border-rose-500/20" },
+                  };
+                  const statusInfo = statusMap[inv.status] ?? statusMap.pending_review;
+                  const vendorDisplay = inv.canonicalVendorName ?? inv.normalizedVendorName ?? inv.rawVendorName ?? "—";
 
-                    {/* Matched Vendor */}
-                    <TableCell className="py-3 px-4">
-                      <div className="font-medium text-white text-sm max-w-[140px] truncate" title={inv.canonicalVendorName ?? ""}>
-                        {inv.canonicalVendorName || inv.normalizedVendorName || "—"}
-                      </div>
-                      {inv.taxId && (
-                        <div className="text-xs text-muted-foreground mt-0.5">ח.פ. {inv.taxId}</div>
-                      )}
-                    </TableCell>
+                  return (
+                    <tr
+                      key={inv.id}
+                      className="border-b border-white/5 hover:bg-white/3 transition-colors group"
+                    >
+                      {/* Supplier */}
+                      <td className="px-4 py-3.5 text-right">
+                        <span className="font-medium text-foreground">{vendorDisplay}</span>
+                      </td>
 
-                    {/* Suggested Category */}
-                    <TableCell className="py-3 px-4">
-                      {getCategoryBadge(inv.suggestedCategory)}
-                    </TableCell>
+                      {/* Doc # */}
+                      <td className="px-4 py-3.5 text-center font-mono text-muted-foreground text-xs">
+                        {inv.invoiceNumber ?? "—"}
+                      </td>
 
-                    {/* Final Category */}
-                    <TableCell className="py-3 px-4">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="flex items-center gap-1 group/cat hover:opacity-80 transition-opacity">
-                            {getCategoryBadge(inv.finalCategory)}
-                            <Tag className="w-3 h-3 text-muted-foreground opacity-0 group-hover/cat:opacity-100 transition-opacity" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="bg-card border-white/10 shadow-xl rounded-xl max-h-60 overflow-y-auto">
-                          <DropdownMenuLabel className="text-xs text-muted-foreground">שנה קטגוריה</DropdownMenuLabel>
-                          <DropdownMenuSeparator className="bg-white/5" />
-                          {CATEGORIES.map((cat) => (
-                            <DropdownMenuItem
-                              key={cat}
-                              className="focus:bg-white/5 cursor-pointer rounded-lg text-sm"
-                              onClick={() => updateCategory(inv.id, cat)}
-                            >
-                              {cat}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                      {/* Date */}
+                      <td className="px-4 py-3.5 text-center text-muted-foreground" dir="ltr">
+                        {inv.invoiceDate ? format(new Date(inv.invoiceDate), "dd/MM/yyyy") : "—"}
+                      </td>
 
-                    {/* Date */}
-                    <TableCell className="py-3 px-4 text-xs text-muted-foreground whitespace-nowrap">
-                      {inv.invoiceDate
-                        ? format(new Date(inv.invoiceDate), "dd/MM/yyyy")
-                        : "—"}
-                    </TableCell>
+                      {/* Category — clickable to change */}
+                      <td className="px-4 py-3.5 text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="flex items-center gap-1 group/cat hover:opacity-80 transition-opacity">
+                              <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full border ${catColor}`}>
+                                {cat}
+                              </span>
+                              <Tag className="w-3 h-3 text-muted-foreground opacity-0 group-hover/cat:opacity-100 transition-opacity" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="bg-card border-white/10 shadow-xl rounded-xl max-h-60 overflow-y-auto" dir="rtl">
+                            <DropdownMenuLabel className="text-xs text-muted-foreground">שנה קטגוריה</DropdownMenuLabel>
+                            <DropdownMenuSeparator className="bg-white/5" />
+                            {CATEGORIES.map((c) => (
+                              <DropdownMenuItem
+                                key={c}
+                                className="focus:bg-white/5 cursor-pointer rounded-lg text-sm"
+                                onClick={() => updateCategory(inv.id, c)}
+                              >
+                                {c}
+                              </DropdownMenuItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
 
-                    {/* Total */}
-                    <TableCell className="py-3 px-4 text-right font-medium text-white text-sm whitespace-nowrap" dir="ltr">
-                      {formatCurrency(inv.total, inv.currency)}
-                    </TableCell>
+                      {/* Amount */}
+                      <td className="px-4 py-3.5 font-semibold text-foreground" dir="ltr">
+                        {formatCurrency(inv.total, inv.currency)}
+                      </td>
 
-                    {/* VAT */}
-                    <TableCell className="py-3 px-4 text-right text-xs text-muted-foreground whitespace-nowrap" dir="ltr">
-                      {formatCurrency(inv.vat, inv.currency)}
-                    </TableCell>
-
-                    {/* Duplicate Status */}
-                    <TableCell className="py-3 px-4">
-                      {getDuplicateBadge(inv.duplicateStatus)}
-                    </TableCell>
-
-                    {/* Status */}
-                    <TableCell className="py-3 px-4">
-                      {getStatusBadge(inv.status)}
-                    </TableCell>
-
-                    {/* Actions */}
-                    <TableCell className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        {inv.status === "pending_review" && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 px-2 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-300 rounded-lg text-xs"
-                            onClick={() => approve(inv.id)}
-                            disabled={isPending}
-                          >
-                            <Check className="w-3.5 h-3.5 mr-1" /> אשר
-                          </Button>
+                      {/* VAT % */}
+                      <td className="px-4 py-3.5 text-center">
+                        {vatNum !== null ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <Check className="w-3 h-3" />
+                            {vatNum}%
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
                         )}
+                      </td>
+
+                      {/* Source */}
+                      <td className="px-4 py-3.5 text-center">
+                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${srcInfo.color}`}>
+                          <Mail className="w-3 h-3" />
+                          {srcInfo.label}
+                        </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-4 py-3.5 text-center">
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${statusInfo.color}`}>
+                          {statusInfo.label}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-4 py-3.5 text-center">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -642,53 +661,57 @@ export default function Dashboard() {
                               size="sm"
                               className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity rounded-lg"
                             >
-                              <span className="sr-only">פתח תפריט</span>
                               <MoreHorizontal className="h-3.5 w-3.5" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent
-                            align="end"
-                            className="bg-card border-white/10 shadow-xl rounded-xl"
-                          >
-                            <DropdownMenuLabel className="text-xs text-muted-foreground">
-                              פעולות נוספות
-                            </DropdownMenuLabel>
+                          <DropdownMenuContent align="center" className="bg-card border-white/10 shadow-xl rounded-xl" dir="rtl">
+                            <DropdownMenuLabel className="text-xs text-muted-foreground">פעולות</DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-white/5" />
+                            {inv.status === "pending_review" && (
+                              <DropdownMenuItem
+                                className="focus:bg-white/5 cursor-pointer text-emerald-400 focus:text-emerald-300 rounded-lg text-sm gap-2"
+                                onClick={() => approve(inv.id)}
+                                disabled={isPending}
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                אשר
+                              </DropdownMenuItem>
+                            )}
                             {inv.duplicateStatus !== "unique" && (
                               <DropdownMenuItem
-                                className="focus:bg-white/5 cursor-pointer text-amber-400 focus:text-amber-300 rounded-lg text-sm"
+                                className="focus:bg-white/5 cursor-pointer text-amber-400 focus:text-amber-300 rounded-lg text-sm gap-2"
                                 onClick={() => markNotDuplicate(inv.id)}
                                 disabled={isPending}
                               >
-                                <XCircle className="w-4 h-4 mr-2" />
+                                <XCircle className="w-3.5 h-3.5" />
                                 סמן כלא-כפול
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
-                              className="focus:bg-white/5 cursor-pointer rounded-lg text-sm"
+                              className="focus:bg-white/5 cursor-pointer rounded-lg text-sm gap-2"
                               onClick={() => openMerge(inv)}
                             >
-                              <Merge className="w-4 h-4 mr-2 text-primary" />
-                              מיזוג כינוי ספק
+                              <Merge className="w-3.5 h-3.5 text-primary" />
+                              מיזוג ספק
                             </DropdownMenuItem>
                             {inv.filePath && (
                               <DropdownMenuItem
-                                className="focus:bg-white/5 cursor-pointer rounded-lg text-sm"
+                                className="focus:bg-white/5 cursor-pointer rounded-lg text-sm gap-2"
                                 onClick={() => window.open(inv.filePath!, "_blank")}
                               >
-                                <FileCheck className="w-4 h-4 mr-2 text-violet-400" />
+                                <FileCheck className="w-3.5 h-3.5 text-violet-400" />
                                 צפה בקובץ
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
+                      </td>
+                    </tr>
+                  );
+                })
               )}
-            </TableBody>
-          </Table>
+            </tbody>
+          </table>
         </div>
       </motion.div>
 
