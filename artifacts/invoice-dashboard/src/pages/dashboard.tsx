@@ -47,7 +47,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { OptimizeWidget } from "@/components/optimize-widget";
 import { MergeAliasDialog } from "@/components/merge-alias-dialog";
-import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
 import { EmailScanModal } from "@/components/email-scan-modal";
 import { SendToAccountantModal } from "@/components/send-to-accountant-modal";
 
@@ -295,8 +294,6 @@ export default function Dashboard() {
 
   const [filter, setFilter] = useState<FilterType>("all");
   const [search, setSearch] = useState("");
-  const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadMode, setUploadMode] = useState<"upload" | "camera">("upload");
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailMode, setEmailMode] = useState<"scan" | "attach">("scan");
   const [accountantOpen, setAccountantOpen] = useState(false);
@@ -329,11 +326,6 @@ export default function Dashboard() {
   const openMerge = useCallback((inv: InvoiceRow) =>
     setMergeDialog({ isOpen: true, invoiceId: inv.id, rawVendorName: inv.rawVendorName ?? null }),
   []);
-
-  const openUpload = (mode: "upload" | "camera") => {
-    setUploadMode(mode);
-    setUploadOpen(true);
-  };
 
   const openEmail = (mode: "scan" | "attach") => {
     setEmailMode(mode);
@@ -376,14 +368,6 @@ export default function Dashboard() {
             <span className="hidden sm:inline">{monthStart} - {monthEnd}</span>
           </button>
 
-          {/* Upload button */}
-          <button
-            onClick={() => openUpload("upload")}
-            className="flex items-center gap-2 h-10 px-3 sm:px-4 rounded-xl bg-primary text-white font-medium text-sm hover:bg-primary/90 transition-colors shrink-0"
-          >
-            <Upload className="w-4 h-4" />
-            <span className="hidden sm:inline">העלה חשבוניות</span>
-          </button>
         </div>
       </div>
 
@@ -726,11 +710,6 @@ export default function Dashboard() {
           setMergeDialog({ isOpen: false, invoiceId: null, rawVendorName: null });
         }}
         isPending={isPending}
-      />
-
-      <UploadInvoiceModal
-        isOpen={uploadOpen}
-        onClose={() => setUploadOpen(false)}
       />
 
       <EmailScanModal

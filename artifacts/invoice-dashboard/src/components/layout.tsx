@@ -17,7 +17,10 @@ import {
   Sun,
   Moon,
   Gift,
+  Upload,
+  CalendarDays,
 } from "lucide-react";
+import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
 import { useTheme } from "@/context/theme-context";
 import {
   DropdownMenu,
@@ -212,8 +215,11 @@ function PersonalAreaDropdown() {
 export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [trialDismissed, setTrialDismissed] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [location] = useLocation();
   const { theme, toggleTheme } = useTheme();
+
+  const openUpload = () => { setUploadOpen(true); };
 
   const currentLabel = ALL_NAV.find((n) => n.href === location)?.label ?? "דשבורד";
 
@@ -275,6 +281,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <span className="text-sm font-semibold text-foreground tracking-wide">{currentLabel}</span>
             </div>
 
+            {/* Left side: יומן + Upload buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                className="hidden sm:flex items-center gap-1.5 h-9 px-3 rounded-xl border border-white/10 bg-card/60 text-muted-foreground text-xs hover:bg-white/5 hover:text-foreground transition-colors whitespace-nowrap shrink-0"
+                title="יומן"
+              >
+                <CalendarDays className="w-4 h-4 shrink-0" />
+                <span className="hidden md:inline">יומן</span>
+              </button>
+              <button
+                onClick={openUpload}
+                className="flex items-center gap-1.5 h-9 px-3 rounded-xl bg-primary text-white font-medium text-xs hover:bg-primary/90 transition-colors shrink-0"
+              >
+                <Upload className="w-4 h-4" />
+                <span className="hidden sm:inline">העלה חשבונית</span>
+              </button>
+            </div>
+
             {/* Right: theme + bell + BillBOT+ logo */}
             <div className="flex items-center gap-2">
               <button
@@ -319,6 +343,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
           );
         })}
       </nav>
+
+      {/* Global Upload Modal */}
+      <UploadInvoiceModal
+        isOpen={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+      />
     </div>
   );
 }
