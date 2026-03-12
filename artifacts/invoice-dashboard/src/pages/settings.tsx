@@ -26,6 +26,13 @@ import {
   ChevronDown,
   ChevronUp,
   FlaskConical,
+  Tag,
+  Pencil,
+  Building2,
+  User,
+  HardDrive,
+  Star,
+  Check,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
@@ -89,6 +96,89 @@ const INITIAL: Record<"outlook", EmailConnector> = {
 };
 
 export default function Settings() {
+  // ── Categories state ──────────────────────────────────────────────────────
+  interface Category { id: string; name: string; color: string; is_deletable: boolean; is_default: boolean; }
+  interface Entity { id: string; name: string; type: string; tax_id: string | null; is_default: boolean; }
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [newCatName, setNewCatName] = useState("");
+  const [newCatColor, setNewCatColor] = useState("#6366f1");
+  const [editingCat, setEditingCat] = useState<string | null>(null);
+  const [editCatName, setEditCatName] = useState("");
+  const [catLoading, setCatLoading] = useState(false);
+
+  const [entities, setEntities] = useState<Entity[]>([]);
+  const [newEntityName, setNewEntityName] = useState("");
+  const [newEntityType, setNewEntityType] = useState<"business" | "personal">("business");
+  const [newEntityTaxId, setNewEntityTaxId] = useState("");
+  const [entityLoading, setEntityLoading] = useState(false);
+
+  const loadCategories = useCallback(async () => {
+    setCatLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/categories`);
+      setCategories(await r.json());
+    } catch { /* ignore */ } finally { setCatLoading(false); }
+  }, []);
+
+  const addCategory = async () => {
+    if (!newCatName.trim()) return;
+    try {
+      const r = await fetch(`${API_BASE}/categories`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newCatName.trim(), color: newCatColor }) });
+      const cat = await r.json();
+      setCategories((p) => [...p, cat]);
+      setNewCatName("");
+    } catch { toast({ title: "שגיאה", variant: "destructive" }); }
+  };
+
+  const updateCategory = async (id: string) => {
+    try {
+      const r = await fetch(`${API_BASE}/categories/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: editCatName }) });
+      const cat = await r.json();
+      setCategories((p) => p.map((c) => c.id === id ? cat : c));
+      setEditingCat(null);
+    } catch { toast({ title: "שגיאה", variant: "destructive" }); }
+  };
+
+  const deleteCategory = async (id: string) => {
+    try {
+      await fetch(`${API_BASE}/categories/${id}`, { method: "DELETE" });
+      setCategories((p) => p.filter((c) => c.id !== id));
+    } catch { toast({ title: "שגיאה", variant: "destructive" }); }
+  };
+
+  const loadEntities = useCallback(async () => {
+    setEntityLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/entities`);
+      setEntities(await r.json());
+    } catch { /* ignore */ } finally { setEntityLoading(false); }
+  }, []);
+
+  const addEntity = async () => {
+    if (!newEntityName.trim()) return;
+    try {
+      const r = await fetch(`${API_BASE}/entities`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: newEntityName.trim(), type: newEntityType, tax_id: newEntityTaxId || null }) });
+      const entity = await r.json();
+      setEntities((p) => [...p, entity]);
+      setNewEntityName(""); setNewEntityTaxId("");
+    } catch { toast({ title: "שגיאה", variant: "destructive" }); }
+  };
+
+  const setDefaultEntity = async (id: string) => {
+    try {
+      await fetch(`${API_BASE}/entities/${id}/set-default`, { method: "PATCH" });
+      setEntities((p) => p.map((e) => ({ ...e, is_default: e.id === id })));
+    } catch { toast({ title: "שגיאה", variant: "destructive" }); }
+  };
+
+  const deleteEntity = async (id: string) => {
+    try {
+      await fetch(`${API_BASE}/entities/${id}`, { method: "DELETE" });
+      setEntities((p) => p.filter((e) => e.id !== id));
+    } catch { toast({ title: "שגיאה", variant: "destructive" }); }
+  };
+
   const [connectors, setConnectors] = useState(INITIAL);
   const [showPass, setShowPass] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -143,7 +233,9 @@ export default function Settings() {
     fetchGmailStatus();
     fetchTelegramStatus();
     fetchWhatsAppStatus();
-  }, [fetchGmailStatus, fetchTelegramStatus, fetchWhatsAppStatus]);
+    loadCategories();
+    loadEntities();
+  }, [fetchGmailStatus, fetchTelegramStatus, fetchWhatsAppStatus, loadCategories, loadEntities]);
 
   // --- API Connections state ---
   const [apiConnections, setApiConnections] = useState<ApiConnection[]>([]);
@@ -930,6 +1022,208 @@ export default function Settings() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* ── Expense Categories ── */}
+        <div className="rounded-2xl border border-white/10 bg-card/30 p-5 space-y-4" dir="rtl">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-violet-500/10 border border-violet-500/20">
+              <Tag className="w-5 h-5 text-violet-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground text-sm">קטגוריות הוצאה</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">נהל קטגוריות לסיווג חשבוניות</p>
+            </div>
+          </div>
+
+          {catLoading ? (
+            <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <div className="space-y-2">
+              {categories.map((cat) => (
+                <div key={cat.id} className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/8 px-3 py-2.5">
+                  <span className="w-3 h-3 rounded-full shrink-0" style={{ background: cat.color }} />
+                  {editingCat === cat.id ? (
+                    <>
+                      <input
+                        value={editCatName}
+                        onChange={(e) => setEditCatName(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && updateCategory(cat.id)}
+                        className="flex-1 bg-transparent text-sm text-foreground outline-none border-b border-primary/40"
+                        autoFocus
+                        dir="rtl"
+                      />
+                      <button onClick={() => updateCategory(cat.id)} className="text-emerald-400 hover:text-emerald-300 transition-colors">
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => setEditingCat(null)} className="text-muted-foreground hover:text-foreground transition-colors">
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm text-foreground">{cat.name}</span>
+                      {cat.is_default && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20">ברירת מחדל</span>
+                      )}
+                      <button onClick={() => { setEditingCat(cat.id); setEditCatName(cat.name); }} className="text-muted-foreground hover:text-foreground transition-colors">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      {cat.is_deletable && (
+                        <button onClick={() => deleteCategory(cat.id)} className="text-muted-foreground hover:text-rose-400 transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add new */}
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="color"
+              value={newCatColor}
+              onChange={(e) => setNewCatColor(e.target.value)}
+              className="w-8 h-8 rounded-lg cursor-pointer border border-white/10 bg-transparent"
+            />
+            <input
+              value={newCatName}
+              onChange={(e) => setNewCatName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && addCategory()}
+              placeholder="שם קטגוריה חדשה..."
+              dir="rtl"
+              className="flex-1 h-9 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all"
+            />
+            <button
+              onClick={addCategory}
+              disabled={!newCatName.trim()}
+              className="h-9 px-3 rounded-xl bg-primary/15 border border-primary/20 text-primary hover:bg-primary/25 transition-colors disabled:opacity-40"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* ── Business Entities ── */}
+        <div className="rounded-2xl border border-white/10 bg-card/30 p-5 space-y-4" dir="rtl">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <Building2 className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground text-sm">ישויות עסקיות</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">נהל חשבונות עסקיים ואישיים נפרדים</p>
+            </div>
+          </div>
+
+          {entityLoading ? (
+            <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+          ) : (
+            <div className="space-y-2">
+              {entities.map((entity) => (
+                <div key={entity.id} className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors ${entity.is_default ? "bg-primary/8 border-primary/20" : "bg-white/5 border-white/8"}`}>
+                  <div className={`p-1.5 rounded-lg ${entity.type === "business" ? "bg-amber-500/10 text-amber-400" : "bg-sky-500/10 text-sky-400"}`}>
+                    {entity.type === "business" ? <Building2 className="w-3.5 h-3.5" /> : <User className="w-3.5 h-3.5" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">{entity.name}</p>
+                    {entity.tax_id && <p className="text-xs text-muted-foreground font-mono" dir="ltr">{entity.tax_id}</p>}
+                  </div>
+                  {entity.is_default && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 flex items-center gap-1">
+                      <Star className="w-2.5 h-2.5" />פעיל
+                    </span>
+                  )}
+                  {!entity.is_default && (
+                    <button onClick={() => setDefaultEntity(entity.id)} className="text-xs text-muted-foreground hover:text-primary border border-white/10 hover:border-primary/30 rounded-lg px-2 py-1 transition-colors">
+                      הפעל
+                    </button>
+                  )}
+                  {!entity.is_default && (
+                    <button onClick={() => deleteEntity(entity.id)} className="text-muted-foreground hover:text-rose-400 transition-colors">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add entity */}
+          <div className="space-y-2 pt-1">
+            <div className="flex gap-2">
+              <select
+                value={newEntityType}
+                onChange={(e) => setNewEntityType(e.target.value as "business" | "personal")}
+                className="h-9 px-2 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none"
+                dir="rtl"
+              >
+                <option value="business">עסקי</option>
+                <option value="personal">אישי</option>
+              </select>
+              <input
+                value={newEntityName}
+                onChange={(e) => setNewEntityName(e.target.value)}
+                placeholder="שם הישות..."
+                dir="rtl"
+                className="flex-1 h-9 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all"
+              />
+            </div>
+            <div className="flex gap-2">
+              <input
+                value={newEntityTaxId}
+                onChange={(e) => setNewEntityTaxId(e.target.value)}
+                placeholder="ח.פ / ע.מ (אופציונלי)"
+                dir="rtl"
+                className="flex-1 h-9 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 transition-all"
+              />
+              <button
+                onClick={addEntity}
+                disabled={!newEntityName.trim()}
+                className="h-9 px-4 rounded-xl bg-primary/15 border border-primary/20 text-primary text-sm hover:bg-primary/25 transition-colors disabled:opacity-40 flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                הוסף
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Google Drive Integration ── */}
+        <div className="rounded-2xl border border-white/10 bg-card/30 p-5" dir="rtl">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                <HardDrive className="w-5 h-5 text-emerald-400" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground text-sm">Google Drive</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">שמור קבלות אוטומטית ב-Drive האישי שלך</p>
+              </div>
+            </div>
+            <span className="text-[10px] px-2 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium shrink-0">בקרוב</span>
+          </div>
+          <div className="mt-4 space-y-3 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2.5 opacity-50">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>סנכרון אוטומטי לאחר קליטת חשבונית</span>
+            </div>
+            <div className="flex items-center gap-2.5 opacity-50">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>ארגון לפי תיקיות קטגוריה ותאריך</span>
+            </div>
+            <div className="flex items-center gap-2.5 opacity-50">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>גיבוי מלא של כל המסמכים</span>
+            </div>
+          </div>
+          <button disabled className="mt-4 w-full h-10 rounded-xl bg-white/5 border border-white/10 text-muted-foreground text-sm cursor-not-allowed flex items-center justify-center gap-2">
+            <HardDrive className="w-4 h-4" />
+            חבר Google Drive
+          </button>
         </div>
 
         {/* Save */}

@@ -1,0 +1,63 @@
+הבנתי בדיוק מה אתה צריך. לקחתי את סיכום הפעילות שצירפת (שכולל גם שאריות טקסט של WellyBox/BILLBOT) והפכתי אותו למסמך דרישות טכני (Task List / PRD) מסודר וממוקד.
+
+הכין לך את המסמך באנגלית, מכיוון שסוכני AI כמו Replit עובדים בצורה המדויקת והטובה ביותר עם הנחיות טכניות בשפה הזו. תוכל פשוט להעתיק ולהדביק את זה ישירות אליו.
+
+---
+
+### 🚀 BILLBOT System Requirements & Task List for Replit
+
+Please review the following system specifications for the **BILLBOT** expense management system. Implement any missing features, database models, or UI components to ensure the system matches this exact state.
+
+#### **1. Authentication & External APIs**
+
+* **Gmail Integration (OAuth 2.0):**
+* Implement Google OAuth to connect user Gmail accounts.
+* Store connection status, creation date, and last sync timestamp.
+* *UI Requirement:* Display connected accounts in an "Inboxes" section with a green checkmark and "Connected" status.
+
+
+* **Google Drive Integration:**
+* Implement Google Drive API authorization (require storage permissions).
+* Build the logic to automatically sync and save parsed receipts/invoices directly into the user's Google Drive.
+
+
+
+#### **2. Core Processing Logic**
+
+* **Email Syncing Engine:**
+* Build a background service to automatically fetch and collect receipts from connected email accounts.
+* Allow users to define a specific starting date for the sync (e.g., syncing historical data from a specific month/year).
+
+
+* **Multi-Entity Support:**
+* Database must support multiple entities per user account (e.g., "Business Default" and "Personal").
+
+
+
+#### **3. Frontend UI & Dashboards**
+
+* **Onboarding Progress Tracker:**
+* Create an "Optimize Your Account" dashboard widget.
+* Display a dynamic completion percentage based on a checklist.
+* *Checklist items:* Connect mailbox, Add documents, View receipts, Connect Google Drive, WhatsApp Integration.
+
+
+* **"All Receipts" Management View:**
+* Build a data table or grid view for all collected receipts.
+* *Required Data Columns/Elements:* Receipt thumbnails/previews, Status indicators (e.g., "New", "Reviewed"), Vendor Name (e.g., Meta Platforms, Canva), Expense Date, and Total Amount.
+* *Required Features:* Date range filters, sorting options, and an Export capability.
+
+
+* **Settings & Configuration Module:**
+* **Expense Categories:** Build a UI to manage categories. Set "General and Administrative" as a non-deletable default, and allow CRUD (Create, Read, Update, Delete) operations for custom categories.
+* **Business Entities:** UI to switch between or manage the "Business" and "Personal" profiles.
+
+
+
+#### **4. Pending / Future Features (Stubs Required)**
+
+* **WhatsApp Integration:** Prepare database fields and UI placeholders for mobile receipt scanning via WhatsApp.
+
+---
+
+האם תרצה שאפרק לך את אחד הסעיפים כאן ברמה הטכנית (למשל, לבקש מ-Replit לבנות קודם רק את הסכמות של מסד הנתונים עבור הקבלות והקטגוריות)?

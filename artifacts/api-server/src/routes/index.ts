@@ -7,6 +7,8 @@ import telegramRouter from "./telegram.js";
 import whatsappRouter from "./whatsapp.js";
 import emailConnectorsRouter from "./email-connectors.js";
 import externalApiRouter from "./external-api.js";
+import categoriesRouter from "./categories.js";
+import entitiesRouter from "./entities.js";
 
 const router: IRouter = Router();
 
@@ -18,5 +20,7 @@ router.use("/telegram", telegramRouter);
 router.use("/whatsapp", whatsappRouter);
 router.use("/email-connectors", emailConnectorsRouter);
 router.use("/external-api", externalApiRouter);
+router.use("/categories", categoriesRouter);
+router.use("/entities", entitiesRouter);
 
 export default router;

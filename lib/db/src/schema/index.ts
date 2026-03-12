@@ -5,3 +5,5 @@ export * from "./categoryRules";
 export * from "./conversations";
 export * from "./messages";
 export * from "./apiConnections";
+export * from "./categories";
+export * from "./entities";

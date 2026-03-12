@@ -45,6 +45,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OptimizeWidget } from "@/components/optimize-widget";
 import { MergeAliasDialog } from "@/components/merge-alias-dialog";
 import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
 import { EmailScanModal } from "@/components/email-scan-modal";
@@ -435,6 +436,9 @@ export default function Dashboard() {
           delay={0.25}
         />
       </div>
+
+      {/* ── Optimize Account Widget ── */}
+      <OptimizeWidget invoiceCount={invoices?.length ?? 0} />
 
       {/* ── Table / cards panel ── */}
       <motion.div
