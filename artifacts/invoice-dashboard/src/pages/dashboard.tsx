@@ -161,11 +161,9 @@ function getCategoryBadge(category: string | null | undefined) {
 
 function formatCurrency(amount: string | null | undefined, currency: string) {
   if (!amount) return "—";
-  return Number(amount).toLocaleString("he-IL", {
-    style: "currency",
-    currency: currency || "ILS",
-    maximumFractionDigits: 0,
-  });
+  const symbol = (currency || "ILS") === "ILS" ? "₪" : currency;
+  const num = Number(amount).toLocaleString("he-IL", { maximumFractionDigits: 0 });
+  return `${symbol}${num}`;
 }
 
 // ── Mobile invoice card ──────────────────────────────────────────────────────
@@ -201,7 +199,7 @@ function InvoiceCard({
               : "תאריך לא ידוע"}
           </p>
         </div>
-        <p className="text-base font-bold text-white shrink-0">
+        <p className="text-base font-bold text-white shrink-0" dir="ltr">
           {formatCurrency(inv.total, inv.currency)}
         </p>
       </div>
@@ -404,7 +402,7 @@ export default function Dashboard() {
         <StatCard
           title="סה״כ חשבוניות"
           value={summary?.total_amount
-            ? Number(summary.total_amount).toLocaleString("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 })
+            ? `₪${Number(summary.total_amount).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`
             : "₪0"}
           icon={<Banknote className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />}
           delay={0.1}
@@ -412,7 +410,7 @@ export default function Dashboard() {
         <StatCard
           title="סה״כ מע״מ"
           value={summary?.total_vat
-            ? Number(summary.total_vat).toLocaleString("he-IL", { style: "currency", currency: "ILS", maximumFractionDigits: 0 })
+            ? `₪${Number(summary.total_vat).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`
             : "₪0"}
           icon={<Tag className="w-5 h-5 sm:w-6 sm:h-6 text-violet-400" />}
           delay={0.15}
@@ -599,12 +597,12 @@ export default function Dashboard() {
                     </TableCell>
 
                     {/* Total */}
-                    <TableCell className="py-3 px-4 text-right font-medium text-white text-sm whitespace-nowrap">
+                    <TableCell className="py-3 px-4 text-right font-medium text-white text-sm whitespace-nowrap" dir="ltr">
                       {formatCurrency(inv.total, inv.currency)}
                     </TableCell>
 
                     {/* VAT */}
-                    <TableCell className="py-3 px-4 text-right text-xs text-muted-foreground whitespace-nowrap">
+                    <TableCell className="py-3 px-4 text-right text-xs text-muted-foreground whitespace-nowrap" dir="ltr">
                       {formatCurrency(inv.vat, inv.currency)}
                     </TableCell>
 
