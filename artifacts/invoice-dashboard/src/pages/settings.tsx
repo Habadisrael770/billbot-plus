@@ -79,6 +79,7 @@ interface ServiceDef {
 interface GmailOAuthStatus {
   connected: boolean;
   email: string | null;
+  credentialsConfigured?: boolean;
   messagesTotal?: number;
   error?: string;
 }
@@ -268,15 +269,40 @@ export default function Settings() {
   const fetchGmailStatus = useCallback(async () => {
     setIsLoadingGmail(true);
     try {
-      const res = await fetch(`${API_BASE}/email-connectors/gmail/status`);
+      const res = await fetch(`${API_BASE}/gmail-auth/status`);
       const data = await res.json() as GmailOAuthStatus;
       setGmailStatus(data);
     } catch {
-      setGmailStatus({ connected: false, email: null });
+      setGmailStatus({ connected: false, email: null, credentialsConfigured: false });
     } finally {
       setIsLoadingGmail(false);
     }
   }, []);
+
+  const connectGmail = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/gmail-auth/url`);
+      const data = await res.json() as { url?: string; error?: string };
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        toast({ title: "שגיאה", description: data.error ?? "לא ניתן לקבל כתובת חיבור", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "שגיאה", description: "לא ניתן להתחבר לשרת", variant: "destructive" });
+    }
+  };
+
+  const disconnectGmailFn = async () => {
+    try {
+      await fetch(`${API_BASE}/gmail-auth/disconnect`, { method: "POST" });
+      setGmailStatus({ connected: false, email: null, credentialsConfigured: gmailStatus?.credentialsConfigured });
+      setGmailScanResult(null);
+      toast({ title: "Gmail נותק", description: "החיבור לחשבון Google הוסר בהצלחה." });
+    } catch {
+      toast({ title: "שגיאה", description: "לא ניתן לנתק את Gmail", variant: "destructive" });
+    }
+  };
 
   const fetchTelegramStatus = useCallback(async () => {
     setIsFetchingTg(true);
@@ -630,6 +656,7 @@ export default function Settings() {
 
             {/* Gmail OAuth Card */}
             <div className="rounded-2xl border border-white/5 bg-card/20 p-5 flex flex-col gap-4">
+              {/* Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center text-lg font-bold text-red-400">G</div>
@@ -653,15 +680,25 @@ export default function Settings() {
                 )}
               </div>
 
-              {gmailStatus?.connected && (
-                <div className="px-3 py-2 rounded-xl bg-emerald-500/5 border border-emerald-500/10">
-                  <p className="text-xs text-emerald-400 font-mono" dir="ltr">{gmailStatus.email}</p>
-                  {gmailStatus.messagesTotal != null && (
-                    <p className="text-xs text-muted-foreground mt-0.5">{gmailStatus.messagesTotal.toLocaleString()} הודעות בתיבה</p>
-                  )}
+              {/* No credentials configured */}
+              {!isLoadingGmail && !gmailStatus?.credentialsConfigured && (
+                <div className="rounded-xl bg-amber-500/8 border border-amber-500/20 px-3 py-2.5 space-y-1" dir="rtl">
+                  <p className="text-xs font-medium text-amber-300">נדרשים פרטי Google OAuth</p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    יש להוסיף את הסודות <span className="font-mono text-white/70">GOOGLE_CLIENT_ID</span> ו-<span className="font-mono text-white/70">GOOGLE_CLIENT_SECRET</span> בהגדרות הפרויקט.
+                  </p>
                 </div>
               )}
 
+              {/* Connected email */}
+              {gmailStatus?.connected && (
+                <div className="px-3 py-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/10 space-y-0.5">
+                  <p className="text-[11px] text-muted-foreground">חשבון מחובר:</p>
+                  <p className="text-xs text-emerald-400 font-mono" dir="ltr">{gmailStatus.email}</p>
+                </div>
+              )}
+
+              {/* Scan result */}
               {gmailScanResult && (
                 <div className="px-3 py-2 rounded-xl bg-primary/5 border border-primary/20">
                   <p className="text-xs text-primary font-medium">
@@ -670,33 +707,57 @@ export default function Settings() {
                 </div>
               )}
 
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={fetchGmailStatus}
-                  disabled={isLoadingGmail}
-                  className="flex-1 rounded-xl border border-white/10 gap-1.5 text-xs"
-                >
-                  {isLoadingGmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
-                  רענן סטטוס
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={scanGmail}
-                  disabled={!gmailStatus?.connected || isScanningGmail}
-                  className="flex-1 rounded-xl bg-red-500/80 hover:bg-red-500 gap-1.5 text-xs"
-                >
-                  {isScanningGmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ScanText className="w-3.5 h-3.5" />}
-                  סרוק חשבוניות
-                </Button>
+              {/* Action buttons */}
+              <div className="flex flex-col gap-2">
+                {gmailStatus?.connected ? (
+                  <>
+                    {/* Scan */}
+                    <Button
+                      size="sm"
+                      onClick={scanGmail}
+                      disabled={isScanningGmail}
+                      className="w-full rounded-xl bg-red-500/80 hover:bg-red-500 gap-2 text-xs"
+                    >
+                      {isScanningGmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <ScanText className="w-3.5 h-3.5" />}
+                      סרוק חשבוניות מ-Gmail
+                    </Button>
+                    {/* Disconnect */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={disconnectGmailFn}
+                      className="w-full rounded-xl border border-white/10 gap-2 text-xs text-muted-foreground hover:text-rose-400 hover:border-rose-500/20"
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                      נתק חשבון
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    {/* Connect */}
+                    <Button
+                      size="sm"
+                      onClick={connectGmail}
+                      disabled={!gmailStatus?.credentialsConfigured || isLoadingGmail}
+                      className="w-full rounded-xl bg-white text-black hover:bg-white/90 gap-2 text-xs font-semibold"
+                    >
+                      <span className="text-sm font-bold text-red-500 leading-none">G</span>
+                      {gmailStatus?.credentialsConfigured ? "התחבר עם Google" : "נדרשת הגדרת OAuth"}
+                    </Button>
+                    {/* Refresh */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={fetchGmailStatus}
+                      disabled={isLoadingGmail}
+                      className="w-full rounded-xl border border-white/10 gap-2 text-xs"
+                    >
+                      {isLoadingGmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <RefreshCw className="w-3.5 h-3.5" />}
+                      רענן סטטוס
+                    </Button>
+                  </>
+                )}
               </div>
-
-              {!gmailStatus?.connected && !isLoadingGmail && (
-                <p className="text-xs text-muted-foreground text-center">
-                  החיבור מוגדר דרך מערכת Replit — אשר את הגישה ב-Google כדי להפעיל
-                </p>
-              )}
             </div>
 
             <ConnectorCard provider="outlook" />

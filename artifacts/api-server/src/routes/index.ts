@@ -10,6 +10,7 @@ import externalApiRouter from "./external-api.js";
 import categoriesRouter from "./categories.js";
 import entitiesRouter from "./entities.js";
 import businessProfileRouter from "./businessProfile.js";
+import gmailAuthRouter from "./gmail-auth.js";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use("/external-api", externalApiRouter);
 router.use("/categories", categoriesRouter);
 router.use("/entities", entitiesRouter);
 router.use("/business-profile", businessProfileRouter);
+router.use("/gmail-auth", gmailAuthRouter);
 
 export default router;

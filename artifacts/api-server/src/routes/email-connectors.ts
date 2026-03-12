@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import path from "path";
 import fs from "fs";
-import { getUncachableGmailClient, isGmailConnected } from "../services/gmailClient.js";
+import { getGmailClient, getGmailStatus } from "../services/gmailOAuth.js";
 import { processInvoice } from "../services/invoiceProcessingService.js";
 
 const router: IRouter = Router();
@@ -18,18 +18,8 @@ function getMonthUploadsDir(): string {
 // GET /api/email-connectors/gmail/status
 router.get("/gmail/status", async (_req, res) => {
   try {
-    const connected = await isGmailConnected();
-    if (!connected) {
-      res.json({ connected: false, email: null });
-      return;
-    }
-    const gmail = await getUncachableGmailClient();
-    const profile = await gmail.users.getProfile({ userId: "me" });
-    res.json({
-      connected: true,
-      email: profile.data.emailAddress ?? null,
-      messagesTotal: profile.data.messagesTotal ?? 0,
-    });
+    const status = await getGmailStatus();
+    res.json(status);
   } catch (err) {
     res.json({ connected: false, email: null, error: String(err) });
   }
@@ -39,7 +29,7 @@ router.get("/gmail/status", async (_req, res) => {
 // Scans Gmail for invoice attachments and processes them
 router.post("/gmail/scan", async (_req, res) => {
   try {
-    const gmail = await getUncachableGmailClient();
+    const { client: gmail } = await getGmailClient();
 
     // Search for emails with PDF/image attachments that look like invoices
     const SEARCH_QUERIES = [
