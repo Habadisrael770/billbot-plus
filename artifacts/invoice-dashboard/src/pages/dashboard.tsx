@@ -86,7 +86,7 @@ const FILTERS: { key: FilterType; label: string }[] = [
 const CATEGORIES = [
   "תקשורת",
   "ציוד משרדי / מחשבים",
-  "תוכנה / AI / SaaS",
+  "תכנה /AI",
   "תוכנת ענן",
   "דלק / רכב",
   "סופרמרקט / מזון",
@@ -562,7 +562,7 @@ export default function Dashboard() {
                     "נסיעות והובלה": "bg-violet-500/10 text-violet-300 border-violet-500/15",
                     "ציוד משרדי": "bg-cyan-500/10 text-cyan-300 border-cyan-500/15",
                     שיווק: "bg-pink-500/10 text-pink-300 border-pink-500/15",
-                    תוכנה: "bg-emerald-500/10 text-emerald-300 border-emerald-500/15",
+                    "תכנה /AI": "bg-emerald-500/10 text-emerald-300 border-emerald-500/15",
                   };
                   const catColor = catColors[cat] ?? "bg-violet-500/10 text-violet-300 border-violet-500/15";
                   const statusMap: Record<string, { label: string; color: string }> = {

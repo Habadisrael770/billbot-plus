@@ -70,7 +70,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "נסיעות והובלה": "bg-violet-500/10 text-violet-300 border-violet-500/15",
   "ציוד משרדי": "bg-cyan-500/10 text-cyan-300 border-cyan-500/15",
   שיווק: "bg-pink-500/10 text-pink-300 border-pink-500/15",
-  תוכנה: "bg-emerald-500/10 text-emerald-300 border-emerald-500/15",
+  "תכנה /AI": "bg-emerald-500/10 text-emerald-300 border-emerald-500/15",
   'שכ"ד': "bg-orange-500/10 text-orange-300 border-orange-500/15",
   חשמל: "bg-yellow-500/10 text-yellow-300 border-yellow-500/15",
 };
