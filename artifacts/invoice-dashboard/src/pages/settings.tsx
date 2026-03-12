@@ -89,6 +89,9 @@ interface TelegramStatus {
 interface WhatsAppStatus {
   configured: boolean;
   phoneNumber: string | null;
+  phoneNumberId?: string | null;
+  verifyToken?: string | null;
+  provider?: string;
 }
 
 const INITIAL: Record<"outlook", EmailConnector> = {
@@ -720,15 +723,15 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* WhatsApp section */}
+        {/* WhatsApp — Meta Cloud API */}
         <div>
           <div className="flex items-center gap-2 mb-3">
             <MessageCircle className="w-4 h-4 text-emerald-400" />
-            <h2 className="text-sm font-semibold text-white">WhatsApp</h2>
-            <span className="text-xs text-muted-foreground">— שלח חשבונית דרך וואטסאפ לתיקיית החודש</span>
+            <h2 className="text-sm font-semibold text-white">WhatsApp Business</h2>
+            <span className="text-xs text-muted-foreground">— Meta WhatsApp Cloud API</span>
           </div>
 
-          <div className="rounded-2xl border border-white/5 bg-card/20 p-5 flex flex-col gap-4">
+          <div className="rounded-2xl border border-white/5 bg-card/20 p-5 flex flex-col gap-4" dir="rtl">
             {/* Status row */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -736,9 +739,11 @@ export default function Settings() {
                   <MessageCircle className="w-5 h-5 text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-white">Twilio WhatsApp</p>
+                  <p className="text-sm font-semibold text-white">WhatsApp Cloud API</p>
                   <p className="text-xs text-muted-foreground">
-                    {whatsAppStatus?.configured ? (whatsAppStatus.phoneNumber ?? "מוגדר") : "לא מוגדר"}
+                    {whatsAppStatus?.configured
+                      ? `Phone ID: ${whatsAppStatus.phoneNumberId ?? "מוגדר"}`
+                      : "מפתח גישה לא מוגדר"}
                   </p>
                 </div>
               </div>
@@ -755,33 +760,75 @@ export default function Settings() {
               )}
             </div>
 
-            {/* Webhook URL to copy */}
+            {/* Webhook URL */}
             <div>
-              <p className="text-xs text-muted-foreground mb-1.5">כתובת ה-Webhook להגדרה ב-Twilio:</p>
+              <p className="text-xs text-muted-foreground mb-1.5">Webhook URL להגדרה ב-Meta Developer Console:</p>
               <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/30 border border-white/10">
                 <Webhook className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                <p className="text-xs text-white/70 font-mono truncate flex-1" dir="ltr">{webhookBaseUrl}/whatsapp/webhook</p>
-                <button onClick={() => copyToClipboard(`${webhookBaseUrl}/whatsapp/webhook`)} className="text-muted-foreground hover:text-white transition-all">
+                <p className="text-xs text-white/70 font-mono truncate flex-1" dir="ltr">
+                  {webhookBaseUrl}/whatsapp/webhook
+                </p>
+                <button
+                  onClick={() => copyToClipboard(`${webhookBaseUrl}/whatsapp/webhook`)}
+                  className="text-muted-foreground hover:text-white transition-all"
+                >
                   <Copy className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
-            {/* Instructions */}
+            {/* Env vars to set */}
+            <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 space-y-2">
+              <p className="text-xs text-muted-foreground font-medium">משתני סביבה נדרשים (Secrets):</p>
+              {[
+                { key: "WHATSAPP_PHONE_NUMBER_ID", desc: "Phone Number ID מ-Meta Developer Console" },
+                { key: "WHATSAPP_ACCESS_TOKEN", desc: "System User Access Token (לא Temporary)" },
+                { key: "WHATSAPP_VERIFY_TOKEN", desc: "טוקן אימות Webhook — בחר מחרוזת כלשהי" },
+              ].map(({ key, desc }) => (
+                <div key={key} className="flex items-start gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <code className="text-xs bg-white/8 text-primary px-1.5 py-0.5 rounded shrink-0" dir="ltr">{key}</code>
+                    <span className="text-xs text-muted-foreground">{desc}</span>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(key)}
+                    className="shrink-0 text-muted-foreground hover:text-white transition-all mt-0.5"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Step-by-step instructions */}
             <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-              <p className="text-xs text-emerald-400 font-medium mb-2">📌 הנחיות הגדרת WhatsApp (Twilio)</p>
-              <ol className="text-xs text-emerald-300/80 flex flex-col gap-1.5 list-decimal list-inside">
+              <p className="text-xs text-emerald-400 font-medium mb-2">📋 הנחיות הגדרה — Meta WhatsApp Cloud API</p>
+              <ol className="text-xs text-emerald-300/80 flex flex-col gap-2 list-decimal list-inside">
                 <li>
-                  פתח חשבון ב-{" "}
-                  <a href="https://www.twilio.com/en-us/whatsapp" target="_blank" rel="noreferrer" className="text-emerald-400 hover:underline inline-flex items-center gap-0.5">
-                    twilio.com <ExternalLink className="w-2.5 h-2.5" />
-                  </a>
+                  פתח{" "}
+                  <a
+                    href="https://developers.facebook.com/apps"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-emerald-400 hover:underline inline-flex items-center gap-0.5"
+                  >
+                    Meta for Developers <ExternalLink className="w-2.5 h-2.5" />
+                  </a>{" "}
+                  → צור App חדש מסוג Business
                 </li>
-                <li>הוסף ב-Secrets: <code className="bg-emerald-500/10 px-1 rounded">TWILIO_ACCOUNT_SID</code>, <code className="bg-emerald-500/10 px-1 rounded">TWILIO_AUTH_TOKEN</code>, <code className="bg-emerald-500/10 px-1 rounded">TWILIO_WHATSAPP_NUMBER</code></li>
-                <li>בדף Messaging → Settings → WhatsApp Sandbox הכנס את כתובת ה-Webhook למעלה</li>
+                <li>הוסף מוצר WhatsApp → קבל <strong>Phone Number ID</strong> ו-<strong>Temporary Access Token</strong></li>
+                <li>
+                  בדף WhatsApp → Configuration → Webhook:
+                  <ul className="list-disc list-inside mr-3 mt-1 space-y-0.5">
+                    <li>הכנס את כתובת ה-Webhook למעלה</li>
+                    <li>הכנס את ה-Verify Token שבחרת</li>
+                    <li>סמן <code className="bg-black/20 px-1 rounded">messages</code> ב-Webhook Fields</li>
+                  </ul>
+                </li>
+                <li>הוסף את שלושת ה-Secrets למערכת ולחץ שמור</li>
                 <li>
                   <Smartphone className="w-3 h-3 inline ml-1" />
-                  שלח חשבונית דרך וואטסאפ — תעלה אוטומטית לתיקיית החודש!
+                  שלח תמונת חשבונית ל-WhatsApp Business — תעובד אוטומטית!
                 </li>
               </ol>
             </div>
