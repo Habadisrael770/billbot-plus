@@ -252,6 +252,11 @@ html.light { color-scheme: light; }
     @apply border-border;
   }
 
+  *:focus:not(:focus-visible) {
+    outline: none !important;
+    box-shadow: none !important;
+  }
+
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }

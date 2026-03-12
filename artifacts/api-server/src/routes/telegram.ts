@@ -5,6 +5,14 @@ import { processInvoice } from "../services/invoiceProcessingService.js";
 
 const router: IRouter = Router();
 
+// Telegram bot token format: ^[0-9]+:[A-Za-z0-9_-]{35,}$
+// Extract the FIRST valid token match in case the env var was accidentally duplicated
+function getTelegramToken(): string | undefined {
+  const raw = process.env.TELEGRAM_BOT_TOKEN ?? "";
+  const match = raw.match(/^(\d{8,12}:[A-Za-z0-9_-]{35})/);
+  return match ? match[1] : undefined;
+}
+
 function getMonthUploadsDir(): string {
   const now = new Date();
   const year = now.getFullYear();
@@ -17,7 +25,7 @@ function getMonthUploadsDir(): string {
 async function downloadTelegramFile(
   fileId: string
 ): Promise<{ filePath: string }> {
-  const token = process.env.TELEGRAM_BOT_TOKEN!;
+  const token = getTelegramToken()!;
   const infoRes = await fetch(
     `https://api.telegram.org/bot${token}/getFile?file_id=${encodeURIComponent(fileId)}`
   );
@@ -42,7 +50,7 @@ async function downloadTelegramFile(
 }
 
 async function sendMessage(chatId: string | number, text: string): Promise<void> {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const token = getTelegramToken();
   if (!token) return;
   await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method: "POST",
@@ -55,7 +63,7 @@ async function sendMessage(chatId: string | number, text: string): Promise<void>
 router.post("/webhook", async (req, res) => {
   res.sendStatus(200);
   try {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const token = getTelegramToken();
     if (!token) return;
 
     const update = req.body as {
@@ -136,7 +144,7 @@ router.post("/webhook", async (req, res) => {
 // GET /api/telegram/setup-webhook
 router.get("/setup-webhook", async (req, res) => {
   try {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const token = getTelegramToken();
     if (!token) {
       res.status(503).json({ error: "TELEGRAM_BOT_TOKEN לא מוגדר" });
       return;
@@ -164,7 +172,7 @@ router.get("/setup-webhook", async (req, res) => {
 // GET /api/telegram/status
 router.get("/status", async (_req, res) => {
   try {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const token = getTelegramToken();
     if (!token) {
       res.json({ configured: false });
       return;
