@@ -381,8 +381,8 @@ export default function Onboarding({ onComplete }: { onComplete?: () => void }) 
           חזרה לשלב הקודם
           <ArrowRight className="w-4 h-4" />
         </button>
-        <span className="text-xl font-black bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent">
-          VATrix
+        <span dir="ltr" className="text-xl font-black bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent">
+          BillBOT+
         </span>
       </header>
 

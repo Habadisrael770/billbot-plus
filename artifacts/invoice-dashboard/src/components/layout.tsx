@@ -99,7 +99,7 @@ function CompactSidebar({ location, onClose }: { location: string; onClose?: () 
   return (
     <div className="h-full flex flex-col">
       <div className="h-16 flex items-center justify-center border-b border-white/5 shrink-0">
-        <span className="text-lg font-black bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent">V</span>
+        <span dir="ltr" className="text-sm font-black bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent leading-none">BB+</span>
       </div>
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
         {PRIMARY_NAV.map((item) => (
@@ -135,7 +135,7 @@ function MobileSidebar({ location, onClose }: { location: string; onClose: () =>
   return (
     <div className="h-full flex flex-col">
       <div className="h-16 flex items-center justify-between px-6 border-b border-white/5 shrink-0">
-        <span className="text-xl font-black bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent">VATrix</span>
+        <span dir="ltr" className="text-xl font-black bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent">BillBOT+</span>
         <button onClick={onClose} className="p-1 rounded-lg text-muted-foreground hover:text-white hover:bg-white/5">
           <X className="w-5 h-5" />
         </button>
@@ -285,7 +285,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            {/* Right: theme + bell + VATrix logo */}
+            {/* Right: theme + bell + BillBOT+ logo */}
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleTheme}
@@ -299,7 +299,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-400 rounded-full" />
               </button>
               <div className="hidden sm:flex items-center gap-1.5 pr-3 border-r border-white/10 mr-1">
-                <span className="text-lg font-black bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent">VATrix</span>
+                <span dir="ltr" className="text-lg font-black bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent">BillBOT+</span>
               </div>
             </div>
           </header>
