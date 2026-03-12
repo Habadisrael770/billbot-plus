@@ -142,9 +142,9 @@ router.get("/setup-webhook", async (req, res) => {
       return;
     }
     const host =
+      process.env.REPLIT_DEV_DOMAIN ||
       req.headers["x-forwarded-host"] ||
-      req.headers.host ||
-      process.env.REPLIT_DEV_DOMAIN;
+      req.headers.host;
     const webhookUrl = `https://${host}/api/telegram/webhook`;
     const tgRes = await fetch(
       `https://api.telegram.org/bot${token}/setWebhook`,
