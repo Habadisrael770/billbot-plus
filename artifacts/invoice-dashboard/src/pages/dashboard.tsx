@@ -345,33 +345,16 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      {/* ── Page title + action bar ── */}
-      <div className="flex items-center justify-between gap-4 mb-6" dir="rtl">
-        {/* Right: title */}
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">דשבורד</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">סקירה כללית של פעילות החשבוניות שלך</p>
-        </div>
+      {/* ── Action bar (shares grid columns with stat cards) ── */}
+      {/* xl: 6 cols — spacer(1) spacer(2) | SEARCH(3=סה"כ) | cal+upload(4-6) */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 items-center mb-3" dir="rtl">
+        {/* cols 1-2 on xl: empty spacers above מסמכים + ספק */}
+        <div className="hidden xl:block" />
+        <div className="hidden xl:block" />
 
-        {/* Left: action bar */}
-        <div className="flex items-center gap-2 shrink-0" dir="ltr">
-          {/* Upload button */}
-          <button
-            onClick={() => openUpload("upload")}
-            className="flex items-center gap-2 h-10 px-4 rounded-xl bg-primary text-white font-medium text-sm hover:bg-primary/90 transition-colors shrink-0"
-          >
-            <Upload className="w-4 h-4" />
-            העלה חשבוניות
-          </button>
-
-          {/* Calendar / date range */}
-          <button className="flex items-center gap-2 h-10 px-4 rounded-xl border border-white/10 bg-card/60 text-foreground text-sm hover:bg-white/5 transition-colors shrink-0 whitespace-nowrap" dir="rtl">
-            <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
-            <span>{monthStart} - {monthEnd}</span>
-          </button>
-
-          {/* Search — ~2 stat-card widths */}
-          <div className="relative w-52">
+        {/* col 3 on xl: Search — aligned above סה"כ חשבוניות */}
+        <div className="col-span-1 xl:col-span-1">
+          <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <input
               type="text"
@@ -382,6 +365,24 @@ export default function Dashboard() {
               className="w-full h-10 pr-9 pl-3 text-sm rounded-xl border border-white/10 bg-card/60 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all"
             />
           </div>
+        </div>
+
+        {/* cols 4-6 on xl: action buttons */}
+        <div className="col-span-1 lg:col-span-2 xl:col-span-3 flex items-center gap-2">
+          {/* Calendar / date range */}
+          <button className="flex items-center gap-2 h-10 px-3 sm:px-4 rounded-xl border border-white/10 bg-card/60 text-foreground text-sm hover:bg-white/5 transition-colors whitespace-nowrap shrink-0" dir="rtl">
+            <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
+            <span className="hidden sm:inline">{monthStart} - {monthEnd}</span>
+          </button>
+
+          {/* Upload button */}
+          <button
+            onClick={() => openUpload("upload")}
+            className="flex items-center gap-2 h-10 px-3 sm:px-4 rounded-xl bg-primary text-white font-medium text-sm hover:bg-primary/90 transition-colors shrink-0"
+          >
+            <Upload className="w-4 h-4" />
+            <span className="hidden sm:inline">העלה חשבוניות</span>
+          </button>
         </div>
       </div>
 

@@ -270,8 +270,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <PersonalAreaDropdown />
             </div>
 
-            {/* Spacer */}
-            <div className="flex-1" />
+            {/* Center: current page title */}
+            <div className="flex-1 flex justify-center">
+              <span className="text-sm font-semibold text-foreground tracking-wide">{currentLabel}</span>
+            </div>
 
             {/* Right: theme + bell + BillBOT+ logo */}
             <div className="flex items-center gap-2">
