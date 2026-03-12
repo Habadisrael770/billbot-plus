@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "o_q50zM5_FFP5EJIrA6ST"
+uri = "file://attached_assets/generated_images/cyan_neon_car_interior.png"
+type = "image"
+title = "Cyan Neon Car Interior — Cinematic Night"
