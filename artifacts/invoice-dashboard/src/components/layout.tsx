@@ -71,8 +71,8 @@ function NavItem({
         onClick={onClick}
         className={`flex flex-col items-center gap-1 px-2 py-3 rounded-xl transition-all duration-200 group ${
           active
-            ? "bg-primary/15 text-primary"
-            : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+            ? "bg-primary/10 text-primary"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
         }`}
       >
         <Icon className={`w-5 h-5 shrink-0 ${active ? "text-primary" : ""}`} />
@@ -87,8 +87,8 @@ function NavItem({
       onClick={onClick}
       className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 ${
         active
-          ? "bg-primary/10 text-primary border border-primary/20"
-          : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+          ? "bg-primary/10 text-primary"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground"
       }`}
     >
       <Icon className="w-5 h-5 shrink-0" />
@@ -100,7 +100,7 @@ function NavItem({
 function CompactSidebar({ location, onClose }: { location: string; onClose?: () => void }) {
   return (
     <div className="h-full flex flex-col">
-      <div className="h-16 flex items-center justify-center border-b border-white/5 shrink-0">
+      <div className="h-16 flex items-center justify-center border-b border-border shrink-0">
         <span dir="ltr" className="text-sm font-black bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent leading-none">BB+</span>
       </div>
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
@@ -116,7 +116,7 @@ function CompactSidebar({ location, onClose }: { location: string; onClose?: () 
           />
         ))}
       </nav>
-      <div className="py-4 px-2 space-y-1 border-t border-white/5">
+      <div className="py-4 px-2 space-y-1 border-t border-border">
         {SECONDARY_NAV.map((item) => (
           <NavItem
             key={item.href}
@@ -136,9 +136,9 @@ function CompactSidebar({ location, onClose }: { location: string; onClose?: () 
 function MobileSidebar({ location, onClose }: { location: string; onClose: () => void }) {
   return (
     <div className="h-full flex flex-col">
-      <div className="h-16 flex items-center justify-between px-6 border-b border-white/5 shrink-0">
+      <div className="h-16 flex items-center justify-between px-6 border-b border-border shrink-0">
         <span dir="ltr" className="text-xl font-black bg-gradient-to-br from-primary to-emerald-400 bg-clip-text text-transparent">BillBOT+</span>
-        <button onClick={onClose} className="p-1 rounded-lg text-muted-foreground hover:text-white hover:bg-white/5">
+        <button onClick={onClose} className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted">
           <X className="w-5 h-5" />
         </button>
       </div>
@@ -147,7 +147,7 @@ function MobileSidebar({ location, onClose }: { location: string; onClose: () =>
           <NavItem key={item.href} href={item.href} icon={item.icon} label={item.label} active={location === item.href} onClick={onClose} />
         ))}
       </nav>
-      <div className="py-4 px-4 space-y-1 border-t border-white/5">
+      <div className="py-4 px-4 space-y-1 border-t border-border">
         {SECONDARY_NAV.map((item) => (
           <NavItem key={item.href} href={item.href} icon={item.icon} label={item.label} active={location === item.href} onClick={onClose} />
         ))}
@@ -243,7 +243,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <div className="flex flex-row-reverse flex-1 overflow-hidden">
         {/* Desktop Sidebar — compact, right */}
-        <aside className="hidden md:flex w-20 shrink-0 border-l border-white/5 bg-card/30 backdrop-blur-xl flex-col z-20">
+        <aside className="hidden md:flex w-20 shrink-0 border-l border-border bg-background flex-col z-20">
           <CompactSidebar location={location} />
         </aside>
 
@@ -259,11 +259,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
-          {/* Ambient glow */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] bg-primary/5 blur-[120px] rounded-full pointer-events-none -z-10" />
-
           {/* Header */}
-          <header className="h-16 flex items-center gap-3 px-4 sm:px-6 border-b border-white/5 bg-background/50 backdrop-blur-md z-10 shrink-0">
+          <header className="h-16 flex items-center gap-3 px-4 sm:px-6 border-b border-border bg-card z-10 shrink-0">
             {/* Mobile hamburger + page title */}
             <div className="flex items-center gap-3 min-w-0">
               <button
@@ -328,7 +325,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card/90 backdrop-blur-xl border-t border-white/10 flex items-center justify-around px-2 py-1">
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border flex items-center justify-around px-2 py-1">
         {PRIMARY_NAV.map((item) => {
           const active = location === item.href;
           return (
