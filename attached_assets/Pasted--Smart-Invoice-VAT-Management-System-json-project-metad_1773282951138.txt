@@ -1,0 +1,530 @@
+ Smart Invoice & VAT Management System
+json{
+  "project_metadata": {
+    "title": "VATrix Smart Invoice & VAT Management System",
+    "architecture_standard": "CTO-Level High-Performance Scalable Web App",
+    "design_philosophy": "Functional Minimalism meets Financial Precision",
+    "experience_baseline": "20-Year Industry Veteran Standards",
+    "system_flow": "End-to-End User Lifecycle (Entry to Exit)",
+    "tech_stack": "React 18 + TypeScript + Tailwind CSS + Vite + Shadcn/UI",
+    "localization": "Hebrew (he-IL) + RTL Layout",
+    "target_audience": "SMEs, Accountants, Tax Consultants"
+  },
+  "user_journey_mapping": {
+    "entry_phase": {
+      "authentication": "Secure OAuth2.0 / JWT integration with Google Sign-In, biometric fallbacks optional",
+      "initialization": "Hydration of user-specific VAT data and invoice history from backend API",
+      "dashboard_landing": "High-level financial overview with real-time liquidity counters, key metrics, trend visualization"
+    },
+    "core_operations": {
+      "invoice_processing": {
+        "upload": "Drag-and-drop zone with multi-format support (PDF, Image, XML, XLSX)",
+        "ocr_engine": "AI-driven field extraction (VAT ID, Total, Tax, Date, Supplier Name, Category)",
+        "validation": "Heuristic check against local Israeli tax regulations, duplicate detection, format validation",
+        "status_workflow": "Pending → Review → Approved/Rejected with audit trail"
+      },
+      "ledger_management": {
+        "view": "Virtualized data tables for 10k+ entries with zero-lag scrolling, infinite pagination",
+        "filtering": "Dynamic multi-parameter search (date ranges, supplier categories, status, VAT range, amount range)",
+        "sorting": "Client-side and server-side sorting on all columns",
+        "bulk_actions": "Select multiple invoices → Approve/Reject/Delete/Download batch operations",
+        "export": "CSV, Excel, PDF (single + batch), ZIP archive with all documents"
+      },
+      "supplier_management": {
+        "directory": "Full supplier database with contact info, business registration numbers, category tagging",
+        "analytics": "Per-supplier stats: total invoices, total spent, average invoice amount, payment status",
+        "relationship_tracking": "Payment history, communication logs, integration points with accountant system"
+      },
+      "accountant_integration": {
+        "auto_send": "Scheduled automatic report generation and email dispatch to accountant",
+        "manual_send": "One-click export and send with format selection (PDF unified / ZIP separate files)",
+        "accountant_link": "Share read-only access with accountant via secure link + unique code authentication",
+        "sync_feedback": "Two-way sync: accountant can mark items as processed, sync status back to client"
+      },
+      "email_integrations": {
+        "gmail": "OAuth2 Gmail API integration, automatic invoice scanning from inbox, historical scan option",
+        "outlook": "Same as Gmail for Outlook/Exchange accounts, support for multiple accounts per user",
+        "whatsapp": "Direct invoice sharing via WhatsApp, receipt scanning via WhatsApp number"
+      },
+      "accounting_system_integrations": {
+        "platforms": ["Sumit (סאמיט)", "MORNING (חשבונית ירוקה)", "Rivhit (ריווחית)", "Dokka (דוקה)", "Paperless"],
+        "sync_type": "One-way (expense sync to platform) / Two-way (sync + feedback)",
+        "frequency": "Real-time or scheduled (daily/weekly/monthly)"
+      }
+    },
+    "dashboard_analytics": {
+      "real_time_metrics": {
+        "total_expenses_ytd": "Year-to-date total with previous year comparison",
+        "vat_recovered": "Total VAT eligible for recovery this period",
+        "pending_review": "Count of expenses awaiting approval",
+        "outstanding_items": "Expenses missing key data (supplier, category, VAT status)"
+      },
+      "trend_visualization": {
+        "expense_trend_chart": "Bar/Line chart showing daily/weekly/monthly expense trends",
+        "vat_trend_overlay": "VAT recovery trend on same chart for correlation analysis",
+        "category_breakdown": "Donut chart with top categories by spend",
+        "supplier_ranking": "Top 10 suppliers by spend with quick drill-down"
+      },
+      "period_selection": {
+        "date_range_picker": "Interactive calendar with quick-select presets: This Month, Last Month, This Year, Custom Range, Last N Days",
+        "saved_reports": "Save favorite period filters for quick re-run"
+      }
+    },
+    "exit_phase": {
+      "data_persistence": "Auto-save state sync before session termination, unsaved changes warning",
+      "reporting": "One-click export to ERP/Excel/PDF with customizable templates",
+      "audit_trail": "Complete action log: who viewed/edited/approved/rejected, timestamps, IP addresses",
+      "termination": "Secure logout with cache flushing of sensitive financial data, session invalidation"
+    }
+  },
+  "technical_design_system": {
+    "layout_architecture": {
+      "top_header": {
+        "sticky": true,
+        "height": "64px + 50px banner",
+        "left_section": "User profile button (name + email + avatar initials)",
+        "center_section": "Global search bar (⌘K) with AI-powered fuzzy search across invoices, suppliers, amounts",
+        "right_section": "VATrix logo (clickable, goes to /dashboard)",
+        "banner": "Trial status indicator: 'נותרו לך X ימים בניסיון חינמי' + 'שדרג עכשיו' CTA + close (X)",
+        "banner_gradient": "Blue (#4A90E2) to Purple (#9B59B6)"
+      },
+      "right_sidebar": {
+        "sticky": true,
+        "width": "120px",
+        "alignment": "RTL vertical icons + labels",
+        "primary_nav": [
+          { "label": "דשבורד", "icon": "grid-4-squares", "route": "/dashboard" },
+          { "label": "הוצאות", "icon": "document-text", "route": "/dashboard/expenses" },
+          { "label": "ספקים", "icon": "building", "route": "/dashboard/suppliers" },
+          { "label": "ייצוא לרו\\"ח", "icon": "paper-plane", "route": "/dashboard/export" },
+          { "label": "אינטגרציות", "icon": "lightning", "route": "/dashboard/integrations" }
+        ],
+        "secondary_nav": [
+          { "label": "הגדרות", "icon": "gear-settings", "route": "/dashboard/settings" },
+          { "label": "עזרה", "icon": "question-mark", "route": "/dashboard/help" },
+          { "label": "פרופיל", "icon": "person-circle", "route": "/dashboard/settings/profile" }
+        ],
+        "active_state": "Dark green background + white text + left border accent",
+        "floating_fab": {
+          "icon": "whatsapp",
+          "color": "green (#25D366)",
+          "position": "bottom-left corner, fixed",
+          "link": "wa.me/972527424566"
+        }
+      },
+      "main_content_area": {
+        "max_width": "1400px",
+        "padding": "40px 60px",
+        "background": "Light gray (#F8FAFC)",
+        "page_structure": "Page title (H1) + subtitle (gray caption) → Content sections with white cards"
+      }
+    },
+    "component_library": {
+      "stat_cards": {
+        "layout": "Icon (tinted background circle) + Title + Large Number + Subtle trend indicator (↑↓)",
+        "variants": {
+          "primary": "Dark green background icon circle",
+          "success": "Light green background",
+          "warning": "Yellow background",
+          "info": "Light blue background",
+          "neutral": "Gray background"
+        },
+        "responsive": "4-column on desktop, 2-column on tablet, 1-column on mobile"
+      },
+      "data_tables": {
+        "virtualization": "React Window for 10k+ rows with zero-lag scrolling",
+        "columns": "Checkbox (multi-select) + Sortable columns (click header to toggle sort direction)",
+        "row_actions": "3-dot menu with View / Approve / Reject / Download / Delete actions",
+        "summary_row": "Bottom sticky row showing totals (Sum of amounts, Sum of VAT, Count of items)",
+        "pagination": "Infinite scroll with 'Load More' button at bottom",
+        "export": "Highlighted header option to export visible/filtered data to CSV/Excel/PDF"
+      },
+      "date_picker": {
+        "type": "Interactive calendar popover with range selection (click start date, then end date, both highlight green)",
+        "quick_select_sidebar": "Preset buttons: 'החודש', 'החודש הקודם', 'שנה זו', droplist of past years",
+        "confirmation": "Confirm/Cancel buttons + 'Clear Range' link",
+        "keyboard_support": "Arrow keys to navigate dates, Enter to select"
+      },
+      "modals": {
+        "expense_detail": {
+          "title": "פרטי הוצאה",
+          "layout": "Two-panel (PDF preview left, editable fields right)",
+          "fields": "Supplier (dropdown auto-suggest), Date (date picker), Document #, Status (dropdown), Category (multi-select), VAT%, Amount, Notes (text area)",
+          "actions": "View (external link) / Download (PDF) / Delete (red icon)",
+          "width": "90vw, max 1200px"
+        },
+        "upload_invoice": {
+          "title": "העלאת חשבונית חדשה",
+          "subtitle": "העלה חשבוניות וקבלות בלבד. המערכת תדחה הצעות מחיר וכפילויות.",
+          "drag_drop": "Dashed border zone with large upload icon + 'גרור קובץ לכאן' + 'או בחר קובץ' link",
+          "formats": "PDF, JPG, PNG, WebP, XLSX (up to 10MB per file, batch upload supported)",
+          "action_buttons": "Upload & Process (primary green) + Cancel (gray outlined)",
+          "progress": "Progress bar during upload + OCR processing status"
+        },
+        "send_to_accountant": {
+          "title": "שליחה לרואה חשבון",
+          "fields": "Accountant email (auto-filled from settings), Format (radio: PDF unified / ZIP separate files)",
+          "action": "Send Now (primary green) + Automatic sending toggle",
+          "feedback": "Toast notification on send success/failure"
+        }
+      },
+      "search_components": {
+        "global_search_modal": {
+          "trigger": "Click search icon or ⌘K",
+          "overlay": "Dark overlay with modal centered",
+          "input": "Large search field, placeholder 'חיפוש לפי ספק, מס' חשבונית, סכום...'",
+          "results": "Real-time fuzzy search results showing: invoices (with thumbnail), suppliers, amounts, grouped by type",
+          "keyboard_nav": "Arrow up/down to navigate results, Enter to select, Escape to close"
+        },
+        "table_search": {
+          "location": "Above table, inline search bar",
+          "placeholder": "Search by supplier, document #, amount range, date, category",
+          "debounce": "300ms before API call for server-side filtering"
+        }
+      },
+      "badges_and_indicators": {
+        "status_badges": {
+          "אושר": "Green (#4CAF50) with white checkmark",
+          "ממתין": "Yellow (#FFC107) with clock icon",
+          "נדחה": "Red (#F44336) with X icon",
+          "כפול": "Gray (#757575) with duplicate icon"
+        },
+        "category_badges": "Subtle background color with darker text, no icon",
+        "source_badges": "Icon + text (Gmail with envelope, Outlook with O, WhatsApp with phone)",
+        "confidence_score": "Circular badge with number (95) representing OCR confidence %"
+      }
+    },
+    "structure": {
+      "layout": "Atomic Design Pattern (Atoms, Molecules, Organisms, Templates, Pages)",
+      "folder_structure": {
+        "src": {
+          "components": {
+            "atoms": ["Button", "Badge", "Icon", "Input", "Toggle", "Checkbox"],
+            "molecules": ["SearchBar", "StatCard", "FilterDropdown", "DateRangePicker"],
+            "organisms": ["DataTable", "Chart", "ExpenseModal", "UploadZone", "Sidebar", "Header"],
+            "templates": ["DashboardLayout", "SettingsLayout", "ExpenseListTemplate"]
+          },
+          "pages": ["Dashboard", "Expenses", "Suppliers", "Export", "Integrations", "Settings", "Help"],
+          "hooks": ["useFetch", "useFilter", "useDateRange", "useLocalStorage", "useDebounce"],
+          "utils": ["formatCurrency", "formatDate", "validateVAT", "calculateTotals", "exportToCSV"],
+          "types": ["Invoice", "Supplier", "User", "APIResponse", "FilterState"],
+          "constants": ["API_ENDPOINTS", "CATEGORIES", "COLORS", "ICON_MAP"]
+        }
+      },
+      "accessibility": {
+        "compliance": "WCAG 2.1 Level AA",
+        "features": [
+          "Aria-labels for all interactive elements (buttons, icons, form inputs)",
+          "Keyboard navigation support: Tab flow optimized for RTL, Enter/Space to activate buttons",
+          "Focus indicators: Clear visible focus ring (2px dark green outline)",
+          "Screen reader compatibility: Semantic HTML, ARIA roles (dialog, button, status, alert)",
+          "Color contrast: 7:1 ratio on critical data (VAT amounts, status badges), 4.5:1 minimum on text",
+          "Form error handling: In-line error messages with aria-live=\\"polite\\"",
+          "Skip navigation link at top of page"
+        ]
+      },
+      "responsiveness": "Fluid Grid System using CSS Grid & Flexbox (Desktop-first, Tablet 768px, Mobile 375px breakpoints)",
+      "mobile_adjustments": {
+        "sidebar_on_mobile": "Hamburger menu, drawer slides in from right (RTL), collapses to icons below tablets",
+        "stat_cards": "Stack to 2 columns on tablet, 1 column on mobile",
+        "table_on_mobile": "Horizontal scroll with sticky first column (invoice thumbnail), or card view layout",
+        "modal_on_mobile": "Full height modal with scrollable content, X button always visible"
+      }
+    },
+    "theming_engine": {
+      "implementation": "CSS Variables (--color-primary, --color-success, etc.) + Tailwind configuration override",
+      "light_mode": {
+        "palette": {
+          "background": "#F8FAFC",
+          "surface": "#FFFFFF",
+          "surface_secondary": "#F3F4F6",
+          "primary": "#1B4332 (Dark Green)",
+          "primary_light": "#4CAF50 (Light Green)",
+          "primary_lighter": "#E8F5E9 (Very Light Green)",
+          "accent_yellow": "#FFC107 (VAT - Warning)",
+          "accent_blue": "#4A90E2 (Expense Count)",
+          "accent_pink": "#E91E63 (Avatar)",
+          "text_primary": "#1F2937 (Dark Gray)",
+          "text_secondary": "#6B7280 (Medium Gray)",
+          "text_tertiary": "#9CA3AF (Light Gray)",
+          "border": "#E5E7EB (Light Border)",
+          "danger": "#F44336 (Red)",
+          "success": "#4CAF50 (Green)",
+          "warning": "#FF9800 (Orange)",
+          "info": "#2196F3 (Blue)",
+          "shadow": "0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)"
+        },
+        "contrast_ratio": "7:1 for critical financial data, 4.5:1 minimum for body text"
+      },
+      "dark_mode_optional": {
+        "palette": {
+          "background": "#0F172A",
+          "surface": "#1E293B",
+          "primary": "#38BDF8 (Light Cyan)",
+          "text": "#F8FAFC (Off-white)",
+          "border": "#334155 (Dark Border)",
+          "danger": "#EF4444 (Bright Red)",
+          "success": "#10B981 (Bright Green)"
+        },
+        "implementation": "Toggle in user settings, prefers-color-scheme media query for system preference detection"
+      }
+    }
+  },
+  "detailed_page_specifications": {
+    "1_dashboard": {
+      "url": "/dashboard",
+      "title": "דשבורד",
+      "subtitle": "סקירה כללית של פעילות החשבוניות שלך",
+      "sections": {
+        "action_bar": "Date Range Picker + Upload Invoice button (both sticky at top after page title)",
+        "stat_cards": "4 cards in row: Expenses (count), Total Expenses (₪), VAT Recovered (₪), Pending Review (count)",
+        "charts": "Expense Trend (bar chart daily/weekly/monthly) + Category Breakdown (donut)",
+        "recent_expenses": "Horizontal cards: thumbnail + supplier + status + category + date + amount, click to expand"
+      },
+      "interactions": {
+        "date_range": "Change range → re-fetch data from API, charts update in-place (no page reload)",
+        "upload_button": "Opens modal with drag-drop zone",
+        "chart_hover": "Tooltip showing exact values, category drill-down on click",
+        "recent_click": "Navigate to expense detail view without closing dashboard"
+      }
+    },
+    "2_expenses": {
+      "url": "/dashboard/expenses",
+      "title": "הוצאות",
+      "subtitle": "נהל ואשר את כל ההוצאות שלך במקום אחד",
+      "sections": {
+        "toolbar": "Search bar + View toggle (List/Gallery) + Status filter + General filter button",
+        "list_view": "Data table with columns: Checkbox, Supplier, Doc #, Date, Category (badge), Amount, VAT, Source (badge), Confidence (circle %), Status (badge), 3-dot menu",
+        "gallery_view": "4-column grid of invoice cards: PDF preview + PDF badge + amount (large) + VAT + doc # on dark overlay",
+        "summary_row": "Bottom of table: Total expenses (₪) + Total VAT (₪) + Count of filtered items",
+        "modals": "Expense detail (click row), Upload invoice (click צורפור button), Actions via 3-dot menu"
+      },
+      "interactions": {
+        "search": "Real-time filtering (debounced), highlight matches",
+        "filter": "Multi-select status + custom filters (date range, amount range, supplier, category)",
+        "sort": "Click column header to toggle ascending/descending sort",
+        "bulk_select": "Click header checkbox to select all on page, individual checkboxes for selective bulk actions",
+        "bulk_actions": "After selecting rows, action bar appears below: Approve All / Reject All / Download All / Delete All",
+        "3_dot_menu": "View (full modal), Approve (inline status change), Reject (inline), Download (PDF of invoice), Delete (confirmation dialog)",
+        "view_toggle": "Switch between List ↔ Gallery instantly (client-side, saves preference to localStorage)",
+        "infinite_scroll": "When scrolling near bottom, load next batch of 20 invoices"
+      }
+    },
+    "3_suppliers": {
+      "url": "/dashboard/suppliers",
+      "title": "ספקים",
+      "subtitle": "נהל את כל הספקים שלך וראה את הסטטיסטיקות שלהם",
+      "sections": {
+        "toolbar": "Search bar + Filter button",
+        "table": "Columns: Supplier Name (with copy icon), Business #, Contact Info, Default Category, Invoice Count, Total Spent (₪), Total VAT (₪)",
+        "summary_row": "X suppliers, Y total invoices, Z₪ total spend, W₪ total VAT",
+        "modals": "None on list, but click supplier name → navigate to /dashboard/suppliers/:id"
+      },
+      "supplier_detail_page": {
+        "url": "/dashboard/suppliers/:id",
+        "header": "Supplier name + back arrow + subtitle 'כל החשבוניות של ספק זה'",
+        "info_card": "Business number (editable), contact email (editable), payment terms (editable)",
+        "stat_cards": "Total Invoices (count), Approved Invoices (count), Total Spent (₪), Total VAT (₪)",
+        "invoice_table": "Filtered list of invoices from this supplier only",
+        "interactions": "Click invoice row → expand to detail view. Edit supplier info → save to API."
+      }
+    },
+    "4_export": {
+      "url": "/dashboard/export",
+      "title": "ייצוא לרואה חשבון",
+      "subtitle": "שלח את ההוצאות שלך לרואה החשבון בקלות",
+      "sections": {
+        "date_picker": "Same as dashboard, top of page",
+        "preview_card": "Badge 'מוכן לייצוא' + 3 stats: Invoice count, Total Expenses (₪), Total VAT (₪)",
+        "download_formats": "4 cards: CSV (table data), Excel (formatted sheet), PDF Unified (all invoices in one PDF), ZIP (each invoice as separate PDF)",
+        "send_to_accountant": "Section with: Accountant email field (auto-filled), Format radio buttons (PDF/ZIP), Send Now button, Automatic sending toggle (with frequency selector)",
+        "export_history": "Below: 'היסטוריית ייצוא' with table of past exports (date, format, status, download link)",
+        "empty_state": "If no exports yet: Clock icon + 'עדיין לא בוצעו ייצואים' + hint 'בחר תקופה והורד או שלח לרואה החשבון'"
+      },
+      "interactions": {
+        "format_click": "Immediately download file (no confirmation needed unless file is large)",
+        "send_email": "Opens modal to confirm accountant email + format selection, shows sending progress, success/error toast",
+        "auto_send_toggle": "Opens modal to set frequency (monthly on last day of month, or custom day), timezone, which format",
+        "export_history_row_click": "Shows details: which invoices were included, file size, download link (if expired, re-generate)"
+      }
+    },
+    "5_integrations": {
+      "url": "/dashboard/integrations",
+      "title": "אינטגרציות",
+      "subtitle": "ניהול החיבורים למערכת - חבר את מקורות המידע והמערכות הפיננסיות שלך",
+      "sections": {
+        "email_section": {
+          "title": "תיבות מיילים",
+          "cards": [
+            {
+              "name": "Gmail",
+              "icon": "envelope",
+              "description": "זיהוי אוטומטי של חשבוניות מתיבות הדואר שלך",
+              "status_badge": "מחובר / לא מחובר",
+              "fields_if_connected": "Connected email address, Last sync timestamp, Last sync result (success/error)",
+              "buttons": [
+                { "label": "סריקה היסטורית", "icon": "clock", "action": "Modal: Select date range to re-scan past emails" },
+                { "label": "הגדרות", "icon": "gear", "action": "Modal: Auto-scan frequency, folder whitelist, keyword filters" },
+                { "label": "נתק", "icon": "x", "color": "red", "action": "Confirmation dialog: disconnect account" }
+              ],
+              "add_account": "Link below: 'הוסף חשבון Gmail נוסף' with explanation 'ניתן לחבר מספר חשבונות Gmail'"
+            },
+            {
+              "name": "Outlook",
+              "icon": "envelope",
+              "status": "disconnected",
+              "description": "זיהוי אוטומטי של חשבוניות מ-Outlook שלך",
+              "button": "Connect Outlook (blue, OAuth trigger)"
+            }
+          ]
+        },
+        "messaging_section": {
+          "title": "הודעות מיידיות",
+          "cards": [
+            {
+              "name": "WhatsApp",
+              "icon": "phone",
+              "description": "שלח חשבוניות ישירות דרך WhatsApp",
+              "button": "Add Number (opens modal for phone number entry + QR code scan)",
+              "features": "Receive invoices via WhatsApp, Scan receipts via WhatsApp messages"
+            }
+          ]
+        },
+        "accounting_systems_section": {
+          "title": "מערכות הנהלת חשבונות",
+          "grid": "3 columns (responsive), each card: Platform logo, Name, Description, Connect/Configure button",
+          "platforms": [
+            { "name": "Sumit (סאמיט)", "logo": "sumit_logo", "description": "סנכרון הוצאות עם סאמיט" },
+            { "name": "MORNING (חשבונית ירוקה)", "logo": "morning_logo", "description": "סנכרון הוצאות עם MORNING" },
+            { "name": "Rivhit (ריווחית)", "logo": "rivhit_logo", "description": "סנכרון הוצאות עם ריווחית" },
+            { "name": "Dokka (דוקה)", "logo": "dokka_logo", "description": "סנכרון הוצאות עם דוקה" },
+            { "name": "Paperless", "logo": "paperless_logo", "description": "סנכרון הוצאות עם Paperless" }
+          ],
+          "modal_on_connect": "Platform credentials input, Sync frequency selector (real-time / daily / weekly), Bi-directional sync toggle, Test connection button"
+        }
+      },
+      "interactions": {
+        "gmail_connect": "OAuth2 redirect to Google, scope: read:gmail labels:read, callback → display connected email",
+        "gmail_historical_scan": "Modal with date range picker, start scan button → progress bar (scanning X emails, found Y invoices, X% complete) → Summary: Added X, Duplicates Y",
+        "gmail_settings": "Toggle: Auto-scan enabled (yes/no), frequency (hourly/daily/manual), Folder whitelist (select which folders to scan), Keyword filters (invoice, receipt, etc.)",
+        "disconnect": "Red confirmation dialog: 'Disconnecting will stop automatic invoice scanning. Are you sure?' + Yes (deletes auth token) / No",
+        "accounting_system_connect": "Modal: Input credentials or OAuth, test connection, save. If error, display error message with help link.",
+        "sync_status": "Green checkmark + timestamp: 'Last synced 2 hours ago' or red X + error if sync failed"
+      }
+    },
+    "6_settings": {
+      "url": "/dashboard/settings",
+      "title": "הגדרות",
+      "subtitle": "התאמה אישית, העדפות והגדרות המערכת",
+      "sections": {
+        "settings_menu": [
+          { "label": "פרופיל אישי", "icon": "person", "route": "/dashboard/settings/profile", "description": "עדכון פרטים והעדפות אישיות" },
+          { "label": "ניהול מנוי", "icon": "credit-card", "route": "/dashboard/settings/billing", "description": "שדרוג תכנית, אמצעי תשלום וחשבוניות" },
+          { "label": "ניהול משתמשים", "icon": "users", "route": "/dashboard/settings/team", "description": "הזמנת משתמשים חדשים והגדרת הרשאות" },
+          { "label": "רואה חשבון - שליחה", "icon": "table", "route": "/dashboard/settings/accountant", "description": "הגדרות שליחה אוטומטית לרואה החשבון" },
+          { "label": "קישור לרואה חשבון", "icon": "link", "route": "/dashboard/settings/accountant-link", "description": "חיבור החשבון לרואה החשבון שלך לצורך צפייה וניהול הוצאות" },
+          { "label": "אינטגרציות", "icon": "zap", "route": "/dashboard/integrations", "description": "חיבור תיבות מיילים, מספרי וואטסאפ, התממשקויות למערכות חיצוניות ועוד" },
+          { "label": "עזרה ויצירת קשר", "icon": "question-mark", "route": "/dashboard/help", "description": "מרכז ידע, מדריכים וצוות תמיכה זמין" }
+        ],
+        "referral_widget": "Green card on left: 'אהבת? שיתפת!!' + 'שיתוף קישור לשירות שלנו עם חברים ומשפחה' + 4 rounded buttons: Facebook / WhatsApp / Email / Copy Link"
+      }
+    },
+    "6a_profile_settings": {
+      "url": "/dashboard/settings/profile",
+      "breadcrumb": "הגדרות > פרופיל אישי",
+      "sections": {
+        "profile_card": "Large avatar circle with initials, click to upload photo. Name (editable), Email (read-only with verified badge), Joined date, Online status (green dot)",
+        "organization_info": "Organization name, Role (badge: Owner/Editor/Viewer), Subscription status (badge: Trial/Active/Expired), Plan name, Trial end date",
+        "security": "Password: Current status (Connected via Google / Not Set), button 'Set Password', Logout button (red outlined)"
+      },
+      "interactions": {
+        "avatar_click": "File picker, upload JPG/PNG, auto-crop to circle, progress indicator",
+        "name_edit": "Inline edit, save button, cancel on ESC, API call on save",
+        "set_password": "Modal: Current password (if exists) + New password + Confirm password + password strength meter",
+        "logout": "Confirmation dialog: 'Are you sure you want to logout?' → clears localStorage, sessionStorage, invalidates JWT, redirect to login"
+      }
+    },
+    "6b_billing_settings": {
+      "url": "/dashboard/settings/billing",
+      "breadcrumb": "הגדרות > ניהול מנוי",
+      "sections": {
+        "usage_card": "Current plan card with organization name + plan logo + 'Trial' badge. Usage stats below: 50/50 Invoices (progress bar green→red), 1/1 Gmail Accounts (progress bar red - full), 0/1 WhatsApp (progress bar green), 1/1 Team Members (progress bar red - full)",
+        "plan_info": "Billing period, Trial end date (orange), Next billing date, Status (Active/Expired)",
+        "trial_banner": "Blue card with star icon: 'אתה בתקופת ניסיון — תקופת הניסיון שלך מסתיימת ב-[תאריך]. בחר תכנית כדי להמשיך ליהנות מכל היכולות.' with gradient background",
+        "pricing_plans": "3 plan cards side-by-side (responsive 2-col tablet, 1-col mobile): Basic / Business (highlighted as recommended with gold badge) / Premium. Each: Name, Price/month + Price/year + Save X% label, Feature list with checkmarks",
+        "plan_details": [
+          {
+            "name": "Basic",
+            "price_monthly": "₪39",
+            "price_yearly": "₪468",
+            "features": ["עד 50 מסמכים", "משתמש יחיד", "תיבת מייל אחת", "משיכת חשבוניות 3 חודשים", "העלאה ידנית", "חילוץ נתונים אוטומטי", "קטלוג חכם"]
+          },
+          {
+            "name": "Business",
+            "recommended": true,
+            "price_monthly": "₪65",
+            "price_yearly": "₪780",
+            "features": ["עד 150 מסמכים", "עד 3 משתמשים", "3 תיבות אימייל", "חיבור WhatsApp", "כל האינטגרציות", "משיכת חשבוניות שנה", "כללי אוטומציה", "דוחות מתקדמים"]
+          },
+          {
+            "name": "Premium",
+            "price_monthly": "₪84",
+            "price_yearly": "₪1,008",
+            "features": ["מסמכים ללא הגבלה", "משתמשים ללא הגבלה", "תיבות מייל ללא הגבלה", "משיכת חשבוניות 4 שנים", "כל האינטגרציות", "ניהול משתמשים והרשאות"]
+          }
+        ]
+      },
+      "interactions": {
+        "plan_upgrade": "Click 'בחר תכנית' button → modal: Confirm plan + payment method (credit card / bank transfer / PayPal) → Process payment → Success toast + Plan updated in real-time",
+        "billing_history": "Link to view past invoices (table: Date, Plan, Amount, PDF download link)",
+        "payment_method": "Link to update saved credit card / add new payment method"
+      }
+    },
+    "6c_team_settings": {
+      "url": "/dashboard/settings/team",
+      "breadcrumb": "הגדרות > ניהול משתמשים",
+      "sections": {
+        "team_info_card": "Organization name + Users: X of Y. Button: 'שדרג לתכנית גבוהה יותר' (if team limit reached)",
+        "team_members_list": "Table of current members: Avatar + Name, Email, Role (Owner/Editor/Viewer badge), Actions (Edit / Remove)",
+        "invite_new_member": "Button 'הזמן משתמש חדש' → Modal: Email address input + Role selector (Owner/Editor/Viewer) + Custom permission checkboxes + Send invite button"
+      },
+      "interactions": {
+        "invite": "API call sends email with join link + unique token. Token expires in 7 days. Invited user clicks link → auto-login → joins organization",
+        "edit_role": "Click role badge → dropdown to change role, save → permissions updated in real-time",
+        "remove_member": "Click remove → confirmation: 'Remove [Name]? They will lose access to this account.' → Yes deletes member, email notification sent"
+      }
+    },
+    "6d_accountant_settings": {
+      "url": "/dashboard/settings/accountant",
+      "breadcrumb": "הגדרות > רואה חשבון",
+      "sections": {
+        "accountant_info": "Section: 'פרטי רואה החשבון' with fields: Accountant name, Accountant email (editable)",
+        "auto_send": "Section: 'שליחה אוטומטית' with toggle + label 'שלח דוח הוצאות באופן אוטומטי' + Frequency dropdown (monthly on specific date, weekly, manually only) + Day/time picker",
+        "send_format": "Format selection: PDF Unified / ZIP Separate Files (radio buttons)",
+        "save_button": "Save Settings (primary green button)"
+      },
+      "interactions": {
+        "toggle_auto_send": "Enable → Show frequency + day/time pickers. Disable → Hide frequency options.",
+        "save": "API call stores settings, success toast, on error shows error message with retry button"
+      }
+    },
+    "6e_accountant_link": {
+      "url": "/dashboard/settings/accountant-link",
+      "breadcrumb": "הגדרות > קישור לרואה חשבון",
+      "sections": {
+        "referral_code_input": "Heading: 'קישור לרואה חשבון', subtitle: 'קשר את התיק של הלקוח שלך לרואה החשבון שלך'. Input field: Placeholder 'הזן את הקוד שקיבלת מהרו״ח...' + Button 'קשר' (primary green)",
+        "explanation_card": "Info card: 'למה לקשר לרו\\"ח?' with 3 benefits + checkmark icons: 'הרו\\"ח יוכל לצפות ולנהל את ההוצאות', 'לא תצטרך לשלוח קבצים ידנית', 'הכל מסונכרן אוטומטית'"
+      },
+      "interactions": {
+        "enter_code": "User enters 6-digit code from accountant → Click 'קשר' → API validates code + links accounts → Success: 'חשבון מקושר בהצלחה לרואה החשבון שלך' toast. On error: 'קוד לא תקין או פג תוקף' with 'בקש קוד חדש' link"
+      }
+    },
+    "7_help_center": {
+      "url": "/dashboard/help",
+      "title": "מרכז העזרה",
+      "subtitle": "כאן תוכל למצוא מידע ועזרה לשימוש במערכת",
+      "sections": {
+        "help_cards": [
+          {
+            "title": "עזרה כללית",
+            "icon": "questio
