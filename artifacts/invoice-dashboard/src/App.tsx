@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -7,6 +8,7 @@ import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
 import Profile from "@/pages/profile";
 import SettingsPage from "@/pages/settings";
+import Onboarding from "@/pages/onboarding";
 import { AIChat } from "@/components/ai-chat";
 
 const queryClient = new QueryClient({
@@ -19,6 +21,21 @@ const queryClient = new QueryClient({
 });
 
 function AppRouter() {
+  const [onboarded, setOnboarded] = useState(
+    () => localStorage.getItem("vatrix_onboarded") === "1"
+  );
+
+  if (!onboarded) {
+    return (
+      <Onboarding
+        onComplete={() => {
+          localStorage.setItem("vatrix_onboarded", "1");
+          setOnboarded(true);
+        }}
+      />
+    );
+  }
+
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
