@@ -1,0 +1,177 @@
+<turn_answer_start>
+</turn_answer_start>
+
+# פירוט עיצוב הטבלה ופרומנט Replicate
+
+## 🎯 מבנה הטבלה - עמודות וסגנון
+
+הטבלה בעלת 9 עמודות (משמאל לימין):
+
+| עמודה | תיאור | סגנון |
+|------|--------|--------|
+| **ספק** | שם ספק/ספק השירות | טקסט רגיל |
+| **מס׳ מסמך** | מספר החשבונית או הקבלה | טקסט ממרכז |
+| **תאריך** | תאריך המסמך | פורמט DD/MM/YYYY |
+| **קטגוריה** | סיווג ההוצאה (תקשורת, נסיעות וכו׳) | Badge עם סגנון בהיר |
+| **סכום** | סכום ההוצאה (ש״ח) | מספר עם סימן ש״ח |
+| **מע״מ** | אחוז מע״מ (במקרה זה 95%) | Badge ירוק בהיר עם טיקט |
+| **מקור** | מאיפה הגיע המסמך (Gmail) | Button עם סמל ודוא״ל |
+| **ביטחון** | סטטוס האישור (אושר/דחוי) | Badge עם סטטוס צבעוני |
+| **תפעול** | כפתור תפריט עם שלוש נקודות | כפתור עם הפעלה |
+
+## 🎨 עיצוב ויזואלי:
+- **ספרת בדיקה**: checkbox בעמודה ראשונה לכל שורה
+- **ירוק עיצוב**: Badge במע״מ בירוק בהיר (#E8F5E9 בערך)
+- **Blue Button**: Gmail badge עם אייקון דוא״ל כחול
+- **Row Hover**: בעת ריחוף על שורה מופיע border ירוק סביב כפתור התפעול
+
+## 🖱️ אינטראקציות - מה קורה כשמקליקים
+
+### 1. **כפתור התפעול (שלוש נקודות) בכל שורה**
+   - **פעולה**: פתיחת תפריט ניפול ביחס לפריט הנבחר
+   - **אפשרויות בתפריט**:
+     - צפה - מציג את הקבלה במלואה
+     - אשר - משנה סטטוס ל"אושר"
+     - דחה - דוחה את הקבלה
+     - הורד - הורדת קובץ PDF של הקבלה
+
+### 2. **Checkbox בתחילת שורה**
+   - **פעולה**: סימון/ביטול סימון של הקבלה לפעולה קבוצתית
+   - **שימוש**: לביצוע פעולות על מספר קבלות בו־זמנית
+
+### 3. **Dropdown סטטוס "אושר"** (בחלק העליון)
+   - **פעולה**: סינון טבלה לפי סטטוס
+   - **אפשרויות**: פנויות, אושר, דחוי
+
+---
+
+# 🤖 Prompt עבור Replicate
+
+```markdown
+# VATrix Expenses Table Design System
+
+## Component: Interactive Expenses Data Table
+
+### Visual Design Specifications
+
+**Table Structure:**
+- 9-column layout with RTL (Hebrew) text direction
+- Header row with column labels (Supplier, Document #, Date, Category, Amount, VAT, Source, Security, Status)
+- Multiple data rows (5+ items visible)
+- Responsive row height with padding
+
+**Color Palette:**
+- Primary: Dark Teal (#1B5E5E or similar)
+- Accent Green: Light mint (#E8F5E9 - VAT badge)
+- Background: White/Light gray
+- Text: Dark gray/black
+- Borders: Light gray (#E0E0E0)
+
+**Component Elements:**
+
+1. **Checkbox Column (Leftmost)**
+   - Square checkbox for multi-select
+   - Unchecked state by default
+
+2. **Supplier Column**
+   - Supplier name text
+   - Right-aligned (RTL)
+   - Regular font weight
+
+3. **Document # Column**
+   - Numeric ID (238065, 5186301, etc.)
+   - Center-aligned
+   - Monospace preferred
+
+4. **Date Column**
+   - Format: DD/MM/YYYY
+   - Center-aligned
+
+5. **Category Column**
+   - Pill/Badge style
+   - Examples: "תקשורת" (Communications), "נסיעות והובלה" (Transport)
+   - Light background color (tan/beige)
+   - Rounded corners
+
+6. **Amount Column**
+   - Numeric value with shekel amounts
+   - Suffix: ש׳ (shekel symbol)
+   - Numbers: 211, 55, 37, etc.
+
+7. **VAT Column**
+   - Percentage value (95%)
+   - Light green badge style (#E8F5E9)
+   - Rounded pill shape
+   - Checkmark icon included
+
+8. **Source Column**
+   - Provider badge (Gmail ✉️)
+   - Blue background for Gmail
+   - Icon + text combination
+
+9. **Status/Security Column**
+   - Green badge: "אושר" (Approved)
+   - Could also be red for "דחוי" (Rejected)
+   - Checkmark or X icon
+
+10. **Action Button Column (Rightmost)**
+    - Three vertical dots menu (⋮)
+    - Icon button style
+    - Hover state: Green border highlight
+    - Opens dropdown menu on click
+
+**Typography:**
+- Body text: 14px, Regular weight
+- Column headers: 14px, Slightly bolder
+- Badge text: 12px
+
+**Interactions:**
+
+1. **Row Hover:**
+   - Subtle background color change (very light gray)
+   - Action button becomes more visible
+   - Green border appears around action button
+
+2. **Action Button (⋮):**
+   - Click triggers dropdown menu
+   - Menu options:
+     * צפה (View) - Opens full receipt details
+     * אשר (Approve) - Changes status to approved
+     * דחה (Reject) - Changes status to rejected  
+     * הורד (Download) - Downloads PDF of receipt
+
+3. **Checkbox:**
+   - Multi-select functionality
+   - Enables bulk operations
+   - Visual feedback when checked
+
+4. **Global Filter:**
+   - Dropdown at top: Status filter (currently "אושר")
+   - Filter button with funnel icon
+   - List/Gallery view toggle
+
+**Spacing & Layout:**
+- Row height: ~60-70px
+- Padding between columns: 12-16px
+- Left/right padding: 24px
+- Gap between rows: 1px light border
+
+**Responsive Behavior:**
+- Desktop optimized (shown at 1442x791px)
+- Sidebar navigation on left
+- Top header bar with user info
+- Footer showing summary: "5 הוצאות בסכום כולל של 725 ש׳ מתוכם 111 ש׳ מע״מ" (5 expenses totaling 725 with 111 VAT)
+
+### Animation & States:
+- Button states: Default, Hover, Active
+- Row selection: Visual checkbox change
+- Menu open/close: Smooth transitions
+
+### Accessibility:
+- Proper form controls (checkboxes, buttons)
+- Menu navigation with keyboard
+- High contrast text
+- Semantic HTML structure
+```
+
+זה הפרומנט המלא שמתאר את עיצוב הטבלה בפירוט גבוה וממוכן עבור Replicate או מודל AI אחר שיחזיר לך קוד React/Vue!

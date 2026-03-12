@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider, useTheme } from "@/context/theme-context";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
+import ExpensesPage from "@/pages/expenses";
 import Profile from "@/pages/profile";
 import SettingsPage from "@/pages/settings";
 import Onboarding from "@/pages/onboarding";
@@ -39,6 +40,7 @@ function AppRouter() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/expenses" component={ExpensesPage} />
       <Route path="/profile" component={Profile} />
       <Route path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
