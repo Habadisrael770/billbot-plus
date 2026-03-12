@@ -234,22 +234,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Desktop Sidebar */}
-      <aside className="hidden md:flex w-64 shrink-0 border-r border-white/5 bg-card/30 backdrop-blur-xl flex-col z-20">
+    <div className="flex flex-row-reverse h-screen overflow-hidden bg-background">
+      {/* Desktop Sidebar — right */}
+      <aside className="hidden md:flex w-64 shrink-0 border-l border-white/5 bg-card/30 backdrop-blur-xl flex-col z-20">
         <Sidebar location={location} />
       </aside>
 
-      {/* Mobile sidebar overlay */}
+      {/* Mobile sidebar overlay — slides from right */}
       {sidebarOpen && (
-        <div className="md:hidden fixed inset-0 z-50 flex">
+        <div className="md:hidden fixed inset-0 z-50 flex flex-row-reverse">
           {/* Backdrop */}
           <div
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onClick={() => setSidebarOpen(false)}
           />
           {/* Drawer */}
-          <div className="relative w-72 bg-card border-r border-white/10 shadow-2xl flex flex-col">
+          <div className="relative w-72 bg-card border-l border-white/10 shadow-2xl flex flex-col">
             <Sidebar
               location={location}
               onClose={() => setSidebarOpen(false)}
