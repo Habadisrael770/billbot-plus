@@ -294,7 +294,8 @@ function Step3({ form, setForm }: {
             value={form.business_type}
             onChange={(e) => set("business_type", e.target.value)}
             dir="rtl"
-            className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+            style={{ colorScheme: "dark", backgroundColor: "#1c1c1e" }}
+            className="w-full h-10 px-3 rounded-xl border border-white/10 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
           >
             <option value="">בחר סוג...</option>
             {BUSINESS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -306,7 +307,8 @@ function Step3({ form, setForm }: {
             value={form.industry}
             onChange={(e) => set("industry", e.target.value)}
             dir="rtl"
-            className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+            style={{ colorScheme: "dark", backgroundColor: "#1c1c1e" }}
+            className="w-full h-10 px-3 rounded-xl border border-white/10 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
           >
             <option value="">בחר תחום...</option>
             {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}

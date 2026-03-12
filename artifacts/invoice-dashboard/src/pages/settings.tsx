@@ -978,7 +978,8 @@ export default function Settings() {
                   <select
                     value={newApi.service}
                     onChange={(e) => setNewApi((p) => ({ ...p, service: e.target.value }))}
-                    className="h-10 px-3 rounded-xl border border-white/10 bg-black/30 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    style={{ colorScheme: "dark", backgroundColor: "#111" }}
+                    className="h-10 px-3 rounded-xl border border-white/10 text-sm text-white focus:outline-none focus:ring-2 focus:ring-primary/50"
                   >
                     {availableServices.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
@@ -1275,7 +1276,8 @@ export default function Settings() {
                     value={profile.business_type}
                     onChange={(e) => setProfile({ ...profile, business_type: e.target.value })}
                     dir="rtl"
-                    className="w-full h-9 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+                    style={{ colorScheme: "dark", backgroundColor: "#1c1c1e" }}
+                    className="w-full h-9 px-3 rounded-xl border border-white/10 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
                   >
                     <option value="">בחר סוג...</option>
                     {BIZ_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -1287,7 +1289,8 @@ export default function Settings() {
                     value={profile.industry}
                     onChange={(e) => setProfile({ ...profile, industry: e.target.value })}
                     dir="rtl"
-                    className="w-full h-9 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+                    style={{ colorScheme: "dark", backgroundColor: "#1c1c1e" }}
+                    className="w-full h-9 px-3 rounded-xl border border-white/10 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
                   >
                     <option value="">בחר תחום...</option>
                     {INDUSTRIES.map((i) => <option key={i} value={i}>{i}</option>)}
@@ -1523,7 +1526,8 @@ export default function Settings() {
               <select
                 value={newEntityType}
                 onChange={(e) => setNewEntityType(e.target.value as "business" | "personal")}
-                className="h-9 px-2 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground focus:outline-none"
+                style={{ colorScheme: "dark", backgroundColor: "#1c1c1e" }}
+                className="h-9 px-2 rounded-xl border border-white/10 text-sm text-foreground focus:outline-none"
                 dir="rtl"
               >
                 <option value="business">עסקי</option>
