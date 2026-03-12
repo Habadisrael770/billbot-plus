@@ -66,17 +66,39 @@ function TextHint({ children }: { children: React.ReactNode }) {
 function SliderField({
   label, hint, value, onChange,
 }: { label: string; hint: string; value: number; onChange: (v: number) => void }) {
+  const dec = () => onChange(Math.max(0,   value - 5));
+  const inc = () => onChange(Math.min(100, value + 5));
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-2">
+      {/* Label + value badge */}
       <div className="flex items-center justify-between">
         <label className="text-xs text-muted-foreground">{label}</label>
-        <span className="text-sm font-bold text-primary dir-ltr">{value}%</span>
+        <span className="text-sm font-bold tabular-nums px-2 py-0.5 rounded-lg bg-primary/15 text-primary min-w-[3rem] text-center" dir="ltr">
+          {value}%
+        </span>
       </div>
-      <input
-        type="range" min={0} max={100} step={5} value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full h-1.5 rounded-full accent-primary cursor-pointer"
-      />
+      {/* − slider + */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={dec}
+          disabled={value === 0}
+          className="w-8 h-8 rounded-lg border border-white/15 bg-white/5 flex items-center justify-center text-muted-foreground hover:border-primary/40 hover:text-primary disabled:opacity-30 transition-all shrink-0 text-lg font-medium leading-none"
+          aria-label="הקטן 5%"
+        >−</button>
+        <input
+          type="range" min={0} max={100} step={5} value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="flex-1 h-1.5 rounded-full accent-primary cursor-pointer"
+        />
+        <button
+          type="button"
+          onClick={inc}
+          disabled={value === 100}
+          className="w-8 h-8 rounded-lg border border-white/15 bg-white/5 flex items-center justify-center text-muted-foreground hover:border-primary/40 hover:text-primary disabled:opacity-30 transition-all shrink-0 text-lg font-medium leading-none"
+          aria-label="הגדל 5%"
+        >+</button>
+      </div>
       <p className="text-[11px] text-muted-foreground/60">{hint}</p>
     </div>
   );

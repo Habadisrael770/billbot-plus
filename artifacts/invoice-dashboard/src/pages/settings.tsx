@@ -1299,36 +1299,55 @@ export default function Settings() {
               </div>
 
               {/* Sliders */}
-              <div className="rounded-xl border border-white/8 bg-white/3 p-4 space-y-4">
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                      <Percent className="w-3.5 h-3.5" /> שימוש עסקי בבית
-                    </label>
-                    <span className="text-sm font-bold text-primary" dir="ltr">{profile.home_office_usage_percent}%</span>
-                  </div>
-                  <input type="range" min={0} max={100} step={5}
-                    value={profile.home_office_usage_percent}
-                    onChange={(e) => setProfile({ ...profile, home_office_usage_percent: Number(e.target.value) })}
-                    className="w-full h-1.5 rounded-full accent-primary cursor-pointer"
-                  />
-                  <p className="text-[11px] text-muted-foreground/60">אם הוצאה מתחלקת בין בית לעסק — מה אחוז העסקי?</p>
-                </div>
-                <div className="border-t border-white/8" />
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs text-muted-foreground flex items-center gap-1.5">
-                      <Percent className="w-3.5 h-3.5" /> שימוש עסקי ברכב
-                    </label>
-                    <span className="text-sm font-bold text-primary" dir="ltr">{profile.vehicle_business_usage_percent}%</span>
-                  </div>
-                  <input type="range" min={0} max={100} step={5}
-                    value={profile.vehicle_business_usage_percent}
-                    onChange={(e) => setProfile({ ...profile, vehicle_business_usage_percent: Number(e.target.value) })}
-                    className="w-full h-1.5 rounded-full accent-primary cursor-pointer"
-                  />
-                  <p className="text-[11px] text-muted-foreground/60">אם הרכב משמש גם לצרכים פרטיים — מה אחוז השימוש העסקי?</p>
-                </div>
+              <div className="rounded-xl border border-white/8 bg-white/3 p-4 space-y-5">
+                {/* Home office */}
+                {(["home", "vehicle"] as const).map((key) => {
+                  const isHome = key === "home";
+                  const field = isHome ? "home_office_usage_percent" : "vehicle_business_usage_percent";
+                  const val   = profile[field] ?? 0;
+                  const dec = () => setProfile({ ...profile, [field]: Math.max(0,   val - 5) });
+                  const inc = () => setProfile({ ...profile, [field]: Math.min(100, val + 5) });
+                  return (
+                    <div key={key} className="space-y-2">
+                      {/* Label + badge */}
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                          <Percent className="w-3.5 h-3.5" />
+                          {isHome ? "שימוש עסקי בבית" : "שימוש עסקי ברכב"}
+                        </label>
+                        <span className="text-sm font-bold tabular-nums px-2 py-0.5 rounded-lg bg-primary/15 text-primary min-w-[3rem] text-center" dir="ltr">
+                          {val}%
+                        </span>
+                      </div>
+                      {/* − slider + */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={dec}
+                          disabled={val === 0}
+                          className="w-8 h-8 rounded-lg border border-white/15 bg-white/5 flex items-center justify-center text-muted-foreground hover:border-primary/40 hover:text-primary disabled:opacity-30 transition-all shrink-0 text-lg font-medium leading-none"
+                        >−</button>
+                        <input
+                          type="range" min={0} max={100} step={5} value={val}
+                          onChange={(e) => setProfile({ ...profile, [field]: Number(e.target.value) })}
+                          className="flex-1 h-1.5 rounded-full accent-primary cursor-pointer"
+                        />
+                        <button
+                          type="button"
+                          onClick={inc}
+                          disabled={val === 100}
+                          className="w-8 h-8 rounded-lg border border-white/15 bg-white/5 flex items-center justify-center text-muted-foreground hover:border-primary/40 hover:text-primary disabled:opacity-30 transition-all shrink-0 text-lg font-medium leading-none"
+                        >+</button>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground/60">
+                        {isHome
+                          ? "אם הוצאה מתחלקת בין בית לעסק — מה אחוז העסקי?"
+                          : "אם הרכב משמש גם לצרכים פרטיים — מה אחוז השימוש העסקי?"}
+                      </p>
+                      {key === "home" && <div className="border-t border-white/8 pt-1" />}
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Revenue */}
