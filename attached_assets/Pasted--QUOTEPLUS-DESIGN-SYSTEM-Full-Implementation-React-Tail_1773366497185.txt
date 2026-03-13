@@ -1,0 +1,512 @@
+
+🎨 QUOTEPLUS DESIGN SYSTEM — Full Implementation
+   React + Tailwind CSS | RTL Hebrew | Light & Dark
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Apply this complete design system to the project.
+Reference design: app.quoteplus.co.il — Israeli SaaS 
+dashboard with full RTL Hebrew support, light/dark modes.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. TAILWIND CONFIG (tailwind.config.js)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+module.exports = {
+  darkMode: 'class',
+  content: ['./src/**/*.{js,jsx,ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        // ── Brand ──────────────────────────────
+        primary: {
+          DEFAULT:  '#4361ee',
+          hover:    '#3451d1',
+          light:    '#eef0fd',
+          'light-dark': 'rgba(67,97,238,0.15)',
+        },
+        accent: {
+          DEFAULT:  '#2dd4bf',
+          hover:    '#14b8a6',
+          light:    '#e6faf8',
+          'light-dark': 'rgba(45,212,191,0.15)',
+        },
+        // ── Light Mode Backgrounds ─────────────
+        surface: {
+          page:     '#f0f2f8',   // page bg
+          card:     '#ffffff',   // cards / panels
+          elevated: '#f8faff',   // dropdowns / hover
+          input:    '#ffffff',   // input bg
+          navbar:   '#ffffff',   // top nav
+          'table-header': '#eef1fd', // table thead
+          'table-hover':  '#f5f7ff', // row hover
+        },
+        // ── Dark Mode Backgrounds ──────────────
+        navy: {
+          950:  '#0d1224',  // page bg dark
+          900:  '#0f1533',  // navbar dark
+          800:  '#161e36',  // cards dark
+          750:  '#1a2340',  // elevated dark
+          700:  '#1e2845',  // table header dark
+          600:  '#2a3555',  // borders / inputs dark
+          500:  '#3a4a6b',  // hover dark
+        },
+        // ── Text ───────────────────────────────
+        content: {
+          primary:   '#1a2035',  // headings light
+          secondary: '#4b5563',  // body light
+          muted:     '#9ca3af',  // placeholder light
+          link:      '#4361ee',  // links light
+          'primary-dark':   '#ffffff',
+          'secondary-dark': '#94a3b8',
+          'muted-dark':     '#64748b',
+        },
+        // ── Borders ────────────────────────────
+        border: {
+          light:  '#e5e7f0',
+          dark:   'rgba(255,255,255,0.07)',
+          focus:  '#4361ee',
+          input:  '#d1d5e8',
+        },
+        // ── Semantic ───────────────────────────
+        success:  '#10b981',
+        warning:  '#f59e0b',
+        error:    '#ef4444',
+        info:     '#3b82f6',
+        purple:   '#8b5cf6',
+      },
+      fontFamily: {
+        sans: ['Heebo', 'sans-serif'],
+      },
+      fontSize: {
+        'xs':   ['12px', { lineHeight: '1.5' }],
+        'sm':   ['13px', { lineHeight: '1.5' }],
+        'base': ['15px', { lineHeight: '1.6' }],
+        'lg':   ['18px', { lineHeight: '1.5' }],
+        'xl':   ['22px', { lineHeight: '1.4' }],
+        '2xl':  ['28px', { lineHeight: '1.3' }],
+        '3xl':  ['36px', { lineHeight: '1.2' }],
+      },
+      fontWeight: {
+        light:     '300',
+        regular:   '400',
+        medium:    '500',
+        semibold:  '600',
+        bold:      '700',
+        extrabold: '800',
+      },
+      borderRadius: {
+        'card':   '14px',
+        'btn':    '10px',
+        'input':  '8px',
+        'badge':  '20px',
+        'fab':    '50%',
+      },
+      boxShadow: {
+        'card':       '0 2px 12px rgba(0,0,0,0.07)',
+        'card-dark':  '0 2px 16px rgba(0,0,0,0.35)',
+        'btn':        '0 4px 12px rgba(67,97,238,0.3)',
+        'dropdown':   '0 8px 24px rgba(0,0,0,0.12)',
+      },
+      spacing: {
+        'navbar': '56px',
+      },
+    },
+  },
+  plugins: [],
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. GLOBAL CSS (index.css / globals.css)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    direction: rtl;
+    font-family: 'Heebo', sans-serif;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-surface-page text-content-primary;
+    @apply dark:bg-navy-950 dark:text-content-primary-dark;
+    text-align: right;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  @apply bg-border-light dark:bg-navy-600 rounded-full;
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. COMPONENT CLASSES (via @layer components)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@layer components {
+
+  /* ── NAVBAR ── */
+  .navbar {
+    @apply h-14 bg-surface-navbar dark:bg-navy-900
+           border-b border-border-light dark:border-navy-700
+           flex items-center justify-between px-6
+           fixed top-0 left-0 right-0 z-50;
+  }
+
+  /* ── PAGE WRAPPER ── */
+  .page-wrapper {
+    @apply pt-14 min-h-screen
+           bg-surface-page dark:bg-navy-950;
+  }
+
+  .page-content {
+    @apply max-w-6xl mx-auto px-6 py-8;
+  }
+
+  /* ── CARD ── */
+  .card {
+    @apply bg-surface-card dark:bg-navy-800
+           border border-border-light dark:border-navy-700
+           rounded-[14px] shadow-card dark:shadow-card-dark
+           p-6;
+  }
+
+  .card-title {
+    @apply text-xl font-bold text-content-primary
+           dark:text-white mb-1;
+  }
+
+  /* ── BUTTONS ── */
+  .btn-primary {
+    @apply bg-primary hover:bg-primary-hover
+           text-white font-bold text-sm
+           px-5 py-3 rounded-[10px]
+           shadow-btn transition-all duration-200
+           flex items-center gap-2 cursor-pointer;
+  }
+
+  .btn-secondary {
+    @apply bg-transparent
+           border border-border-light dark:border-navy-600
+           text-content-primary dark:text-white
+           font-medium text-sm
+           px-5 py-3 rounded-[10px]
+           hover:bg-surface-elevated dark:hover:bg-navy-750
+           transition-all duration-200
+           flex items-center gap-2 cursor-pointer;
+  }
+
+  .btn-outline-primary {
+    @apply bg-transparent
+           border border-primary text-primary
+           font-medium text-sm
+           px-5 py-3 rounded-[10px]
+           hover:bg-primary-light
+           transition-all duration-200;
+  }
+
+  /* ── TABS / PILLS ── */
+  .tab-active {
+    @apply bg-primary text-white
+           font-semibold text-sm
+           px-4 py-2 rounded-[20px]
+           transition-all duration-200;
+  }
+
+  .tab-inactive {
+    @apply bg-transparent
+           text-content-muted dark:text-content-muted-dark
+           font-medium text-sm
+           px-4 py-2 rounded-[20px]
+           hover:bg-surface-elevated dark:hover:bg-navy-750
+           transition-all duration-200 cursor-pointer;
+  }
+
+  /* ── INPUTS ── */
+  .input {
+    @apply w-full bg-surface-input dark:bg-navy-800
+           border border-border-input dark:border-navy-600
+           rounded-[8px] px-4 py-2.5
+           text-sm text-content-primary dark:text-white
+           placeholder:text-content-muted dark:placeholder:text-content-muted-dark
+           focus:outline-none focus:border-primary
+           focus:ring-2 focus:ring-primary/20
+           transition-all duration-200
+           text-right;
+  }
+
+  .input-label {
+    @apply block text-sm font-medium
+           text-content-secondary dark:text-content-secondary-dark
+           mb-1.5 text-right;
+  }
+
+  /* ── SEARCH BAR ── */
+  .search-bar {
+    @apply input pr-10 pl-4;
+  }
+
+  /* ── TABLE ── */
+  .table-wrapper {
+    @apply w-full overflow-x-auto
+           rounded-[14px] border border-border-light
+           dark:border-navy-700;
+  }
+
+  .table {
+    @apply w-full text-sm text-right;
+  }
+
+  .table thead tr {
+    @apply bg-[#eef1fd] dark:bg-navy-700
+           text-content-secondary dark:text-content-secondary-dark
+           font-semibold text-xs uppercase tracking-wide;
+  }
+
+  .table thead th {
+    @apply px-4 py-3 text-right;
+  }
+
+  .table tbody tr {
+    @apply bg-surface-card dark:bg-navy-800
+           border-t border-border-light dark:border-navy-700
+           hover:bg-[#f5f7ff] dark:hover:bg-navy-750
+           transition-colors duration-150;
+  }
+
+  .table tbody td {
+    @apply px-4 py-3 text-right;
+  }
+
+  .table-total-row {
+    @apply bg-primary text-white font-bold
+           px-4 py-3 text-right;
+  }
+
+  /* ── BADGES / STATUS ── */
+  .badge-active {
+    @apply bg-success/15 text-success
+           text-xs font-semibold
+           px-3 py-1 rounded-[20px];
+  }
+
+  .badge-inactive {
+    @apply bg-content-muted/15 text-content-muted
+           dark:bg-navy-600/50 dark:text-content-muted-dark
+           text-xs font-semibold
+           px-3 py-1 rounded-[20px];
+  }
+
+  .badge-free {
+    @apply bg-accent-light dark:bg-accent-light-dark
+           text-accent dark:text-accent
+           text-xs font-semibold
+           px-3 py-1 rounded-[20px];
+  }
+
+  /* ── QUICK ACTION BUTTON (dashboard grid) ── */
+  .quick-action {
+    @apply flex flex-col items-center justify-center gap-2
+           bg-surface-elevated dark:bg-navy-750
+           border border-border-light dark:border-navy-600
+           rounded-[12px] p-4
+           hover:border-primary dark:hover:border-primary
+           hover:shadow-btn/10
+           transition-all duration-200 cursor-pointer;
+  }
+
+  .quick-action-icon {
+    @apply w-10 h-10 rounded-[10px]
+           flex items-center justify-center text-lg;
+  }
+
+  /* ── FAB BUTTON (floating + bottom left) ── */
+  .fab {
+    @apply fixed bottom-6 left-6 z-50
+           w-12 h-12 rounded-full
+           bg-primary hover:bg-primary-hover
+           text-white shadow-btn
+           flex items-center justify-center
+           text-xl font-bold
+           transition-all duration-200
+           cursor-pointer;
+  }
+
+  /* ── CHAT BUBBLE (bottom right) ── */
+  .chat-bubble {
+    @apply fixed bottom-6 right-6 z-50
+           w-12 h-12 rounded-full
+           bg-primary dark:bg-navy-800
+           text-white dark:text-accent
+           shadow-dropdown
+           flex items-center justify-center
+           transition-all duration-200 cursor-pointer;
+  }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    @apply flex flex-col items-center justify-center
+           gap-3 py-16 text-center;
+  }
+
+  .empty-state-icon {
+    @apply w-14 h-14 text-content-muted dark:text-navy-600
+           mb-2;
+  }
+
+  .empty-state-title {
+    @apply text-base font-bold
+           text-content-primary dark:text-white;
+  }
+
+  .empty-state-desc {
+    @apply text-sm text-content-muted
+           dark:text-content-muted-dark;
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    @apply border-t border-border-light dark:border-navy-700
+           my-4;
+  }
+
+  /* ── SECTION HEADER ── */
+  .section-title {
+    @apply text-2xl font-bold
+           text-content-primary dark:text-white;
+  }
+
+  .section-subtitle {
+    @apply text-sm text-content-muted
+           dark:text-content-muted-dark mt-1;
+  }
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. DARK MODE TOGGLE (React Component)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+// useDarkMode.js
+import { useState, useEffect } from 'react';
+
+export function useDarkMode() {
+  const [isDark, setIsDark] = useState(
+    () => localStorage.getItem('theme') === 'dark'
+  );
+
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isDark) {
+      root.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      root.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDark]);
+
+  return [isDark, () => setIsDark(p => !p)];
+}
+
+// DarkModeToggle.jsx
+export function DarkModeToggle() {
+  const [isDark, toggle] = useDarkMode();
+  return (
+    <button onClick={toggle} className="
+      p-2 rounded-[8px] text-content-muted dark:text-white
+      hover:bg-surface-elevated dark:hover:bg-navy-750
+      transition-all duration-200
+    ">
+      {isDark ? '☀️' : '🌙'}
+    </button>
+  );
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. ICON COLORS (Quick Actions palette)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Use these for icon container backgrounds:
+
+  Teal    → bg: #e6faf8  icon: #2dd4bf   (new quote, main actions)
+  Blue    → bg: #eef0fd  icon: #4361ee   (clients, navigation)
+  Purple  → bg: #f0ebff  icon: #8b5cf6   (settings, advanced)
+  Yellow  → bg: #fff8e6  icon: #f59e0b   (items, products)
+  Red     → bg: #fee8e8  icon: #ef4444   (delete, warning)
+  Green   → bg: #e8f9f0  icon: #10b981   (success, active)
+
+Dark mode: replace light bg with opacity variants:
+  Teal   → bg: rgba(45,212,191,0.12)
+  Blue   → bg: rgba(67,97,238,0.15)
+  Purple → bg: rgba(139,92,246,0.15)
+  Yellow → bg: rgba(245,158,11,0.15)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. QUOTE PREVIEW GRADIENT BANNER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+.quote-preview-banner {
+  background: linear-gradient(
+    135deg,
+    #0f2d5e 0%,
+    #1a4a8a 30%,
+    #1a6b8a 60%,
+    #2dd4bf 100%
+  );
+  border-radius: 12px;
+  padding: 32px 40px;
+  color: white;
+  text-align: right;
+}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. DESIGN PRINCIPLES (enforce throughout)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. RTL FIRST — all layouts right-to-left, flex-row-reverse
+   as default, text-right on all text elements
+
+2. FONT — Heebo for all Hebrew+Latin text (Google Fonts)
+
+3. COLOR CONTINUITY — primary blue #4361ee used for:
+   active tabs, primary buttons, active nav items, FAB,
+   links, focus states, table total row
+
+4. ACCENT TEAL #2dd4bf used only for:
+   logo mark, badges, success icons, key highlights
+
+5. LIGHT MODE — soft blue-white background (#f0f2f8),
+   pure white cards, subtle shadows and borders
+
+6. DARK MODE — deep navy base (#0d1224), layered dark
+   surfaces, rgba borders (no hard borders)
+
+7. CARDS — always white in light / dark navy in dark,
+   14px radius, soft shadow, 24px padding
+
+8. BUTTONS — 10px radius, bold text, primary blue,
+   shadow on primary buttons, smooth 200ms transitions
+
+9. TABLES — light blue header tint, clean rows,
+   hover highlight, bottom total row in primary blue
+
+10. SPACING — 4px base unit, 24px card padding,
+    16-20px gaps, 56px navbar height
+
+11. TRANSITIONS — all interactive elements: 200ms ease
+
+12. NO GRADIENTS on buttons — flat solid colors only
+
+13. STATUS BADGES — pill shape (20px radius),
+    colored background at 15% opacity + matching text color
