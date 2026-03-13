@@ -13,6 +13,7 @@ import SettingsPage from "@/pages/settings";
 import Onboarding from "@/pages/onboarding";
 import SuppliersPage from "@/pages/suppliers";
 import HelpPage from "@/pages/help";
+import IntegrationsPage from "@/pages/integrations";
 import { AIChat } from "@/components/ai-chat";
 
 const queryClient = new QueryClient({
@@ -72,6 +73,7 @@ function AppRouter() {
         <Route path="/" component={Dashboard} />
         <Route path="/expenses" component={ExpensesPage} />
         <Route path="/suppliers" component={SuppliersPage} />
+        <Route path="/integrations" component={IntegrationsPage} />
         <Route path="/help" component={HelpPage} />
         <Route path="/profile" component={Profile} />
         <Route path="/settings" component={SettingsPage} />
