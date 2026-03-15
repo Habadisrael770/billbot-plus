@@ -26,6 +26,7 @@ import {
   Phone,
   Search,
   MailOpen,
+  Plus,
 } from "lucide-react";
 import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
 import { GmailScanDialog } from "@/components/gmail-scan-dialog";
@@ -626,23 +627,55 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border flex items-center justify-around px-2 py-1">
-        {PRIMARY_NAV.map((item) => {
-          const active = location === item.href;
+      {/* Mobile bottom nav — 2 items | FAB | 2 items */}
+      <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border flex items-end justify-around px-1" style={{ height: "60px" }}>
+        {(() => {
+          const mobileNav = PRIMARY_NAV.filter((i) => i.href !== "/integrations");
+          const left = mobileNav.slice(0, 2);
+          const right = mobileNav.slice(2);
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-[10px] transition-colors ${
-                active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <item.icon className="w-5 h-5" />
-              <span className="text-[9px] font-medium">{item.label}</span>
-            </Link>
+            <>
+              {left.map((item) => {
+                const active = location === item.href;
+                return (
+                  <Link key={item.href} href={item.href}
+                    className={`flex flex-col items-center gap-0.5 px-3 pb-2 pt-1 rounded-[10px] transition-colors flex-1 ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span className="text-[9px] font-medium">{item.label}</span>
+                  </Link>
+                );
+              })}
+
+              {/* Centre FAB — elevated above the bar */}
+              <div className="flex flex-col items-center justify-end pb-2 flex-1" style={{ marginBottom: "14px" }}>
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="w-14 h-14 rounded-full flex items-center justify-center transition-transform active:scale-95"
+                  style={{
+                    background: "linear-gradient(135deg, hsl(var(--primary)) 0%, #2dd4bf 100%)",
+                    boxShadow: "0 6px 20px hsl(var(--primary) / 0.45), 0 2px 8px rgba(0,0,0,0.25)",
+                  }}
+                  aria-label="תפריט"
+                >
+                  <Plus className="w-7 h-7 text-white" strokeWidth={2.5} />
+                </button>
+              </div>
+
+              {right.map((item) => {
+                const active = location === item.href;
+                return (
+                  <Link key={item.href} href={item.href}
+                    className={`flex flex-col items-center gap-0.5 px-3 pb-2 pt-1 rounded-[10px] transition-colors flex-1 ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span className="text-[9px] font-medium">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </>
           );
-        })}
+        })()}
       </nav>
 
       {/* Global Upload Modal */}
