@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
   Receipt,
@@ -9,7 +10,6 @@ import {
   Settings,
   HelpCircle,
   User,
-  Menu,
   X,
   LogOut,
   Bell,
@@ -19,6 +19,8 @@ import {
   Gift,
   Upload,
   CalendarDays,
+  Crown,
+  Menu,
 } from "lucide-react";
 import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
 import { useTheme } from "@/context/theme-context";
@@ -31,65 +33,21 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 
 const PRIMARY_NAV = [
-  { href: "/",            icon: LayoutDashboard, label: "דשבורד" },
-  { href: "/expenses",    icon: Receipt,         label: "הוצאות" },
-  { href: "/suppliers",   icon: Building2,       label: "ספקים" },
-  { href: "/export",      icon: SendHorizonal,   label: 'ייצוא לרו"ח' },
-  { href: "/integrations",icon: Zap,             label: "אינטגרציות" },
+  { href: "/",             icon: LayoutDashboard, label: "דשבורד",       color: "text-primary",       bg: "rgba(75,126,245,0.08)",  border: "rgba(75,126,245,0.25)" },
+  { href: "/expenses",     icon: Receipt,         label: "הוצאות",       color: "text-teal",          bg: "rgba(45,212,191,0.08)",  border: "rgba(45,212,191,0.25)" },
+  { href: "/suppliers",    icon: Building2,       label: "ספקים",        color: "text-amber-400",     bg: "rgba(251,191,36,0.08)",  border: "rgba(251,191,36,0.25)" },
+  { href: "/export",       icon: SendHorizonal,   label: 'ייצוא לרו"ח', color: "text-violet-400",    bg: "rgba(139,92,246,0.08)",  border: "rgba(139,92,246,0.25)" },
+  { href: "/integrations", icon: Zap,             label: "אינטגרציות",   color: "text-rose-400",      bg: "rgba(244,63,94,0.08)",   border: "rgba(244,63,94,0.25)" },
 ];
 
 const SECONDARY_NAV = [
-  { href: "/settings", icon: Settings,   label: "הגדרות" },
-  { href: "/help",     icon: HelpCircle, label: "עזרה" },
-  { href: "/profile",  icon: User,       label: "פרופיל" },
+  { href: "/settings", icon: Settings,   label: "הגדרות", color: "text-muted-foreground", bg: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.1)" },
+  { href: "/help",     icon: HelpCircle, label: "עזרה",   color: "text-muted-foreground", bg: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.1)" },
 ];
 
 const ALL_NAV = [...PRIMARY_NAV, ...SECONDARY_NAV];
-
-function NavItem({
-  href,
-  icon: Icon,
-  label,
-  active,
-  onClick,
-  compact,
-}: {
-  href: string;
-  icon: React.ElementType;
-  label: string;
-  active?: boolean;
-  onClick?: () => void;
-  compact?: boolean;
-}) {
-  if (compact) {
-    return (
-      <Link
-        href={href}
-        onClick={onClick}
-        className={`flex flex-col items-center gap-1 px-2 py-3 rounded-[10px] transition-all duration-200 ${
-          active ? "nav-item-active" : "nav-item"
-        }`}
-      >
-        <Icon className={`w-5 h-5 shrink-0`} />
-        <span className="text-[9px] font-medium leading-tight text-center">{label}</span>
-      </Link>
-    );
-  }
-
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className={active ? "nav-item-active" : "nav-item"}
-    >
-      <Icon className="w-5 h-5 shrink-0" />
-      <span>{label}</span>
-    </Link>
-  );
-}
 
 function CompactSidebar({ location, onClose }: { location: string; onClose?: () => void }) {
   return (
@@ -98,70 +56,240 @@ function CompactSidebar({ location, onClose }: { location: string; onClose?: () 
         <span dir="ltr" className="text-sm font-black text-primary leading-none">BB+</span>
       </div>
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {PRIMARY_NAV.map((item) => (
-          <NavItem
-            key={item.href}
-            href={item.href}
-            icon={item.icon}
-            label={item.label}
-            active={location === item.href}
-            onClick={onClose}
-            compact
-          />
-        ))}
+        {PRIMARY_NAV.map((item) => {
+          const active = location === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onClose}
+              className={`flex flex-col items-center gap-1 px-2 py-3 rounded-[10px] transition-all duration-200 ${
+                active ? "nav-item-active" : "nav-item"
+              }`}
+            >
+              <item.icon className="w-5 h-5 shrink-0" />
+              <span className="text-[9px] font-medium leading-tight text-center">{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
       <div className="py-4 px-2 space-y-1 border-t border-border">
-        {SECONDARY_NAV.map((item) => (
-          <NavItem
-            key={item.href}
-            href={item.href}
-            icon={item.icon}
-            label={item.label}
-            active={location === item.href}
-            onClick={onClose}
-            compact
-          />
-        ))}
+        {SECONDARY_NAV.map((item) => {
+          const active = location === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onClose}
+              className={`flex flex-col items-center gap-1 px-2 py-3 rounded-[10px] transition-all duration-200 ${
+                active ? "nav-item-active" : "nav-item"
+              }`}
+            >
+              <item.icon className="w-5 h-5 shrink-0" />
+              <span className="text-[9px] font-medium leading-tight text-center">{item.label}</span>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function MobileSidebar({ location, onClose }: { location: string; onClose: () => void }) {
+function MobileSidebar({
+  location,
+  onClose,
+  onUpload,
+}: {
+  location: string;
+  onClose: () => void;
+  onUpload: () => void;
+}) {
+  const hubUser = (() => {
+    try {
+      const raw = localStorage.getItem("bb_user");
+      if (!raw) return "משתמש";
+      const parsed = JSON.parse(raw);
+      return parsed.name ?? parsed.email ?? "משתמש";
+    } catch { return "משתמש"; }
+  })();
+
+  const hubPlan = (() => {
+    try {
+      const raw = localStorage.getItem("bb_onboarding_progress");
+      if (!raw) return "free";
+      const parsed = JSON.parse(raw);
+      return parsed.plan ?? "free";
+    } catch { return "free"; }
+  })();
+
+  const planLabel: Record<string, string> = {
+    free: "חינם",
+    starter: "Starter",
+    business: "Business",
+  };
+
   return (
-    <div className="h-full flex flex-col">
-      <div className="h-14 flex items-center justify-between px-5 border-b border-border shrink-0">
-        <span dir="ltr" className="text-xl font-black text-primary">BillBOT+</span>
+    <div
+      className="h-full flex flex-col"
+      style={{ background: "linear-gradient(180deg, #1a1d3a 0%, #0f1219 100%)" }}
+      dir="rtl"
+    >
+      {/* ── Header bar ── */}
+      <div className="flex items-center justify-between px-5 pt-5 pb-5 border-b border-white/8 shrink-0">
         <button
           onClick={onClose}
-          className="p-1.5 rounded-[8px] text-muted-foreground hover:text-foreground hover:bg-elevated transition-colors"
+          className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:bg-white/10 transition-colors"
         >
-          <X className="w-5 h-5" />
+          <Bell className="w-4 h-4 text-white/50" />
+        </button>
+
+        <div className="flex items-center gap-2">
+          <span dir="ltr" className="text-[18px] font-black text-white tracking-tight">BillBOT+</span>
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md text-white ${
+            hubPlan === "business" ? "bg-violet-500"
+            : hubPlan === "starter" ? "bg-teal"
+            : "bg-primary"
+          }`}>{planLabel[hubPlan] ?? "חינם"}</span>
+        </div>
+
+        <button
+          onClick={onClose}
+          className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:bg-white/10 transition-colors"
+        >
+          <X className="w-4 h-4 text-white/50" />
         </button>
       </div>
-      <nav className="flex-1 py-5 px-3 space-y-1 overflow-y-auto">
-        {PRIMARY_NAV.map((item) => (
-          <NavItem
-            key={item.href}
-            href={item.href}
-            icon={item.icon}
-            label={item.label}
-            active={location === item.href}
-            onClick={onClose}
-          />
-        ))}
-      </nav>
-      <div className="py-4 px-3 space-y-1 border-t border-border">
-        {SECONDARY_NAV.map((item) => (
-          <NavItem
-            key={item.href}
-            href={item.href}
-            icon={item.icon}
-            label={item.label}
-            active={location === item.href}
-            onClick={onClose}
-          />
-        ))}
+
+      {/* ── Profile row ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.06, duration: 0.22 }}
+        className="flex items-center gap-3.5 px-5 py-4 border-b border-white/5 shrink-0"
+      >
+        <div className="relative shrink-0">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/40 to-teal/20 border border-primary/25 flex items-center justify-center">
+            <User className="w-5 h-5 text-primary" />
+          </div>
+          <div className="absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-[#1a1d3a]" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[14px] font-bold text-white truncate leading-tight">{hubUser}</p>
+          <p className="text-[11px] text-white/50 mt-0.5">{planLabel[hubPlan]} · BillBOT+</p>
+        </div>
+      </motion.div>
+
+      {/* ── Scrollable content ── */}
+      <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-3">
+
+        {/* Primary CTA: upload invoice */}
+        <motion.button
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.22 }}
+          onClick={() => { onClose(); onUpload(); }}
+          className="w-full flex items-center justify-center gap-2.5 h-14 rounded-2xl text-[16px] font-bold text-white active:scale-[0.97] transition-transform"
+          style={{ background: "linear-gradient(135deg, #4B7EF5, hsl(var(--teal)))" }}
+        >
+          <Upload className="w-5 h-5" />
+          העלה חשבונית
+        </motion.button>
+
+        {/* Primary nav — Quote Plus card style */}
+        {PRIMARY_NAV.map((item, i) => {
+          const active = location === item.href;
+          return (
+            <motion.div
+              key={item.href}
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.14 + i * 0.05, duration: 0.24, ease: "easeOut" }}
+            >
+              <Link
+                href={item.href}
+                onClick={onClose}
+                className="flex items-center gap-4 px-5 h-[58px] rounded-2xl transition-all active:scale-[0.97] w-full"
+                style={{
+                  background: active ? item.bg.replace("0.08", "0.18") : item.bg,
+                  border: `1px solid ${active ? item.border.replace("0.25", "0.7") : item.border}`,
+                  boxShadow: active ? `0 0 12px ${item.border.replace("0.25", "0.15")}` : "none",
+                }}
+              >
+                <item.icon className={`w-5 h-5 shrink-0 ${item.color}`} />
+                <span className="flex-1 text-[16px] font-medium text-white">{item.label}</span>
+                {active && (
+                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: item.border.replace("rgba(", "rgb(").replace(", 0.25)", ")") }} />
+                )}
+              </Link>
+            </motion.div>
+          );
+        })}
+
+        {/* Divider */}
+        <div className="h-px bg-white/8 mx-1" />
+
+        {/* Secondary nav */}
+        {SECONDARY_NAV.map((item, i) => {
+          const active = location === item.href;
+          return (
+            <motion.div
+              key={item.href}
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.39 + i * 0.05, duration: 0.22, ease: "easeOut" }}
+            >
+              <Link
+                href={item.href}
+                onClick={onClose}
+                className="flex items-center gap-4 px-5 h-[54px] rounded-2xl transition-all active:scale-[0.97] w-full"
+                style={{
+                  background: active ? "rgba(255,255,255,0.08)" : item.bg,
+                  border: `1px solid ${active ? "rgba(255,255,255,0.2)" : item.border}`,
+                }}
+              >
+                <item.icon className="w-5 h-5 shrink-0 text-white/50" />
+                <span className="flex-1 text-[15px] font-medium text-white/70">{item.label}</span>
+              </Link>
+            </motion.div>
+          );
+        })}
+
+        {/* Upgrade CTA (free only) */}
+        {hubPlan === "free" && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.52, duration: 0.22 }}
+          >
+            <Link
+              href="/settings"
+              onClick={onClose}
+              className="flex items-center gap-4 px-5 h-[54px] rounded-2xl transition-all active:scale-[0.97] w-full border border-amber-400/25"
+              style={{ background: "rgba(251,191,36,0.07)" }}
+            >
+              <Crown className="w-5 h-5 shrink-0 text-amber-400" />
+              <span className="flex-1 text-[15px] font-medium text-amber-300">שדרג לStarter</span>
+            </Link>
+          </motion.div>
+        )}
+
+        {/* Logout */}
+        <motion.button
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.56, duration: 0.22 }}
+          onClick={() => {
+            localStorage.removeItem("bb_user");
+            localStorage.removeItem("bb_wizard_done");
+            window.location.href = "/login";
+          }}
+          className="w-full flex items-center gap-4 px-5 h-[54px] rounded-2xl border border-red-500/25 active:scale-[0.97] transition-all"
+          style={{ background: "rgba(239,68,68,0.06)" }}
+        >
+          <LogOut className="w-5 h-5 shrink-0 text-red-400" />
+          <span className="text-[15px] font-medium text-red-400">יציאה מהחשבון</span>
+        </motion.button>
+
       </div>
     </div>
   );
@@ -262,21 +390,40 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <CompactSidebar location={location} />
         </aside>
 
-        {/* Mobile sidebar overlay */}
-        {sidebarOpen && (
-          <div className="md:hidden fixed inset-0 z-50 flex flex-row-reverse">
-            <div
-              className="absolute inset-0 bg-black/60"
-              onClick={() => setSidebarOpen(false)}
-            />
-            <div
-              className="relative w-72 bg-card border-l border-border flex flex-col"
-              style={{ boxShadow: "var(--shadow-dropdown)" }}
-            >
-              <MobileSidebar location={location} onClose={() => setSidebarOpen(false)} />
-            </div>
-          </div>
-        )}
+        {/* Mobile sidebar — AnimatePresence slide panel */}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div
+                key="mobile-overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="md:hidden fixed inset-0 z-50 bg-black/60"
+                onClick={() => setSidebarOpen(false)}
+              />
+
+              {/* Panel — slides in from right (RTL = right side of screen) */}
+              <motion.div
+                key="mobile-panel"
+                initial={{ x: "100%" }}
+                animate={{ x: 0 }}
+                exit={{ x: "100%" }}
+                transition={{ duration: 0.32, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="md:hidden fixed top-0 right-0 bottom-0 z-50 w-[85%] max-w-[320px] flex flex-col"
+                style={{ boxShadow: "-8px 0 40px rgba(0,0,0,0.5)" }}
+              >
+                <MobileSidebar
+                  location={location}
+                  onClose={() => setSidebarOpen(false)}
+                  onUpload={() => setUploadOpen(true)}
+                />
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">

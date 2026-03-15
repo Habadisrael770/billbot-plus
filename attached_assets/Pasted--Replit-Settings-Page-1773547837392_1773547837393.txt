@@ -1,0 +1,178 @@
+בדיוק! הנה הפרומפט המתוקן עם דגש חזק על שמירת הצבעים:
+
+---
+
+## **פרומפט ל-Replit - Settings Page Mobile Component**
+
+```
+You are building a responsive mobile Settings page component for Billsy (a financial management app). 
+
+⚠️ CRITICAL REQUIREMENT - COLOR PALETTE (DO NOT CHANGE OR MODIFY):
+================================================================================
+Your MUST use EXACTLY these colors. Do NOT substitute, change, lighten, darken, or modify them:
+
+- Primary Brand Color: #138A8A (teal/turquoise - buttons, active states, accents)
+- Secondary Color: #1A7777 (darker teal)
+- Background: #FFFFFF (white)
+- Light Background: #F8F9FA (light gray)
+- Text Primary: #222222 (dark gray/black)
+- Text Secondary: #666666 (medium gray)
+- Text Tertiary: #AAAAAA (light gray)
+- Badge Background: #138A8A (MUST be same as primary - no alternatives)
+- Border Color: #E8E8E8 (light border)
+
+IF YOU CHANGE ANY COLOR, THE PROJECT FAILS. Use these exact hex codes.
+================================================================================
+
+PRIMARY REQUIREMENTS:
+
+1. DESIGN SPECIFICATIONS:
+   - Mobile-first design (max-width: 412px viewport)
+   - Responsive layout that works on mobile (320px-480px)
+   - Hebrew (RTL) language support - text flows right-to-left
+   - Touch-friendly buttons and spacing
+
+2. LAYOUT STRUCTURE:
+
+   A) TOP HEADER (Fixed):
+      - Height: 60px
+      - Background: #FFFFFF with border-bottom: 1px solid #E8E8E8
+      - Content: [Menu Icon (☰)] [User Icon] [Bell Icon] [Title "הגדרות"] [Billsy Logo]
+      - Right-aligned due to RTL
+      - Icons color: #138A8A (PRIMARY COLOR - NO CHANGES)
+
+   B) PROFILE SECTION:
+      - Avatar: Large circular image (80x80px) with background #E8F0F0
+      - Name: "חנן B1" - Font: 20px, Bold, Color: #222222
+      - Email: "b1.atarim770@gmail.com" - Font: 14px, Color: #666666
+      - Centered alignment with top padding: 32px
+
+   C) SETTINGS MENU (Scrollable):
+      - Each item is a clickable card/button
+      - Card style: padding 16px, margin 12px 16px, border-radius 8px
+      - Background: #F8F9FA (EXACT - DO NOT CHANGE)
+      - Hover/active: #E8F0F0
+      - Border: 1px solid #E8E8E8 (EXACT - DO NOT CHANGE)
+      - Items:
+        
+        1. פרטי עסק (Business Details)
+           Icon: building/domain
+           Description: "הגדרות חשבוניות ולוגו עסק"
+           Arrow: right-chevron color #666666
+        
+        2. תוכנית ומנוי (Plan & Subscription)
+           Icon: crown/premium
+           Badge: "UNLIMITED" 
+           - Badge background: #138A8A (PRIMARY - KEEP EXACT)
+           - Badge text: white
+           - Badge font: 12px, bold
+           Description: "ניהול תשלומים ושדרוגים"
+           Arrow: right-chevron
+        
+        3. תוכניות (Plans)
+           Icon: crown
+           Description: "בחירה או שינוי תוכנית"
+           Arrow: right-chevron
+        
+        4. שימוש ומגבלות (Usage & Limits)
+           Icon: lightning/speed
+           Description: "שימוש החודש ומגבלות"
+           Arrow: right-chevron
+        
+        5. אבטחה ופרטיות (Security & Privacy)
+           Icon: lock/security
+           Description: "שינוי סיסמה ואימות דו-שלבי"
+           Arrow: right-chevron
+        
+        6. רואה חשבון (Accountant)
+           Icon: calculator
+           Description: "ייצוא דוחות ואחסון קבצים"
+           Arrow: right-chevron
+        
+        7. יציאה מהחשבון (Logout)
+           Icon: logout/door
+           Color: #E74C3C (red warning)
+           NO arrow
+
+   D) BOTTOM NAVIGATION (Fixed):
+      - Height: 60px
+      - Background: #FFFFFF (EXACT)
+      - Border-top: 1px solid #E8E8E8 (EXACT)
+      - 5 Items with icons and labels:
+        
+        [⚙️ Settings] ← ACTIVE (color: #138A8A PRIMARY)
+        [🏠 Home] (inactive: #AAAAAA)
+        [📄 Documents] (inactive: #AAAAAA)
+        [➕ Floating Button] (center, background: #138A8A PRIMARY, 56x56px)
+        [👥 Vendors] (inactive: #AAAAAA)
+        [📋 Documents] (inactive: #AAAAAA)
+      
+      - Icon size: 24px
+      - Label font: 11px, Color: #666666 (inactive) or #138A8A (active)
+      - Active indicator: Highlight in PRIMARY COLOR #138A8A
+
+3. INTERACTIVE STATES:
+   - Tap/Hover on menu item: background changes to #E8F0F0 (EXACT)
+   - Active page indicator: bottom nav item highlighted in #138A8A (PRIMARY - EXACT)
+   - Floating action button: background #138A8A (PRIMARY), shadow effect on mobile
+   - Smooth transitions: 200ms ease
+   - All interactive elements use PRIMARY COLOR #138A8A only
+
+4. SPACING & TYPOGRAPHY:
+   - Font Family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
+   - Heading: 20px, Bold, Color: #222222
+   - Body: 14px, Regular, Color: #666666
+   - Small text: 12px, Regular, Color: #666666
+   - Tiny text (labels): 11px, Regular, Color: #AAAAAA
+   - Line-height: 1.5
+   - Letter-spacing: 0.3px
+
+5. TECHNICAL REQUIREMENTS:
+   - Built with React/Next.js or vanilla HTML/CSS/JS
+   - Mobile responsive (viewport meta tag: width=device-width, initial-scale=1.0)
+   - RTL support (dir="rtl" on root element)
+   - Smooth scrolling
+   - Use CSS Variables for all colors:
+     :root {
+       --primary: #138A8A;
+       --secondary: #1A7777;
+       --background: #FFFFFF;
+       --light-bg: #F8F9FA;
+       --text-primary: #222222;
+       --text-secondary: #666666;
+       --text-tertiary: #AAAAAA;
+       --border: #E8E8E8;
+     }
+   - NO external UI libraries (pure CSS or Tailwind OK)
+   - Optimize for performance
+
+6. CODE STRUCTURE:
+   - Create reusable MenuItem component
+   - Use CSS variables - DO NOT hardcode colors
+   - Mobile-first media queries
+   - Semantic HTML
+   - Accessibility: proper ARIA labels, button roles
+   - All buttons and interactive elements must use --primary color variable
+
+7. VALIDATION CHECKLIST:
+   ✅ Primary button color: #138A8A (verified in code)
+   ✅ Badge color: #138A8A (verified in code)
+   ✅ Bottom nav active color: #138A8A (verified in code)
+   ✅ Text colors match: #222222, #666666, #AAAAAA (verified)
+   ✅ Background colors: #FFFFFF, #F8F9FA, #E8E8E8 (verified)
+   ✅ RTL layout (dir="rtl" present)
+   ✅ Mobile responsive (412px viewport tested)
+   ✅ NO color modifications or variations
+
+8. DELIVERABLES:
+   - Complete production-ready code
+   - Mobile screenshot showing exact colors
+   - CSS variables file
+   - Documented for easy color updates
+
+BUILD THIS EXACTLY AS SPECIFIED. DO NOT CHANGE COLORS. IF YOU CHANGE ANY COLOR, STATE IT EXPLICITLY.
+```
+
+---
+
+עכשיו זה ברור מאד שלא צריך לשנות צבעים! 🎯💪
