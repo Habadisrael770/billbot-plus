@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { Link } from "wouter";
 import { useSearch } from "@/context/search-context";
 import { motion, AnimatePresence } from "framer-motion";
@@ -55,6 +55,9 @@ import { MergeAliasDialog } from "@/components/merge-alias-dialog";
 import { EmailScanModal } from "@/components/email-scan-modal";
 import { SendToAccountantModal } from "@/components/send-to-accountant-modal";
 
+const BASE_URL = import.meta.env.BASE_URL ?? "/";
+const API_BASE = BASE_URL.replace(/\/$/, "") + "/api";
+
 type FilterType = "all" | "pending" | "approved" | "duplicates";
 
 type InvoiceRow = {
@@ -80,6 +83,11 @@ type InvoiceRow = {
   categoryConfidence?: string | null;
   isForeign?: boolean | null;
   supplierCountry?: string | null;
+  extractionSource?: string | null;
+  extractionStatus?: string | null;
+  reviewReason?: string | null;
+  pdfType?: string | null;
+  lineItemsCount?: number | null;
 };
 
 const FILTERS: { key: FilterType; label: string }[] = [
@@ -140,10 +148,10 @@ function getCategoryBadge(category: string | null | undefined) {
 
 function ForeignBadge({ isForeign, country }: { isForeign?: boolean | null; country?: string | null }) {
   if (!isForeign) return null;
-  const label = country === "US" ? "ארה\"ב" : country === "GB" ? "בריטניה" : country === "DE" ? "גרמניה" : country === "NL" ? "הולנד" : country === "SE" ? "שבדיה" : "חו\"ל";
+  const label = country === "US" ? 'ארה"ב' : country === "GB" ? "בריטניה" : country === "DE" ? "גרמניה" : country === "NL" ? "הולנד" : country === "SE" ? "שבדיה" : 'חו"ל';
   return (
     <span
-      title="חשבונית מחו\"ל — אין ניכוי מע\"מ"
+      title={'חשבונית מחו"ל \u2014 אין ניכוי מע"מ'}
       className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/30 shrink-0"
     >
       🌍 {label}
@@ -158,9 +166,70 @@ function formatCurrency(amount: string | null | undefined, currency: string) {
   return `${symbol}${num}`;
 }
 
+type LineItem = {
+  id: string;
+  productName: string | null;
+  barcode: string | null;
+  sku: string | null;
+  quantity: string | null;
+  unitPrice: string | null;
+  lineTotal: string | null;
+  discount: string | null;
+  vatRate: string | null;
+  itemConfidence: string | null;
+  sortOrder: number;
+};
+
+function getPdfTypeLabel(t?: string | null) {
+  switch (t) {
+    case "text_pdf":      return { label: "PDF טקסט",   cls: "bg-blue-500/15 text-blue-400" };
+    case "scanned_pdf":   return { label: "PDF סרוק",   cls: "bg-violet-500/15 text-violet-400" };
+    case "encrypted_pdf": return { label: "PDF מוצפן",  cls: "bg-orange-500/15 text-orange-400" };
+    case "corrupted_pdf": return { label: "PDF פגום",   cls: "bg-red-500/15 text-red-400" };
+    default:              return null;
+  }
+}
+
+function getExtractionStatusBadge(s?: string | null) {
+  switch (s) {
+    case "success": return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-500">✓ הצליח</span>;
+    case "partial": return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500">⚠ חלקי</span>;
+    case "failed":  return <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-red-500/15 text-red-500">✗ נכשל</span>;
+    default: return null;
+  }
+}
+
+function getReviewReasonLabel(r?: string | null) {
+  if (!r) return null;
+  const map: Record<string, string> = {
+    HEADER_ONLY: "כותרות בלבד",
+    LOW_CONFIDENCE: "ביטחון נמוך",
+    NO_TOTAL: "סכום חסר",
+    NO_VENDOR: "ספק חסר",
+    NO_DATE: "תאריך חסר",
+    PDF_ENCRYPTED: "PDF מוצפן",
+    PDF_CORRUPTED: "PDF פגום",
+    OCR_REQUIRED: "נדרש OCR",
+    SCANNED_EMPTY: "סריקה ריקה",
+  };
+  return map[r] ?? r;
+}
+
 // ── Compact expandable expense row ──────────────────────────────────────────
 function MonthlyExpenseRow({ inv }: { inv: InvoiceRow }) {
   const [expanded, setExpanded] = useState(false);
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [lineItemsLoaded, setLineItemsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (expanded && !lineItemsLoaded && (inv.lineItemsCount ?? 0) > 0) {
+      fetch(`${API_BASE}/invoices/${inv.id}/line-items`)
+        .then((r) => r.json())
+        .then((data: LineItem[]) => { setLineItems(data); setLineItemsLoaded(true); })
+        .catch(() => setLineItemsLoaded(true));
+    }
+  }, [expanded, lineItemsLoaded, inv.id, inv.lineItemsCount]);
+
   const vendor =
     inv.canonicalVendorName ?? inv.normalizedVendorName ?? inv.rawVendorName ?? "—";
   const amount = formatCurrency(inv.total, inv.currency);
@@ -168,6 +237,7 @@ function MonthlyExpenseRow({ inv }: { inv: InvoiceRow }) {
     ? format(new Date(inv.invoiceDate), "dd/MM/yy")
     : "—";
   const isApproved = inv.status === "approved";
+  const pdfBadge = getPdfTypeLabel(inv.pdfType);
 
   return (
     <div className="border-b border-border last:border-b-0">
@@ -209,67 +279,134 @@ function MonthlyExpenseRow({ inv }: { inv: InvoiceRow }) {
             className="overflow-hidden"
           >
             <div
-              className="px-4 pb-4 pt-2 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 bg-elevated/40 border-t border-border"
+              className="px-4 pb-4 pt-2 bg-elevated/40 border-t border-border space-y-3"
               dir="rtl"
             >
-              {inv.invoiceNumber && (
+              {/* — invoice header fields — */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+                {inv.invoiceNumber && (
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-0.5">מס׳ מסמך</p>
+                    <p className="text-[13px] font-semibold text-foreground">{inv.invoiceNumber}</p>
+                  </div>
+                )}
                 <div>
-                  <p className="text-[11px] text-muted-foreground mb-0.5">מס׳ מסמך</p>
-                  <p className="text-[13px] font-semibold text-foreground">{inv.invoiceNumber}</p>
-                </div>
-              )}
-              <div>
-                <p className="text-[11px] text-muted-foreground mb-0.5">תאריך מלא</p>
-                <p className="text-[13px] font-semibold text-foreground">
-                  {inv.invoiceDate ? format(new Date(inv.invoiceDate), "dd/MM/yyyy") : "—"}
-                </p>
-              </div>
-              {(inv.finalCategory ?? inv.suggestedCategory) && (
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-0.5">קטגוריה</p>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">תאריך מלא</p>
                   <p className="text-[13px] font-semibold text-foreground">
-                    {inv.finalCategory ?? inv.suggestedCategory}
+                    {inv.invoiceDate ? format(new Date(inv.invoiceDate), "dd/MM/yyyy") : "—"}
                   </p>
                 </div>
+                {(inv.finalCategory ?? inv.suggestedCategory) && (
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-0.5">קטגוריה</p>
+                    <p className="text-[13px] font-semibold text-foreground">
+                      {inv.finalCategory ?? inv.suggestedCategory}
+                    </p>
+                  </div>
+                )}
+                {inv.subtotal && (
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-0.5">לפני מע״מ</p>
+                    <p className="text-[13px] font-semibold text-foreground" dir="ltr">
+                      {formatCurrency(inv.subtotal, inv.currency)}
+                    </p>
+                  </div>
+                )}
+                {inv.vat && (
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-0.5">מע״מ</p>
+                    <p className="text-[13px] font-semibold text-foreground" dir="ltr">
+                      {formatCurrency(inv.vat, inv.currency)}
+                    </p>
+                  </div>
+                )}
+                {inv.taxId && (
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-0.5">ח.פ. / עוסק מורשה</p>
+                    <p className="text-[13px] font-semibold text-foreground">{inv.taxId}</p>
+                  </div>
+                )}
+                {inv.sourceType && (
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-0.5">מקור</p>
+                    <p className="text-[13px] font-semibold text-foreground capitalize">{inv.sourceType}</p>
+                  </div>
+                )}
+                {inv.documentType && (
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-0.5">סוג מסמך</p>
+                    <p className="text-[13px] font-semibold text-foreground">{inv.documentType}</p>
+                  </div>
+                )}
+                {inv.duplicateStatus !== "unique" && (
+                  <div className="col-span-2">
+                    <p className="text-[11px] text-muted-foreground mb-1">סטטוס כפילות</p>
+                    {getDuplicateBadge(inv.duplicateStatus)}
+                  </div>
+                )}
+              </div>
+
+              {/* — extraction metadata — */}
+              {(inv.pdfType || inv.extractionStatus || inv.reviewReason) && (
+                <div className="border-t border-border/50 pt-3">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">מידע חילוץ AI</p>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {pdfBadge && (
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${pdfBadge.cls} border-current/20`}>
+                        {pdfBadge.label}
+                      </span>
+                    )}
+                    {getExtractionStatusBadge(inv.extractionStatus)}
+                    {inv.reviewReason && (
+                      <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-muted/60 text-muted-foreground border border-border">
+                        {getReviewReasonLabel(inv.reviewReason)}
+                      </span>
+                    )}
+                    {inv.extractionConfidence && (
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        ביטחון: {Math.round(Number(inv.extractionConfidence) * 100)}%
+                      </span>
+                    )}
+                  </div>
+                </div>
               )}
-              {inv.subtotal && (
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-0.5">לפני מע״מ</p>
-                  <p className="text-[13px] font-semibold text-foreground" dir="ltr">
-                    {formatCurrency(inv.subtotal, inv.currency)}
+
+              {/* — line items table — */}
+              {(inv.lineItemsCount ?? 0) > 0 && (
+                <div className="border-t border-border/50 pt-3">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    שורות פירוט ({inv.lineItemsCount})
                   </p>
-                </div>
-              )}
-              {inv.vat && (
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-0.5">מע״מ</p>
-                  <p className="text-[13px] font-semibold text-foreground" dir="ltr">
-                    {formatCurrency(inv.vat, inv.currency)}
-                  </p>
-                </div>
-              )}
-              {inv.taxId && (
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-0.5">ח.פ. / עוסק מורשה</p>
-                  <p className="text-[13px] font-semibold text-foreground">{inv.taxId}</p>
-                </div>
-              )}
-              {inv.sourceType && (
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-0.5">מקור</p>
-                  <p className="text-[13px] font-semibold text-foreground capitalize">{inv.sourceType}</p>
-                </div>
-              )}
-              {inv.documentType && (
-                <div>
-                  <p className="text-[11px] text-muted-foreground mb-0.5">סוג מסמך</p>
-                  <p className="text-[13px] font-semibold text-foreground">{inv.documentType}</p>
-                </div>
-              )}
-              {inv.duplicateStatus !== "unique" && (
-                <div className="col-span-2">
-                  <p className="text-[11px] text-muted-foreground mb-1">סטטוס כפילות</p>
-                  {getDuplicateBadge(inv.duplicateStatus)}
+                  {lineItems.length > 0 ? (
+                    <div className="overflow-x-auto rounded-[8px] border border-border/60">
+                      <table className="w-full text-[12px]" dir="rtl">
+                        <thead>
+                          <tr className="bg-elevated/60 border-b border-border/60">
+                            <th className="text-right font-semibold text-muted-foreground px-3 py-1.5">פריט</th>
+                            <th className="text-center font-semibold text-muted-foreground px-2 py-1.5 w-16">כמות</th>
+                            <th className="text-left font-semibold text-muted-foreground px-2 py-1.5 w-24" dir="ltr">מחיר יח׳</th>
+                            <th className="text-left font-semibold text-muted-foreground px-2 py-1.5 w-24" dir="ltr">סה״כ</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {lineItems.map((li) => (
+                            <tr key={li.id} className="border-b border-border/40 last:border-0 hover:bg-elevated/30 transition-colors">
+                              <td className="px-3 py-2 text-foreground font-medium max-w-[180px] truncate">{li.productName ?? "—"}</td>
+                              <td className="px-2 py-2 text-center text-muted-foreground">{li.quantity ? Number(li.quantity).toLocaleString("he-IL") : "—"}</td>
+                              <td className="px-2 py-2 text-muted-foreground" dir="ltr">
+                                {li.unitPrice ? formatCurrency(li.unitPrice, inv.currency) : "—"}
+                              </td>
+                              <td className="px-2 py-2 font-semibold text-foreground" dir="ltr">
+                                {li.lineTotal ? formatCurrency(li.lineTotal, inv.currency) : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="text-[12px] text-muted-foreground">טוען...</p>
+                  )}
                 </div>
               )}
             </div>

@@ -4,7 +4,7 @@ import fs from "fs";
 import multer from "multer";
 import * as XLSX from "xlsx";
 import { db } from "@workspace/db";
-import { invoicesTable, vendorsTable } from "@workspace/db/schema";
+import { invoicesTable, vendorsTable, invoiceLineItemsTable } from "@workspace/db/schema";
 import { eq, sql } from "drizzle-orm";
 import {
   processInvoice,
@@ -77,6 +77,11 @@ function buildSelectFields() {
     isForeign: invoicesTable.is_foreign,
     supplierCountry: invoicesTable.supplier_country,
     createdAt: invoicesTable.created_at,
+    extractionSource: invoicesTable.extraction_source,
+    extractionStatus: invoicesTable.extraction_status,
+    reviewReason: invoicesTable.review_reason,
+    pdfType: invoicesTable.pdf_type,
+    lineItemsCount: invoicesTable.line_items_count,
   };
 }
 
@@ -401,6 +406,38 @@ router.patch("/:id/merge-alias", async (req, res) => {
   } catch (err) {
     console.error("Failed to merge alias:", err);
     res.status(500).json({ error: "Failed to merge alias" });
+  }
+});
+
+// ─────────────────────────────────────────────
+// GET /api/invoices/:id/line-items
+// Returns line items for a specific invoice
+// ─────────────────────────────────────────────
+router.get("/:id/line-items", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const items = await db
+      .select({
+        id: invoiceLineItemsTable.id,
+        productName: invoiceLineItemsTable.product_name,
+        barcode: invoiceLineItemsTable.barcode,
+        sku: invoiceLineItemsTable.sku,
+        quantity: invoiceLineItemsTable.quantity,
+        unitPrice: invoiceLineItemsTable.unit_price,
+        lineTotal: invoiceLineItemsTable.line_total,
+        discount: invoiceLineItemsTable.discount,
+        vatRate: invoiceLineItemsTable.vat_rate,
+        itemConfidence: invoiceLineItemsTable.item_confidence,
+        sortOrder: invoiceLineItemsTable.sort_order,
+      })
+      .from(invoiceLineItemsTable)
+      .where(eq(invoiceLineItemsTable.invoice_id, id))
+      .orderBy(invoiceLineItemsTable.sort_order);
+
+    res.json(items);
+  } catch (err) {
+    console.error("Failed to fetch line items:", err);
+    res.status(500).json({ error: "Failed to fetch line items" });
   }
 });
 
