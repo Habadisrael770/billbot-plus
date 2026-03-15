@@ -1,5 +1,5 @@
 // Gmail OAuth2 service — full read permissions (gmail.readonly + userinfo.email)
-// Requires: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET env vars
+// Requires: GOOGLE_CLIENT_ID (or GOOGLE_ID), GOOGLE_CLIENT_SECRET env vars
 import { google } from "googleapis";
 import { db } from "@workspace/db";
 import { gmailTokens } from "@workspace/db/schema";
@@ -13,12 +13,12 @@ const SCOPES = [
 ];
 
 function getOAuth2Client() {
-  const clientId     = process.env.GOOGLE_CLIENT_ID;
+  const clientId     = process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const redirectUri  = getRedirectUri();
 
   if (!clientId || !clientSecret) {
-    throw new Error("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are required");
+    throw new Error("GOOGLE_CLIENT_ID (or GOOGLE_ID) and GOOGLE_CLIENT_SECRET are required");
   }
 
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
@@ -113,7 +113,7 @@ export async function getGmailClient() {
 
 // ── Check connection status ────────────────────────────────────────────────
 export async function getGmailStatus(): Promise<{ connected: boolean; email: string | null; credentialsConfigured: boolean }> {
-  const credentialsConfigured = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+  const credentialsConfigured = !!((process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_ID) && process.env.GOOGLE_CLIENT_SECRET);
   try {
     const { client, email } = await getGmailClient();
     const profile = await client.users.getProfile({ userId: "me" });
