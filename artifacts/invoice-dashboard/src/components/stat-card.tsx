@@ -18,12 +18,12 @@ export function StatCard({ title, value, icon, trend, trendUp, delay = 0 }: Stat
       transition={{ duration: 0.35, delay, ease: "easeOut" }}
       className="stat-card group hover:border-primary/40 transition-colors duration-200"
     >
-      <div className="flex items-start justify-between">
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5 truncate" dir="rtl">
+      <div className="flex items-start justify-between gap-2 overflow-hidden">
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <p className="text-[10px] sm:text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5 truncate" dir="rtl">
             {title}
           </p>
-          <p className="text-2xl font-black text-foreground tabular-nums leading-tight" dir="ltr">
+          <p className="text-lg sm:text-2xl font-black text-foreground tabular-nums leading-tight break-all" dir="ltr">
             {value}
           </p>
           {trend && (
@@ -37,7 +37,7 @@ export function StatCard({ title, value, icon, trend, trendUp, delay = 0 }: Stat
             </p>
           )}
         </div>
-        <div className="icon-blue w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0 ms-3">
+        <div className="icon-blue w-8 h-8 sm:w-10 sm:h-10 rounded-[10px] flex items-center justify-center shrink-0">
           {icon}
         </div>
       </div>
