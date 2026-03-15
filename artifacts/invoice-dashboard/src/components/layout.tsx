@@ -130,7 +130,7 @@ function MobileSidebar({
 
   return (
     <div
-      className="h-full flex flex-col"
+      className="h-full flex flex-col dark-panel"
       style={{ background: "linear-gradient(180deg, #1a1d3a 0%, #0f1219 100%)" }}
       dir="rtl"
     >

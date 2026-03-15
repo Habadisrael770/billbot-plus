@@ -262,6 +262,26 @@ html.light .bg-black\/60 { background-color: rgb(0 0 0 / 0.40) !important; }
 html.light .text-white     { color: hsl(var(--foreground))        !important; }
 html.light .text-white\/70 { color: hsl(var(--muted-foreground))  !important; }
 
+.dark-panel {
+  --foreground: 0 0% 100%;
+  --muted-foreground: 0 0% 80%;
+  --card-foreground: 0 0% 100%;
+  --border: 0 0% 100% / 0.12;
+  --muted: 0 0% 100% / 0.08;
+  color-scheme: dark;
+}
+.dark-panel .text-white     { color: #fff        !important; }
+.dark-panel .text-white\/70 { color: rgba(255,255,255,0.7) !important; }
+.dark-panel .text-white\/60 { color: rgba(255,255,255,0.6) !important; }
+.dark-panel .text-white\/50 { color: rgba(255,255,255,0.5) !important; }
+.dark-panel .text-foreground { color: #fff !important; }
+.dark-panel .text-muted-foreground { color: rgba(255,255,255,0.6) !important; }
+.dark-panel .text-card-foreground { color: #fff !important; }
+.dark-panel .border-border { border-color: rgba(255,255,255,0.12) !important; }
+.dark-panel .bg-card { background-color: rgba(255,255,255,0.04) !important; }
+.dark-panel .bg-muted { background-color: rgba(255,255,255,0.08) !important; }
+.dark-panel .bg-muted\/50 { background-color: rgba(255,255,255,0.04) !important; }
+
 html.light .glass-panel {
   background-color: hsl(var(--card));
   border-color: hsl(var(--border));

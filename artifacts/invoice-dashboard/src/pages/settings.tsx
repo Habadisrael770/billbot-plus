@@ -693,14 +693,14 @@ export default function Settings() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-              className="md:hidden fixed inset-0 z-40 flex flex-col"
+              className="md:hidden fixed inset-0 z-40 flex flex-col dark-panel"
               style={{ background: "linear-gradient(180deg, #1a1d3a 0%, #0f1219 100%)" }}
             >
               {/* ── Header bar (Quote Plus style) ── */}
               <div className="flex items-center justify-between px-5 pt-5 pb-5 border-b border-white/8">
                 {/* Left: bell icon */}
                 <button className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:bg-white/10 transition-colors">
-                  <Bell className="w-4 h-4 text-muted-foreground" />
+                  <Bell className="w-4 h-4 text-white/60" />
                 </button>
 
                 {/* Center: BillBOT+ logo */}
