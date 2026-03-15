@@ -55,42 +55,20 @@ function vatPct(total: string | null, vat: string | null) {
   return Math.round((Number(vat) / Number(total)) * 100);
 }
 
-const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
-  gmail: { label: "Gmail", color: "bg-blue-500/15 text-blue-400 border-blue-500/20" },
-  outlook: { label: "Outlook", color: "bg-blue-700/15 text-blue-300 border-blue-700/20" },
-  upload: { label: "העלאה", color: "bg-white/10 text-muted-foreground border-white/10" },
-  telegram: { label: "Telegram", color: "bg-sky-500/15 text-sky-400 border-sky-500/20" },
-  manual: { label: "ידני", color: "bg-white/10 text-muted-foreground border-white/10" },
-  email: { label: "Gmail", color: "bg-blue-500/15 text-blue-400 border-blue-500/20" },
-  camera: { label: "מצלמה", color: "bg-violet-500/15 text-violet-400 border-violet-500/20" },
+const SOURCE_LABELS: Record<string, { label: string; cls: string }> = {
+  gmail:    { label: "Gmail",    cls: "badge-primary" },
+  outlook:  { label: "Outlook",  cls: "badge-primary" },
+  upload:   { label: "העלאה",   cls: "badge-inactive" },
+  telegram: { label: "Telegram", cls: "badge-teal" },
+  manual:   { label: "ידני",    cls: "badge-inactive" },
+  email:    { label: "Gmail",    cls: "badge-primary" },
+  camera:   { label: "מצלמה",   cls: "badge-inactive" },
 };
 
-const CATEGORY_COLORS: Record<string, string> = {
-  תקשורת: "bg-amber-500/10 text-amber-300 border-amber-500/15",
-  "נסיעות והובלה": "bg-violet-500/10 text-violet-300 border-violet-500/15",
-  "ציוד משרדי": "bg-cyan-500/10 text-cyan-300 border-cyan-500/15",
-  שיווק: "bg-pink-500/10 text-pink-300 border-pink-500/15",
-  "תכנה /AI": "bg-emerald-500/10 text-emerald-300 border-emerald-500/15",
-  'שכ"ד': "bg-orange-500/10 text-orange-300 border-orange-500/15",
-  חשמל: "bg-yellow-500/10 text-yellow-300 border-yellow-500/15",
-};
-
-const STATUS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  approved: {
-    label: "אושר",
-    color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20",
-    icon: <Check className="w-3 h-3" />,
-  },
-  pending_review: {
-    label: "ממתין",
-    color: "bg-amber-500/15 text-amber-400 border-amber-500/20",
-    icon: null,
-  },
-  rejected: {
-    label: "נדחה",
-    color: "bg-rose-500/15 text-rose-400 border-rose-500/20",
-    icon: <X className="w-3 h-3" />,
-  },
+const STATUS_MAP: Record<string, { label: string; cls: string }> = {
+  approved:       { label: "אושר",  cls: "badge-active"  },
+  pending_review: { label: "ממתין", cls: "badge-warning" },
+  rejected:       { label: "נדחה",  cls: "badge-error"   },
 };
 
 // ── chart palette ─────────────────────────────────────────────────────────────
@@ -103,8 +81,8 @@ const CAT_PALETTE = [
 function TrendTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl border border-white/10 bg-card/90 backdrop-blur px-3 py-2 text-xs shadow-xl" dir="rtl">
-      <p className="font-medium text-foreground mb-1">{label}</p>
+    <div className="rounded-[10px] border border-border bg-card px-3 py-2 text-xs" style={{ boxShadow: "var(--shadow-dropdown)" }} dir="rtl">
+      <p className="font-semibold text-foreground mb-1">{label}</p>
       {payload.map((p: any) => (
         <p key={p.dataKey} style={{ color: p.color }}>
           {p.name}: <span dir="ltr">₪{Number(p.value).toLocaleString("he-IL", { maximumFractionDigits: 0 })}</span>
@@ -118,8 +96,8 @@ function TrendTooltip({ active, payload, label }: any) {
 function CatTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl border border-white/10 bg-card/90 backdrop-blur px-3 py-2 text-xs shadow-xl" dir="rtl">
-      <p className="font-medium text-foreground mb-1">{label}</p>
+    <div className="rounded-[10px] border border-border bg-card px-3 py-2 text-xs" style={{ boxShadow: "var(--shadow-dropdown)" }} dir="rtl">
+      <p className="font-semibold text-foreground mb-1">{label}</p>
       <p style={{ color: payload[0]?.color }}>
         סכום: <span dir="ltr">₪{Number(payload[0]?.value || 0).toLocaleString("he-IL", { maximumFractionDigits: 0 })}</span>
       </p>
@@ -224,10 +202,7 @@ export default function ExpensesPage() {
             רשימת כל ההוצאות שנסרקו ומסווגו
           </p>
         </div>
-        <button
-          onClick={handleDownload}
-          className="flex items-center gap-2 h-10 px-4 rounded-xl border border-white/10 bg-card/60 text-foreground text-sm hover:bg-white/5 transition-colors"
-        >
+        <button onClick={handleDownload} className="btn-secondary h-10">
           <Download className="w-4 h-4" />
           הורד קובץ
         </button>
@@ -242,7 +217,7 @@ export default function ExpensesPage() {
           dir="rtl"
         >
           {/* Trend chart */}
-          <div className="glass-panel rounded-2xl p-4">
+          <div className="bg-card border border-border rounded-[14px] p-4" style={{ boxShadow: "var(--shadow-card)" }}>
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="w-4 h-4 text-primary" />
               <h3 className="text-sm font-semibold text-foreground">מגמת הוצאות ומע״מ</h3>
@@ -287,7 +262,7 @@ export default function ExpensesPage() {
           </div>
 
           {/* Category chart */}
-          <div className="glass-panel rounded-2xl p-4">
+          <div className="bg-card border border-border rounded-[14px] p-4" style={{ boxShadow: "var(--shadow-card)" }}>
             <div className="flex items-center gap-2 mb-4">
               <PieIcon className="w-4 h-4 text-amber-400" />
               <h3 className="text-sm font-semibold text-foreground">הוצאות לפי קטגוריה</h3>
@@ -333,21 +308,22 @@ export default function ExpensesPage() {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.05 }}
-        className="glass-panel rounded-2xl p-4 mb-4"
+        className="bg-card border border-border rounded-[14px] p-4 mb-4"
+        style={{ boxShadow: "var(--shadow-card)" }}
         dir="rtl"
       >
         <div className="flex items-center gap-3 flex-wrap">
           {/* Status dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-2 h-9 px-3 rounded-xl border border-white/10 bg-white/5 text-sm text-foreground hover:bg-white/10 transition-colors">
-                <span>{statusFilter}</span>
+              <button className="btn-secondary h-9 px-3 gap-2">
+                <span className="text-[13px]">{statusFilter}</span>
                 <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[120px]">
+            <DropdownMenuContent align="end" className="min-w-[120px] bg-card border-border" style={{ boxShadow: "var(--shadow-dropdown)" }}>
               {["הכל", "אושר", "ממתין", "נדחה"].map((s) => (
-                <DropdownMenuItem key={s} onClick={() => setStatusFilter(s)}>
+                <DropdownMenuItem key={s} onClick={() => setStatusFilter(s)} className="focus:bg-elevated cursor-pointer">
                   {s === statusFilter && <Check className="w-3.5 h-3.5 ml-2 text-primary" />}
                   {s}
                 </DropdownMenuItem>
@@ -364,29 +340,33 @@ export default function ExpensesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               dir="rtl"
-              className="w-full h-9 pr-9 pl-3 text-sm rounded-xl border border-white/10 bg-white/5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all"
+              className="search-bar h-9 pr-9 pl-3"
             />
           </div>
 
           <div className="flex-1" />
 
           {/* Filter icon button */}
-          <button className="flex items-center gap-1.5 h-9 px-3 rounded-xl border border-white/10 bg-white/5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors">
+          <button className="btn-secondary h-9 px-3 gap-1.5">
             <Filter className="w-4 h-4" />
             סינון
           </button>
 
           {/* View toggle */}
-          <div className="flex items-center rounded-xl border border-white/10 overflow-hidden">
+          <div className="flex items-center border border-border rounded-[10px] overflow-hidden">
             <button
               onClick={() => setView("list")}
-              className={`h-9 px-3 flex items-center transition-colors ${view === "list" ? "bg-primary/20 text-primary" : "bg-white/5 text-muted-foreground hover:text-foreground"}`}
+              className={`h-9 px-3 flex items-center transition-colors text-[13px] ${
+                view === "list" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-elevated"
+              }`}
             >
               <LayoutList className="w-4 h-4" />
             </button>
             <button
               onClick={() => setView("grid")}
-              className={`h-9 px-3 flex items-center transition-colors ${view === "grid" ? "bg-primary/20 text-primary" : "bg-white/5 text-muted-foreground hover:text-foreground"}`}
+              className={`h-9 px-3 flex items-center transition-colors text-[13px] border-r border-border ${
+                view === "grid" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-elevated"
+              }`}
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
@@ -399,15 +379,16 @@ export default function ExpensesPage() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="glass-panel rounded-2xl overflow-hidden"
+        className="bg-card border border-border rounded-[14px] overflow-hidden"
+        style={{ boxShadow: "var(--shadow-card)" }}
         dir="rtl"
       >
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="table">
             {/* Head */}
             <thead>
-              <tr className="border-b border-white/8 bg-white/3">
-                <th className="w-10 px-4 py-3">
+              <tr>
+                <th className="w-10">
                   <input
                     type="checkbox"
                     checked={filtered.length > 0 && selected.size === filtered.length}
@@ -415,15 +396,15 @@ export default function ExpensesPage() {
                     className="w-4 h-4 accent-primary cursor-pointer rounded"
                   />
                 </th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground">ספק</th>
-                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">מס׳ מסמך</th>
-                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">תאריך</th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground">קטגוריה</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">סכום</th>
-                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">מע״מ %</th>
-                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">מקור</th>
-                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">סטטוס</th>
-                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">תפעול</th>
+                <th>ספק</th>
+                <th className="text-center">מס׳ מסמך</th>
+                <th className="text-center">תאריך</th>
+                <th>קטגוריה</th>
+                <th className="text-left">סכום</th>
+                <th className="text-center">מע״מ %</th>
+                <th className="text-center">מקור</th>
+                <th className="text-center">סטטוס</th>
+                <th className="text-center">תפעול</th>
               </tr>
             </thead>
 
@@ -443,7 +424,6 @@ export default function ExpensesPage() {
                 const srcKey = (inv.sourceType ?? "upload").toLowerCase();
                 const srcInfo = SOURCE_LABELS[srcKey] ?? SOURCE_LABELS.upload;
                 const cat = inv.finalCategory ?? inv.suggestedCategory ?? "לא מסווג";
-                const catColor = CATEGORY_COLORS[cat] ?? "bg-white/8 text-muted-foreground border-white/10";
                 const vendorDisplay = inv.canonicalVendorName ?? inv.normalizedVendorName ?? inv.rawVendorName ?? "—";
 
                 return (
@@ -452,9 +432,7 @@ export default function ExpensesPage() {
                     initial={{ opacity: 0, x: 8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.03 }}
-                    className={`border-b border-white/5 transition-colors group ${
-                      isSelected ? "bg-primary/5" : "hover:bg-white/3"
-                    }`}
+                    className={`group ${isSelected ? "!bg-primary/8" : ""}`}
                   >
                     {/* Checkbox */}
                     <td className="px-4 py-3.5 w-10">
@@ -485,9 +463,7 @@ export default function ExpensesPage() {
 
                     {/* Category */}
                     <td className="px-4 py-3.5 text-right">
-                      <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full border ${catColor}`}>
-                        {cat}
-                      </span>
+                      <span className="badge-primary">{cat}</span>
                     </td>
 
                     {/* Amount */}
@@ -498,9 +474,8 @@ export default function ExpensesPage() {
                     {/* VAT % */}
                     <td className="px-4 py-3.5 text-center">
                       {pct !== null ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                          <Check className="w-3 h-3" />
-                          {pct}%
+                        <span className="badge-active">
+                          <Check className="w-3 h-3 inline mr-0.5" />{pct}%
                         </span>
                       ) : (
                         <span className="text-muted-foreground text-xs">—</span>
@@ -509,18 +484,12 @@ export default function ExpensesPage() {
 
                     {/* Source */}
                     <td className="px-4 py-3.5 text-center">
-                      <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${srcInfo.color}`}>
-                        <Mail className="w-3 h-3" />
-                        {srcInfo.label}
-                      </span>
+                      <span className={srcInfo.cls}>{srcInfo.label}</span>
                     </td>
 
                     {/* Status */}
                     <td className="px-4 py-3.5 text-center">
-                      <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${statusInfo.color}`}>
-                        {statusInfo.icon}
-                        {statusInfo.label}
-                      </span>
+                      <span className={statusInfo.cls}>{statusInfo.label}</span>
                     </td>
 
                     {/* Action menu */}
@@ -528,31 +497,31 @@ export default function ExpensesPage() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
-                            className="p-1.5 rounded-lg text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground hover:bg-white/10 hover:ring-1 hover:ring-emerald-500/50 transition-all"
+                            className="h-7 w-7 flex items-center justify-center rounded-[8px] border border-border text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-foreground hover:bg-elevated transition-all mx-auto"
                             title="פעולות"
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="center" className="min-w-[140px]" dir="rtl">
-                          <DropdownMenuItem className="gap-2 cursor-pointer">
+                        <DropdownMenuContent align="center" className="min-w-[140px] bg-card border-border" style={{ boxShadow: "var(--shadow-dropdown)" }} dir="rtl">
+                          <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-elevated">
                             <Eye className="w-3.5 h-3.5" />
                             צפה
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="gap-2 cursor-pointer text-emerald-400 focus:text-emerald-400"
+                            className="gap-2 cursor-pointer text-success focus:text-success focus:bg-elevated"
                             onClick={() => handleApprove(inv.id)}
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
                             אשר
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2 cursor-pointer text-rose-400 focus:text-rose-400">
+                          <DropdownMenuItem className="gap-2 cursor-pointer text-destructive focus:text-destructive focus:bg-elevated">
                             <XCircle className="w-3.5 h-3.5" />
                             דחה
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator />
+                          <DropdownMenuSeparator className="bg-border" />
                           <DropdownMenuItem
-                            className="gap-2 cursor-pointer"
+                            className="gap-2 cursor-pointer focus:bg-elevated"
                             onClick={handleDownload}
                           >
                             <FileDown className="w-3.5 h-3.5" />
@@ -569,40 +538,29 @@ export default function ExpensesPage() {
         </div>
 
         {/* ── Footer summary ── */}
-        <div
-          className="flex items-center justify-between px-5 py-3 border-t border-white/8 bg-white/2"
-          dir="rtl"
-        >
+        <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-elevated" dir="rtl">
           <p className="text-xs text-muted-foreground">
             {filtered.length > 0 ? (
               <>
-                <span className="text-foreground font-medium">{filtered.length}</span> הוצאות בסכום
-                כולל של{" "}
-                <span className="text-foreground font-medium" dir="ltr">
-                  {fmtAmount(totalAmt)}
-                </span>{" "}
-                מתוכם{" "}
-                <span className="text-emerald-400 font-medium" dir="ltr">
-                  {fmtAmount(totalVat)}
-                </span>{" "}
-                מע״מ
+                <span className="text-foreground font-semibold">{filtered.length}</span> הוצאות — סכום כולל{" "}
+                <span className="text-foreground font-semibold" dir="ltr">{fmtAmount(totalAmt)}</span>
+                {" "}| מע״מ{" "}
+                <span className="text-success font-semibold" dir="ltr">{fmtAmount(totalVat)}</span>
               </>
-            ) : (
-              "אין הוצאות להצגה"
-            )}
+            ) : "אין הוצאות להצגה"}
           </p>
           {selected.size > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">{selected.size} נבחרו</span>
               <button
                 onClick={() => selected.forEach((id) => handleApprove(id))}
-                className="text-xs h-7 px-3 rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/20 transition-colors"
+                className="text-xs h-7 px-3 rounded-[8px] bg-success/12 text-success hover:bg-success/20 border border-success/25 transition-colors"
               >
                 אשר הכל
               </button>
               <button
                 onClick={() => setSelected(new Set())}
-                className="text-xs h-7 px-3 rounded-lg bg-white/5 text-muted-foreground hover:bg-white/10 border border-white/10 transition-colors"
+                className="text-xs h-7 px-3 rounded-[8px] btn-secondary py-0"
               >
                 בטל
               </button>

@@ -103,60 +103,32 @@ const CATEGORIES = [
 function getDuplicateBadge(status: string) {
   switch (status) {
     case "unique":
-      return (
-        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 whitespace-nowrap text-xs">
-          ייחודי
-        </Badge>
-      );
+      return <span className="badge-active">ייחודי</span>;
     case "exact_duplicate":
-      return (
-        <Badge variant="outline" className="bg-rose-500/10 text-rose-400 border-rose-500/20 whitespace-nowrap text-xs">
-          כפול מדויק
-        </Badge>
-      );
+      return <span className="badge-error">כפול מדויק</span>;
     case "probable_duplicate":
-      return (
-        <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/20 whitespace-nowrap text-xs">
-          ייתכן כפול
-        </Badge>
-      );
+      return <span className="badge-warning">ייתכן כפול</span>;
     default:
-      return <Badge variant="outline" className="text-xs">{status}</Badge>;
+      return <span className="badge-inactive">{status}</span>;
   }
 }
 
 function getStatusBadge(status: string) {
   switch (status) {
     case "pending_review":
-      return (
-        <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/20 whitespace-nowrap text-xs">
-          ממתין
-        </Badge>
-      );
+      return <span className="badge-warning">ממתין</span>;
     case "approved":
-      return (
-        <Badge variant="outline" className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 whitespace-nowrap text-xs">
-          אושר
-        </Badge>
-      );
+      return <span className="badge-active">אושר</span>;
     case "flagged_duplicate":
-      return (
-        <Badge variant="outline" className="bg-rose-500/10 text-rose-400 border-rose-500/20 whitespace-nowrap text-xs">
-          מסומן
-        </Badge>
-      );
+      return <span className="badge-error">מסומן</span>;
     default:
-      return <Badge variant="outline" className="text-xs">{status}</Badge>;
+      return <span className="badge-inactive">{status}</span>;
   }
 }
 
 function getCategoryBadge(category: string | null | undefined) {
   if (!category) return <span className="text-xs text-muted-foreground">—</span>;
-  return (
-    <Badge variant="outline" className="bg-violet-500/10 text-violet-300 border-violet-500/20 whitespace-nowrap text-xs">
-      {category}
-    </Badge>
-  );
+  return <span className="badge-primary">{category}</span>;
 }
 
 function formatCurrency(amount: string | null | undefined, currency: string) {
@@ -186,11 +158,12 @@ function InvoiceCard({
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border border-white/5 bg-card/30 backdrop-blur-sm p-4 space-y-3"
+      className="bg-card border border-border rounded-[14px] p-4 space-y-3"
+      style={{ boxShadow: "var(--shadow-card)" }}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-semibold text-white truncate">
+          <p className="font-semibold text-foreground truncate">
             {inv.invoiceNumber || "ללא מספר"}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -199,14 +172,14 @@ function InvoiceCard({
               : "תאריך לא ידוע"}
           </p>
         </div>
-        <p className="text-base font-bold text-white shrink-0" dir="ltr">
+        <p className="text-base font-bold text-foreground shrink-0" dir="ltr">
           {formatCurrency(inv.total, inv.currency)}
         </p>
       </div>
 
-      <div className="rounded-xl bg-white/5 px-3 py-2">
+      <div className="rounded-[10px] bg-elevated border border-border px-3 py-2">
         <p className="text-xs text-muted-foreground">ספק</p>
-        <p className="text-sm font-medium text-white truncate">
+        <p className="text-sm font-medium text-foreground truncate">
           {inv.canonicalVendorName || inv.rawVendorName || "לא ידוע"}
         </p>
         {inv.taxId && (
@@ -226,46 +199,38 @@ function InvoiceCard({
         {getStatusBadge(inv.status)}
       </div>
 
-      <div className="flex items-center gap-2 pt-1 border-t border-white/5">
+      <div className="flex items-center gap-2 pt-1 border-t border-border">
         {inv.status === "pending_review" && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="flex-1 h-8 border border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10 rounded-lg text-xs"
+          <button
+            className="flex-1 h-8 flex items-center justify-center gap-1.5 border border-success/25 text-success hover:bg-success/8 rounded-[8px] text-xs font-medium transition-colors"
             onClick={onApprove}
             disabled={isPending}
           >
-            <Check className="w-3.5 h-3.5 mr-1" /> אשר
-          </Button>
+            <Check className="w-3.5 h-3.5" /> אשר
+          </button>
         )}
         {inv.duplicateStatus !== "unique" && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="flex-1 h-8 border border-amber-500/20 text-amber-400 hover:bg-amber-500/10 rounded-lg text-xs"
+          <button
+            className="flex-1 h-8 flex items-center justify-center gap-1.5 border border-warning/25 text-warning hover:bg-warning/8 rounded-[8px] text-xs font-medium transition-colors"
             onClick={onMarkNotDuplicate}
             disabled={isPending}
           >
-            <XCircle className="w-3.5 h-3.5 mr-1" /> לא כפול
-          </Button>
+            <XCircle className="w-3.5 h-3.5" /> לא כפול
+          </button>
         )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-8 px-3 border border-white/10 text-muted-foreground hover:text-white hover:bg-white/5 rounded-lg text-xs"
-            >
-              <Tag className="w-3.5 h-3.5 mr-1" /> קטגוריה
-            </Button>
+            <button className="h-8 px-3 flex items-center gap-1.5 border border-border text-muted-foreground hover:text-foreground hover:bg-elevated rounded-[8px] text-xs font-medium transition-colors">
+              <Tag className="w-3.5 h-3.5" /> קטגוריה
+            </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent className="bg-card border-white/10 shadow-xl rounded-xl max-h-60 overflow-y-auto">
+          <DropdownMenuContent className="bg-card border-border shadow-xl rounded-xl max-h-60 overflow-y-auto" style={{ boxShadow: "var(--shadow-dropdown)" }}>
             <DropdownMenuLabel className="text-xs text-muted-foreground">בחר קטגוריה</DropdownMenuLabel>
-            <DropdownMenuSeparator className="bg-white/5" />
+            <DropdownMenuSeparator className="bg-border" />
             {CATEGORIES.map((cat) => (
               <DropdownMenuItem
                 key={cat}
-                className="focus:bg-white/5 cursor-pointer rounded-lg text-sm"
+                className="focus:bg-elevated cursor-pointer rounded-lg text-sm"
                 onClick={() => onChangeCategory(cat)}
               >
                 {cat}
@@ -273,14 +238,12 @@ function InvoiceCard({
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 px-3 border border-white/10 text-muted-foreground hover:text-white hover:bg-white/5 rounded-lg text-xs"
+        <button
+          className="h-8 px-3 flex items-center gap-1.5 border border-border text-muted-foreground hover:text-foreground hover:bg-elevated rounded-[8px] text-xs font-medium transition-colors"
           onClick={onMerge}
         >
-          <Merge className="w-3.5 h-3.5 mr-1" /> מיזוג
-        </Button>
+          <Merge className="w-3.5 h-3.5" /> מיזוג
+        </button>
       </div>
     </motion.div>
   );
@@ -351,11 +314,11 @@ export default function Dashboard() {
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <input
               type="text"
-              placeholder="חיפוש..."
+              placeholder="חיפוש ספק, מספר..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               dir="rtl"
-              className="w-full h-10 pr-9 pl-3 text-sm rounded-xl border border-white/10 bg-card/60 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/40 transition-all"
+              className="search-bar h-10 pr-9 pl-3"
             />
           </div>
         </div>
@@ -363,11 +326,10 @@ export default function Dashboard() {
         {/* cols 4-6 on xl: action buttons */}
         <div className="col-span-1 lg:col-span-2 xl:col-span-3 flex items-center gap-2">
           {/* Calendar / date range */}
-          <button className="flex items-center gap-2 h-10 px-3 sm:px-4 rounded-xl border border-white/10 bg-card/60 text-foreground text-sm hover:bg-white/5 transition-colors whitespace-nowrap shrink-0" dir="rtl">
+          <button className="btn-secondary h-10 px-3 sm:px-4 whitespace-nowrap shrink-0" dir="rtl">
             <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
-            <span className="hidden sm:inline">{monthStart} - {monthEnd}</span>
+            <span className="hidden sm:inline text-[13px]">{monthStart} - {monthEnd}</span>
           </button>
-
         </div>
       </div>
 
@@ -429,20 +391,17 @@ export default function Dashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.35 }}
-        className="rounded-2xl border border-white/5 bg-card/30 backdrop-blur-xl flex flex-col overflow-hidden"
+        className="bg-card border border-border rounded-[14px] flex flex-col overflow-hidden"
+        style={{ boxShadow: "var(--shadow-card)" }}
       >
         {/* Controls — filter tabs + send to accountant */}
-        <div className="px-4 sm:px-6 py-3 border-b border-white/5 flex items-center justify-between gap-2">
+        <div className="px-4 sm:px-6 py-3 border-b border-border flex items-center justify-between gap-2">
           <div className="flex gap-1 overflow-x-auto pb-0.5 scrollbar-none">
             {FILTERS.map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => setFilter(key)}
-                className={`shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  filter === key
-                    ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                    : "text-muted-foreground hover:text-white hover:bg-white/5"
-                }`}
+                className={filter === key ? "tab-active" : "tab-inactive"}
               >
                 {label}
               </button>
@@ -450,7 +409,7 @@ export default function Dashboard() {
           </div>
           <button
             onClick={() => setAccountantOpen(true)}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 border border-emerald-500/20 transition-all"
+            className="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-[8px] text-[13px] font-medium text-teal hover:bg-teal/8 border border-teal/25 transition-colors"
             title="שלח לרואה חשבון"
           >
             <FileSpreadsheet className="w-4 h-4" />
@@ -461,15 +420,15 @@ export default function Dashboard() {
         {/* ── Mobile: card list ── */}
         <div className="block sm:hidden">
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
-              <p className="text-sm">טוען נתונים...</p>
+            <div className="empty-state">
+              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+              <p className="empty-state-desc">טוען נתונים...</p>
             </div>
           ) : filteredInvoices.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <CheckCircle2 className="w-12 h-12 mb-4 opacity-20" />
-              <p className="text-base font-medium text-white/70">לא נמצאו חשבוניות</p>
-              <p className="text-xs mt-1">נסה לשנות את הסינון או החיפוש</p>
+            <div className="empty-state">
+              <CheckCircle2 className="empty-state-icon" />
+              <p className="empty-state-title">לא נמצאו חשבוניות</p>
+              <p className="empty-state-desc">נסה לשנות את הסינון או החיפוש</p>
             </div>
           ) : (
             <div className="p-4 space-y-3">
@@ -490,37 +449,37 @@ export default function Dashboard() {
 
         {/* ── Desktop: table ── */}
         <div className="hidden sm:block overflow-x-auto" dir="rtl">
-          <table className="w-full text-sm">
+          <table className="table">
             <thead>
-              <tr className="border-b border-white/8 bg-white/3">
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground">ספק</th>
-                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">מס׳ מסמך</th>
-                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">תאריך</th>
-                <th className="px-4 py-3 text-right font-semibold text-muted-foreground">קטגוריה</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">סכום</th>
-                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">מע״מ %</th>
-                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">מקור</th>
-                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">סטטוס</th>
-                <th className="px-4 py-3 text-center font-semibold text-muted-foreground">תפעול</th>
+              <tr>
+                <th>ספק</th>
+                <th className="text-center">מס׳ מסמך</th>
+                <th className="text-center">תאריך</th>
+                <th>קטגוריה</th>
+                <th className="text-left">סכום</th>
+                <th className="text-center">מע״מ %</th>
+                <th className="text-center">מקור</th>
+                <th className="text-center">סטטוס</th>
+                <th className="text-center">תפעול</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-16 text-center">
-                    <div className="flex flex-col items-center justify-center text-muted-foreground">
-                      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
-                      טוען נתוני מערכת...
+                  <td colSpan={9} className="py-16 text-center">
+                    <div className="empty-state py-0">
+                      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                      <p className="empty-state-desc">טוען נתוני מערכת...</p>
                     </div>
                   </td>
                 </tr>
               ) : filteredInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-16 text-center">
-                    <div className="flex flex-col items-center justify-center text-muted-foreground">
-                      <CheckCircle2 className="w-12 h-12 mb-4 opacity-20" />
-                      <p className="text-lg font-medium text-white/70">לא נמצאו חשבוניות</p>
-                      <p className="text-sm mt-1">העלה חשבונית ראשונה או שנה את הסינון.</p>
+                  <td colSpan={9} className="py-16 text-center">
+                    <div className="empty-state py-0">
+                      <CheckCircle2 className="empty-state-icon" />
+                      <p className="empty-state-title">לא נמצאו חשבוניות</p>
+                      <p className="empty-state-desc">העלה חשבונית ראשונה או שנה את הסינון.</p>
                     </div>
                   </td>
                 </tr>
@@ -530,38 +489,30 @@ export default function Dashboard() {
                     ? Math.round((Number(inv.vat) / Number(inv.total)) * 100)
                     : null;
                   const srcKey = (inv.sourceType ?? "upload").toLowerCase();
-                  const srcLabels: Record<string, { label: string; color: string }> = {
-                    gmail:    { label: "Gmail",    color: "bg-blue-500/15 text-blue-400 border-blue-500/20" },
-                    email:    { label: "Gmail",    color: "bg-blue-500/15 text-blue-400 border-blue-500/20" },
-                    outlook:  { label: "Outlook",  color: "bg-blue-700/15 text-blue-300 border-blue-700/20" },
-                    telegram: { label: "Telegram", color: "bg-sky-500/15 text-sky-400 border-sky-500/20" },
-                    camera:   { label: "מצלמה",   color: "bg-violet-500/15 text-violet-400 border-violet-500/20" },
-                    upload:   { label: "העלאה",   color: "bg-white/10 text-muted-foreground border-white/10" },
-                    manual:   { label: "ידני",    color: "bg-white/10 text-muted-foreground border-white/10" },
+                  const srcLabels: Record<string, { label: string; cls: string }> = {
+                    gmail:    { label: "Gmail",    cls: "badge-primary" },
+                    email:    { label: "Gmail",    cls: "badge-primary" },
+                    outlook:  { label: "Outlook",  cls: "badge-primary" },
+                    telegram: { label: "Telegram", cls: "badge-teal" },
+                    camera:   { label: "מצלמה",   cls: "badge-inactive" },
+                    upload:   { label: "העלאה",   cls: "badge-inactive" },
+                    manual:   { label: "ידני",    cls: "badge-inactive" },
                   };
                   const srcInfo = srcLabels[srcKey] ?? srcLabels.upload;
                   const cat = inv.finalCategory ?? inv.suggestedCategory ?? "לא מסווג";
-                  const catColors: Record<string, string> = {
-                    תקשורת: "bg-amber-500/10 text-amber-300 border-amber-500/15",
-                    "נסיעות והובלה": "bg-violet-500/10 text-violet-300 border-violet-500/15",
-                    "ציוד משרדי": "bg-cyan-500/10 text-cyan-300 border-cyan-500/15",
-                    שיווק: "bg-pink-500/10 text-pink-300 border-pink-500/15",
-                    "תכנה /AI": "bg-emerald-500/10 text-emerald-300 border-emerald-500/15",
+                  const statusMap: Record<string, string> = {
+                    approved:       "badge-active",
+                    pending_review: "badge-warning",
+                    rejected:       "badge-error",
                   };
-                  const catColor = catColors[cat] ?? "bg-violet-500/10 text-violet-300 border-violet-500/15";
-                  const statusMap: Record<string, { label: string; color: string }> = {
-                    approved:       { label: "אושר",   color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/20" },
-                    pending_review: { label: "ממתין",  color: "bg-amber-500/15 text-amber-400 border-amber-500/20" },
-                    rejected:       { label: "נדחה",   color: "bg-rose-500/15 text-rose-400 border-rose-500/20" },
+                  const statusCls = statusMap[inv.status] ?? "badge-warning";
+                  const statusLabel: Record<string, string> = {
+                    approved: "אושר", pending_review: "ממתין", rejected: "נדחה",
                   };
-                  const statusInfo = statusMap[inv.status] ?? statusMap.pending_review;
                   const vendorDisplay = inv.canonicalVendorName ?? inv.normalizedVendorName ?? inv.rawVendorName ?? "—";
 
                   return (
-                    <tr
-                      key={inv.id}
-                      className="border-b border-white/5 hover:bg-white/3 transition-colors group"
-                    >
+                    <tr key={inv.id} className="group">
                       {/* Supplier */}
                       <td className="px-4 py-3.5 text-right">
                         <span className="font-medium text-foreground">{vendorDisplay}</span>
@@ -582,19 +533,17 @@ export default function Dashboard() {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <button className="flex items-center gap-1 group/cat hover:opacity-80 transition-opacity">
-                              <span className={`inline-block text-xs font-medium px-2.5 py-1 rounded-full border ${catColor}`}>
-                                {cat}
-                              </span>
+                              <span className="badge-primary">{cat}</span>
                               <Tag className="w-3 h-3 text-muted-foreground opacity-0 group-hover/cat:opacity-100 transition-opacity" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent className="bg-card border-white/10 shadow-xl rounded-xl max-h-60 overflow-y-auto" dir="rtl">
+                          <DropdownMenuContent className="bg-card border-border rounded-xl max-h-60 overflow-y-auto" style={{ boxShadow: "var(--shadow-dropdown)" }} dir="rtl">
                             <DropdownMenuLabel className="text-xs text-muted-foreground">שנה קטגוריה</DropdownMenuLabel>
-                            <DropdownMenuSeparator className="bg-white/5" />
+                            <DropdownMenuSeparator className="bg-border" />
                             {CATEGORIES.map((c) => (
                               <DropdownMenuItem
                                 key={c}
-                                className="focus:bg-white/5 cursor-pointer rounded-lg text-sm"
+                                className="focus:bg-elevated cursor-pointer rounded-lg text-sm"
                                 onClick={() => updateCategory(inv.id, c)}
                               >
                                 {c}
@@ -612,9 +561,8 @@ export default function Dashboard() {
                       {/* VAT % */}
                       <td className="px-4 py-3.5 text-center">
                         {vatNum !== null ? (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            <Check className="w-3 h-3" />
-                            {vatNum}%
+                          <span className="badge-active">
+                            <Check className="w-3 h-3 inline mr-0.5" />{vatNum}%
                           </span>
                         ) : (
                           <span className="text-muted-foreground text-xs">—</span>
@@ -623,16 +571,15 @@ export default function Dashboard() {
 
                       {/* Source */}
                       <td className="px-4 py-3.5 text-center">
-                        <span className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full border ${srcInfo.color}`}>
-                          <Mail className="w-3 h-3" />
+                        <span className={srcInfo.cls}>
                           {srcInfo.label}
                         </span>
                       </td>
 
                       {/* Status */}
                       <td className="px-4 py-3.5 text-center">
-                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full border ${statusInfo.color}`}>
-                          {statusInfo.label}
+                        <span className={statusCls}>
+                          {statusLabel[inv.status] ?? inv.status}
                         </span>
                       </td>
 
@@ -640,20 +587,16 @@ export default function Dashboard() {
                       <td className="px-4 py-3.5 text-center">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity rounded-lg"
-                            >
+                            <button className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity rounded-[8px] border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-elevated mx-auto">
                               <MoreHorizontal className="h-3.5 w-3.5" />
-                            </Button>
+                            </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="center" className="bg-card border-white/10 shadow-xl rounded-xl" dir="rtl">
+                          <DropdownMenuContent align="center" className="bg-card border-border rounded-xl" style={{ boxShadow: "var(--shadow-dropdown)" }} dir="rtl">
                             <DropdownMenuLabel className="text-xs text-muted-foreground">פעולות</DropdownMenuLabel>
-                            <DropdownMenuSeparator className="bg-white/5" />
+                            <DropdownMenuSeparator className="bg-border" />
                             {inv.status === "pending_review" && (
                               <DropdownMenuItem
-                                className="focus:bg-white/5 cursor-pointer text-emerald-400 focus:text-emerald-300 rounded-lg text-sm gap-2"
+                                className="focus:bg-elevated cursor-pointer text-success focus:text-success rounded-lg text-sm gap-2"
                                 onClick={() => approve(inv.id)}
                                 disabled={isPending}
                               >
@@ -663,7 +606,7 @@ export default function Dashboard() {
                             )}
                             {inv.duplicateStatus !== "unique" && (
                               <DropdownMenuItem
-                                className="focus:bg-white/5 cursor-pointer text-amber-400 focus:text-amber-300 rounded-lg text-sm gap-2"
+                                className="focus:bg-elevated cursor-pointer text-warning focus:text-warning rounded-lg text-sm gap-2"
                                 onClick={() => markNotDuplicate(inv.id)}
                                 disabled={isPending}
                               >
@@ -672,7 +615,7 @@ export default function Dashboard() {
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
-                              className="focus:bg-white/5 cursor-pointer rounded-lg text-sm gap-2"
+                              className="focus:bg-elevated cursor-pointer rounded-lg text-sm gap-2"
                               onClick={() => openMerge(inv)}
                             >
                               <Merge className="w-3.5 h-3.5 text-primary" />
@@ -680,10 +623,10 @@ export default function Dashboard() {
                             </DropdownMenuItem>
                             {inv.filePath && (
                               <DropdownMenuItem
-                                className="focus:bg-white/5 cursor-pointer rounded-lg text-sm gap-2"
+                                className="focus:bg-elevated cursor-pointer rounded-lg text-sm gap-2"
                                 onClick={() => window.open(inv.filePath!, "_blank")}
                               >
-                                <FileCheck className="w-3.5 h-3.5 text-violet-400" />
+                                <FileCheck className="w-3.5 h-3.5 text-purple" />
                                 צפה בקובץ
                               </DropdownMenuItem>
                             )}

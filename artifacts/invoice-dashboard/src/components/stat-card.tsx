@@ -13,26 +13,31 @@ interface StatCardProps {
 export function StatCard({ title, value, icon, trend, trendUp, delay = 0 }: StatCardProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay, ease: "easeOut" }}
-      className="glass-panel p-6 rounded-2xl relative overflow-hidden group hover:border-primary/30 transition-colors duration-300"
+      transition={{ duration: 0.35, delay, ease: "easeOut" }}
+      className="stat-card group hover:border-primary/40 transition-colors duration-200"
     >
-      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      
-      <div className="flex items-start justify-between relative z-10">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
-          <h3 className="text-3xl font-bold text-foreground tracking-tight" dir="ltr">{value}</h3>
-          
+      <div className="flex items-start justify-between">
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5 truncate" dir="rtl">
+            {title}
+          </p>
+          <p className="text-2xl font-black text-foreground tabular-nums leading-tight" dir="ltr">
+            {value}
+          </p>
           {trend && (
-            <p className={`text-xs mt-2 font-medium flex items-center ${trendUp ? 'text-emerald-400' : 'text-rose-400'}`}>
-              <span className="mr-1">{trendUp ? '↑' : '↓'}</span>
-              {trend}
+            <p
+              className={`text-[11px] mt-1.5 font-semibold flex items-center gap-0.5 ${
+                trendUp ? "text-success" : "text-destructive"
+              }`}
+              dir="ltr"
+            >
+              {trendUp ? "↑" : "↓"} {trend}
             </p>
           )}
         </div>
-        <div className="p-3 rounded-xl bg-white/5 border border-white/10 text-primary shadow-inner">
+        <div className="icon-blue w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0 ms-3">
           {icon}
         </div>
       </div>
