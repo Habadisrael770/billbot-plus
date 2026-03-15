@@ -436,75 +436,180 @@ router.post("/scan-email", emlUpload.single("file"), async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// GET /api/invoices/export
-// Export all invoices as XLSX
+// Shared helper: fetch rows with optional date range
 // ─────────────────────────────────────────────
-router.get("/export", async (_req, res) => {
+async function fetchExportRows(from?: string, to?: string) {
+  let query = db
+    .select({
+      id: invoicesTable.id,
+      invoiceNumber: invoicesTable.invoice_number,
+      invoiceDate: invoicesTable.invoice_date,
+      rawVendor: invoicesTable.raw_vendor_name,
+      canonicalVendor: vendorsTable.canonical_name,
+      subtotal: invoicesTable.subtotal,
+      vat: invoicesTable.vat,
+      total: invoicesTable.total,
+      currency: invoicesTable.currency,
+      category: invoicesTable.final_category,
+      suggestedCategory: invoicesTable.suggested_category,
+      sourceType: invoicesTable.source_type,
+      documentType: invoicesTable.document_type,
+      status: invoicesTable.status,
+      duplicateStatus: invoicesTable.duplicate_status,
+      filePath: invoicesTable.file_path,
+    })
+    .from(invoicesTable)
+    .leftJoin(vendorsTable, eq(invoicesTable.vendor_id, vendorsTable.id))
+    .$dynamic();
+
+  if (from && to) {
+    query = query.where(sql`${invoicesTable.invoice_date} BETWEEN ${from} AND ${to}`);
+  } else if (from) {
+    query = query.where(sql`${invoicesTable.invoice_date} >= ${from}`);
+  } else if (to) {
+    query = query.where(sql`${invoicesTable.invoice_date} <= ${to}`);
+  }
+
+  return query.orderBy(sql`${invoicesTable.created_at} desc`);
+}
+
+function buildXlsx(rows: Awaited<ReturnType<typeof fetchExportRows>>, host: string) {
+  const wsData = rows.map((r, i) => ({
+    "#": i + 1,
+    "מספר חשבונית": r.invoiceNumber ?? "",
+    "תאריך": r.invoiceDate ?? "",
+    "ספק גולמי": r.rawVendor ?? "",
+    "ספק מזוהה": r.canonicalVendor ?? "",
+    "סכום לפני מע\"מ": r.subtotal ? Number(r.subtotal) : "",
+    "מע\"מ": r.vat ? Number(r.vat) : "",
+    "סה\"כ": r.total ? Number(r.total) : "",
+    "מטבע": r.currency,
+    "קטגוריה": r.category ?? r.suggestedCategory ?? "",
+    "מקור": r.sourceType ?? "",
+    "סוג מסמך": r.documentType ?? "",
+    "סטטוס": r.status,
+    "כפילות": r.duplicateStatus,
+    "קישור לקובץ": r.filePath && r.filePath !== "manual" ? `${host}/uploads/${path.basename(r.filePath)}` : "",
+  }));
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.json_to_sheet(wsData, { skipHeader: false });
+  ws["!cols"] = [
+    { wch: 4 }, { wch: 16 }, { wch: 12 }, { wch: 26 }, { wch: 26 },
+    { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 8 }, { wch: 22 },
+    { wch: 10 }, { wch: 16 }, { wch: 12 }, { wch: 10 }, { wch: 50 },
+  ];
+  XLSX.utils.book_append_sheet(wb, ws, "חשבוניות");
+  return XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+}
+
+// ─────────────────────────────────────────────
+// GET /api/invoices/export?from=YYYY-MM-DD&to=YYYY-MM-DD
+// Export invoices as XLSX with optional date range
+// ─────────────────────────────────────────────
+router.get("/export", async (req, res) => {
   try {
-    const rows = await db
-      .select({
-        id: invoicesTable.id,
-        invoiceNumber: invoicesTable.invoice_number,
-        invoiceDate: invoicesTable.invoice_date,
-        rawVendor: invoicesTable.raw_vendor_name,
-        canonicalVendor: vendorsTable.canonical_name,
-        subtotal: invoicesTable.subtotal,
-        vat: invoicesTable.vat,
-        total: invoicesTable.total,
-        currency: invoicesTable.currency,
-        category: invoicesTable.final_category,
-        suggestedCategory: invoicesTable.suggested_category,
-        sourceType: invoicesTable.source_type,
-        documentType: invoicesTable.document_type,
-        status: invoicesTable.status,
-        duplicateStatus: invoicesTable.duplicate_status,
-        filePath: invoicesTable.file_path,
-      })
-      .from(invoicesTable)
-      .leftJoin(vendorsTable, eq(invoicesTable.vendor_id, vendorsTable.id))
-      .orderBy(sql`${invoicesTable.created_at} desc`);
-
-    const HOST = process.env.REPLIT_DEV_DOMAIN
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : "http://localhost:3000";
-
-    const wsData = rows.map((r, i) => ({
-      "#": i + 1,
-      "מספר חשבונית": r.invoiceNumber ?? "",
-      "תאריך": r.invoiceDate ?? "",
-      "ספק גולמי": r.rawVendor ?? "",
-      "ספק מזוהה": r.canonicalVendor ?? "",
-      "סכום לפני מע\"מ": r.subtotal ? Number(r.subtotal) : "",
-      "מע\"מ": r.vat ? Number(r.vat) : "",
-      "סה\"כ": r.total ? Number(r.total) : "",
-      "מטבע": r.currency,
-      "קטגוריה": r.category ?? r.suggestedCategory ?? "",
-      "מקור": r.sourceType ?? "",
-      "סוג מסמך": r.documentType ?? "",
-      "סטטוס": r.status,
-      "כפילות": r.duplicateStatus,
-      "קישור לקובץ": r.filePath ? `${HOST}/uploads/${path.basename(r.filePath)}` : "",
-    }));
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(wsData, { skipHeader: false });
-
-    // Column widths
-    ws["!cols"] = [
-      { wch: 4 }, { wch: 16 }, { wch: 12 }, { wch: 26 }, { wch: 26 },
-      { wch: 14 }, { wch: 10 }, { wch: 14 }, { wch: 8 }, { wch: 22 },
-      { wch: 10 }, { wch: 16 }, { wch: 12 }, { wch: 10 }, { wch: 50 },
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, "חשבוניות");
-    const buffer = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-
+    const { from, to } = req.query as { from?: string; to?: string };
+    const rows = await fetchExportRows(from, to);
+    const HOST = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:3000";
+    const buffer = buildXlsx(rows, HOST);
+    const dateTag = new Date().toLocaleDateString("he-IL").replace(/\//g, "-");
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-    res.setHeader("Content-Disposition", `attachment; filename="invoices_${Date.now()}.xlsx"`);
+    res.setHeader("Content-Disposition", `attachment; filename="חשבוניות_${dateTag}.xlsx"`);
     res.send(buffer);
   } catch (err) {
     console.error("export error:", err);
     res.status(500).json({ error: "שגיאה בייצוא" });
+  }
+});
+
+// ─────────────────────────────────────────────
+// GET /api/invoices/export-zip?from=&to=
+// ZIP of all invoice files + XLSX summary
+// ─────────────────────────────────────────────
+router.get("/export-zip", async (req, res) => {
+  try {
+    const { from, to } = req.query as { from?: string; to?: string };
+    const rows = await fetchExportRows(from, to);
+    const HOST = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:3000";
+    const xlsxBuffer = buildXlsx(rows, HOST);
+
+    const archiver = (await import("archiver")).default;
+    const archive = archiver("zip", { zlib: { level: 6 } });
+    const chunks: Buffer[] = [];
+    archive.on("data", (chunk: Buffer) => chunks.push(chunk));
+
+    const zipBuffer = await new Promise<Buffer>((resolve, reject) => {
+      archive.on("end", () => resolve(Buffer.concat(chunks)));
+      archive.on("error", reject);
+      archive.append(Buffer.from(xlsxBuffer), { name: "חשבוניות.xlsx" });
+      for (const r of rows) {
+        if (r.filePath && r.filePath !== "manual" && fs.existsSync(r.filePath)) {
+          archive.file(r.filePath, { name: `files/${path.basename(r.filePath)}` });
+        }
+      }
+      archive.finalize();
+    });
+    const dateTag = new Date().toLocaleDateString("he-IL").replace(/\//g, "-");
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="חשבוניות_${dateTag}.zip"`);
+    res.send(zipBuffer);
+  } catch (err) {
+    console.error("export-zip error:", err);
+    res.status(500).json({ error: "שגיאה בייצוא ZIP" });
+  }
+});
+
+// ─────────────────────────────────────────────
+// POST /api/invoices/send-accountant-email
+// Send XLSX report to a given email via Gmail
+// ─────────────────────────────────────────────
+router.post("/send-accountant-email", async (req, res) => {
+  try {
+    const { toEmail, from, to } = req.body as { toEmail?: string; from?: string; to?: string };
+    if (!toEmail?.trim()) { res.status(400).json({ error: "כתובת מייל חסרה" }); return; }
+
+    const rows = await fetchExportRows(from, to);
+    const HOST = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:3000";
+    const xlsxBuffer = buildXlsx(rows, HOST);
+    const dateTag = new Date().toLocaleDateString("he-IL").replace(/\//g, "-");
+
+    // Use Gmail via googleapis (service account or OAuth token)
+    const { google } = await import("googleapis");
+    const auth = new google.auth.GoogleAuth({
+      scopes: ["https://www.googleapis.com/auth/gmail.send"],
+    });
+    const gmail = google.gmail({ version: "v1", auth });
+
+    const base64xlsx = xlsxBuffer.toString("base64");
+    const boundary = "BillBOT_boundary";
+    const rawEmail = [
+      `From: me`,
+      `To: ${toEmail.trim()}`,
+      `Subject: =?UTF-8?B?${Buffer.from(`דוח חשבוניות BillBOT+ — ${dateTag}`).toString("base64")}?=`,
+      `MIME-Version: 1.0`,
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+      "",
+      `--${boundary}`,
+      `Content-Type: text/plain; charset=utf-8`,
+      "",
+      `שלום,\n\nמצורף דוח חשבוניות מ-BillBOT+.\n${rows.length} חשבוניות בתקופה שנבחרה.\n\nנשלח אוטומטית ממערכת BillBOT+`,
+      "",
+      `--${boundary}`,
+      `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`,
+      `Content-Transfer-Encoding: base64`,
+      `Content-Disposition: attachment; filename="חשבוניות_${dateTag}.xlsx"`,
+      "",
+      base64xlsx,
+      `--${boundary}--`,
+    ].join("\r\n");
+
+    const encodedEmail = Buffer.from(rawEmail).toString("base64url");
+    await gmail.users.messages.send({ userId: "me", requestBody: { raw: encodedEmail } });
+
+    res.json({ success: true, message: `הדוח נשלח ל-${toEmail}` });
+  } catch (err) {
+    console.error("send-email error:", err);
+    res.status(500).json({ error: err instanceof Error ? err.message : "שגיאה בשליחת מייל" });
   }
 });
 
