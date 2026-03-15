@@ -1,14 +1,8 @@
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
-import { Loader2, ArrowLeft, Brain, Zap, Shield } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 const API_BASE = `${import.meta.env.BASE_URL}api`.replace(/\/+/g, "/").replace(/\/$/, "");
-
-const FEATURES = [
-  { icon: Brain,  text: "בינה מלאכותית מסווגת כל הוצאה" },
-  { icon: Zap,    text: "חיבור לרו\"ח בלחיצה אחת" },
-  { icon: Shield, text: "אבטחה מלאה — רק קריאה מהמייל" },
-];
 
 interface LoginPageProps {
   onLogin: (email: string) => void;
@@ -16,17 +10,23 @@ interface LoginPageProps {
 }
 
 export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState<string | null>(null);
+  const [email, setEmail]           = useState("");
+  const [password, setPassword]     = useState("");
+  const [showPass, setShowPass]     = useState(false);
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [loadingEmail, setLoadingEmail]   = useState(false);
+  const [error, setError]           = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [passError, setPassError]   = useState<string | null>(null);
 
   // Handle return from Google OAuth
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const gmail  = params.get("gmail");
-    const email  = params.get("email") ?? "";
+    const mail   = params.get("email") ?? "";
     if (gmail === "connected") {
       window.history.replaceState({}, "", window.location.pathname);
-      onLogin(email);
+      onLogin(mail);
     } else if (gmail === "error") {
       const msg = params.get("msg") ?? "שגיאה בהתחברות לגוגל";
       setError(msg);
@@ -35,7 +35,7 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
   }, []);
 
   const handleGoogle = async () => {
-    setLoading(true);
+    setLoadingGoogle(true);
     setError(null);
     try {
       const res  = await fetch(`${API_BASE}/gmail-auth/url`);
@@ -43,186 +43,312 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
       if (data.url) {
         window.location.href = data.url;
       } else {
-        // Credentials not configured — simulate login for dev
         onLogin("demo@billbot.co.il");
       }
     } catch {
       setError("לא ניתן להתחבר לשרת. נסה שוב.");
-      setLoading(false);
+      setLoadingGoogle(false);
     }
   };
 
+  const validate = () => {
+    let ok = true;
+    setEmailError(null);
+    setPassError(null);
+    setError(null);
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailError("נא להזין כתובת אימייל תקינה");
+      ok = false;
+    }
+    if (!password || password.length < 6) {
+      setPassError("הסיסמה חייבת להכיל לפחות 6 תווים");
+      ok = false;
+    }
+    return ok;
+  };
+
+  const handleEmailLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setLoadingEmail(true);
+    setError(null);
+    try {
+      const res  = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      if (res.ok) {
+        const data = await res.json() as { email?: string };
+        onLogin(data.email ?? email);
+      } else {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        setError(data.error ?? "אימייל או סיסמה שגויים");
+      }
+    } catch {
+      // Dev fallback
+      onLogin(email);
+    } finally {
+      setLoadingEmail(false);
+    }
+  };
+
+  const loading = loadingGoogle || loadingEmail;
+
   return (
-    <div className="fixed inset-0 z-50 flex bg-background" dir="rtl">
-
-      {/* ── Left: Branding panel ── */}
-      <div
-        className="hidden lg:flex flex-col justify-between w-[44%] xl:w-[40%] p-10 relative overflow-hidden border-l border-border"
-        style={{ background: "linear-gradient(160deg, hsl(var(--primary)/0.18) 0%, hsl(var(--teal)/0.10) 60%, hsl(var(--background)) 100%)" }}
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      dir="rtl"
+      style={{ background: "#11172e" }}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: "easeOut" }}
+        className="w-full max-w-[440px]"
       >
-        {/* Glow blobs */}
-        <div className="absolute top-0 left-0 w-[420px] h-[420px] rounded-full pointer-events-none opacity-30"
-             style={{ background: "radial-gradient(circle, hsl(var(--primary)/0.4) 0%, transparent 70%)", transform: "translate(-40%, -40%)" }} />
-        <div className="absolute bottom-0 right-0 w-[320px] h-[320px] rounded-full pointer-events-none opacity-20"
-             style={{ background: "radial-gradient(circle, hsl(var(--teal)/0.5) 0%, transparent 70%)", transform: "translate(40%, 40%)" }} />
-
-        {/* Logo */}
-        <div className="relative z-10">
-          <span dir="ltr" className="text-[24px] font-black text-primary tracking-tight">BillBOT+</span>
-          <p className="text-[13px] text-muted-foreground mt-1">ניהול חשבוניות חכם בעזרת AI</p>
-        </div>
-
-        {/* Center content */}
-        <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.5 }}
-          className="relative z-10 space-y-8"
+        {/* Card */}
+        <div
+          className="rounded-2xl p-8 space-y-6"
+          style={{
+            background: "#1f263f",
+            border: "1px solid rgba(255,255,255,0.12)",
+            boxShadow: "0 8px 40px rgba(0,0,0,0.45)",
+          }}
         >
-          <div className="space-y-3">
-            <h2 className="text-[32px] font-black text-foreground leading-tight">
-              ניהול חשבוניות<br />
-              <span className="text-primary">מהיר ואוטומטי</span>
-            </h2>
-            <p className="text-[14px] text-muted-foreground leading-relaxed max-w-[280px]">
-              BillBOT+ סורק, מסווג ומנתח את כל חשבוניות העסק שלך — ללא מאמץ
+          {/* Logo */}
+          <div className="flex justify-center mb-2">
+            <span dir="ltr" className="text-[36px] font-black tracking-tight select-none">
+              <span style={{ color: "#f8fafc" }}>BillBOT</span>
+              <span
+                style={{
+                  background: "linear-gradient(135deg, #34d399 0%, #22d3ee 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                +
+              </span>
+            </span>
+          </div>
+
+          {/* Headings */}
+          <div className="text-center space-y-1.5">
+            <h1 className="text-[26px] font-black" style={{ color: "#f8fafc" }}>
+              התחברות למערכת
+            </h1>
+            <p className="text-[14px]" style={{ color: "#8899bb" }}>
+              התחבר לחשבון שלך
             </p>
           </div>
 
-          <div className="space-y-3">
-
-            {/* ── Email row: Gmail + Outlook ── */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-              className="flex items-center gap-3"
-            >
-              <div className="flex gap-1.5 shrink-0">
-                {/* Gmail icon */}
-                <div
-                  className="w-8 h-8 rounded-[8px] flex items-center justify-center"
-                  style={{ background: "rgba(234,67,53,0.14)", border: "1px solid rgba(234,67,53,0.28)" }}
-                  title="Gmail"
-                >
-                  <GmailIcon />
-                </div>
-                {/* Outlook icon */}
-                <div
-                  className="w-8 h-8 rounded-[8px] flex items-center justify-center"
-                  style={{ background: "rgba(0,114,239,0.14)", border: "1px solid rgba(0,114,239,0.28)" }}
-                  title="Outlook"
-                >
-                  <OutlookIcon />
-                </div>
+          {/* Form */}
+          <form onSubmit={handleEmailLogin} className="space-y-4" noValidate>
+            {/* Email field */}
+            <div className="space-y-1.5">
+              <label
+                htmlFor="login-email"
+                className="block text-[13px] font-medium"
+                style={{ color: "#c4cfe8" }}
+              >
+                כתובת אימייל
+              </label>
+              <div className="relative">
+                <input
+                  id="login-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); setEmailError(null); }}
+                  placeholder="example@email.com"
+                  autoComplete="email"
+                  dir="ltr"
+                  className="w-full h-12 rounded-[10px] px-4 pr-4 pl-11 text-[15px] outline-none transition-all placeholder:text-[#4a5a7a]"
+                  style={{
+                    background: "#253056",
+                    border: emailError
+                      ? "1.5px solid #f87171"
+                      : "1.5px solid rgba(255,255,255,0.1)",
+                    color: "#f8fafc",
+                  }}
+                  onFocus={(e) => {
+                    if (!emailError) e.currentTarget.style.border = "1.5px solid #5a75dc";
+                  }}
+                  onBlur={(e) => {
+                    if (!emailError) e.currentTarget.style.border = "1.5px solid rgba(255,255,255,0.1)";
+                  }}
+                />
+                <Mail
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 pointer-events-none"
+                  style={{ color: "#4a5a7a", width: 18, height: 18 }}
+                />
               </div>
-              <span className="text-[13px] text-foreground">חילוץ חשבוניות אוטומטי מהמייל</span>
-            </motion.div>
-
-            {/* ── Other features ── */}
-            {FEATURES.map((f, i) => {
-              const Icon = f.icon;
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 + i * 0.1 }}
-                  className="flex items-center gap-3"
-                >
-                  <div
-                    className="w-8 h-8 rounded-[8px] shrink-0 flex items-center justify-center"
-                    style={{ background: "hsl(var(--primary)/0.15)", border: "1px solid hsl(var(--primary)/0.25)", color: "hsl(var(--primary))" }}
+              <AnimatePresence>
+                {emailError && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="text-[11px]"
+                    style={{ color: "#f87171" }}
                   >
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <span className="text-[13px] text-foreground">{f.text}</span>
-                </motion.div>
-              );
-            })}
-          </div>
-        </motion.div>
+                    {emailError}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </div>
 
-        {/* Footer quote */}
-        <div className="relative z-10 text-[11px] text-muted-foreground">
-          מאות עסקים כבר חוסכים שעות בכל חודש
-        </div>
-      </div>
+            {/* Password field */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label
+                  htmlFor="login-password"
+                  className="block text-[13px] font-medium"
+                  style={{ color: "#c4cfe8" }}
+                >
+                  סיסמה
+                </label>
+                <button
+                  type="button"
+                  className="text-[12px] font-medium transition-opacity hover:opacity-70"
+                  style={{ color: "#5a75dc" }}
+                  tabIndex={-1}
+                >
+                  שכחת סיסמה?
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  id="login-password"
+                  type={showPass ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); setPassError(null); }}
+                  placeholder="הכנס סיסמה"
+                  autoComplete="current-password"
+                  className="w-full h-12 rounded-[10px] px-4 pr-4 pl-20 text-[15px] outline-none transition-all placeholder:text-[#4a5a7a]"
+                  style={{
+                    background: "#253056",
+                    border: passError
+                      ? "1.5px solid #f87171"
+                      : "1.5px solid rgba(255,255,255,0.1)",
+                    color: "#f8fafc",
+                  }}
+                  onFocus={(e) => {
+                    if (!passError) e.currentTarget.style.border = "1.5px solid #5a75dc";
+                  }}
+                  onBlur={(e) => {
+                    if (!passError) e.currentTarget.style.border = "1.5px solid rgba(255,255,255,0.1)";
+                  }}
+                />
+                {/* Lock icon */}
+                <Lock
+                  className="absolute left-10 top-1/2 -translate-y-1/2 pointer-events-none"
+                  style={{ color: "#4a5a7a", width: 17, height: 17 }}
+                />
+                {/* Eye toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowPass((v) => !v)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 transition-opacity hover:opacity-70"
+                  style={{ color: "#4a5a7a" }}
+                  tabIndex={-1}
+                >
+                  {showPass
+                    ? <EyeOff style={{ width: 17, height: 17 }} />
+                    : <Eye   style={{ width: 17, height: 17 }} />}
+                </button>
+              </div>
+              <AnimatePresence>
+                {passError && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="text-[11px]"
+                    style={{ color: "#f87171" }}
+                  >
+                    {passError}
+                  </motion.p>
+                )}
+              </AnimatePresence>
+            </div>
 
-      {/* ── Right: Login form ── */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+            {/* Submit button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 rounded-[10px] font-bold text-[15px] text-white transition-all flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              style={{
+                background: loadingEmail
+                  ? "#4a65c8"
+                  : "linear-gradient(135deg, #5a75dc 0%, #4a65cc 100%)",
+                boxShadow: "0 4px 16px rgba(90,117,220,0.35)",
+              }}
+            >
+              {loadingEmail ? (
+                <><Loader2 className="w-4 h-4 animate-spin" />מתחבר...</>
+              ) : (
+                "התחברות"
+              )}
+            </button>
+          </form>
 
-        {/* Mobile logo */}
-        <div className="lg:hidden mb-8 text-center">
-          <span dir="ltr" className="text-[22px] font-black text-primary">BillBOT+</span>
-          <p className="text-[12px] text-muted-foreground mt-1">ניהול חשבוניות חכם בעזרת AI</p>
-        </div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="w-full max-w-[380px] space-y-7"
-        >
-          {/* Heading */}
-          <div className="space-y-1.5 text-center">
-            <h1 className="text-[26px] font-black text-foreground">ברוכים הבאים</h1>
-            <p className="text-[14px] text-muted-foreground">
-              התחבר כדי להתחיל לנהל חשבוניות בצורה חכמה
-            </p>
+          {/* Divider */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.1)" }} />
+            <span className="text-[12px]" style={{ color: "#4a5a7a" }}>או</span>
+            <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.1)" }} />
           </div>
 
           {/* Google button */}
           <button
             onClick={handleGoogle}
             disabled={loading}
-            className="w-full h-12 flex items-center justify-center gap-3 rounded-[12px] border-2 border-border bg-card hover:bg-elevated hover:border-primary/30 transition-all font-semibold text-[15px] text-foreground disabled:opacity-60 disabled:cursor-not-allowed"
-            style={{ boxShadow: "var(--shadow-card)" }}
+            className="w-full h-12 rounded-[10px] flex items-center justify-center gap-3 font-semibold text-[14px] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{
+              background: "#ffffff",
+              color: "#1a1f36",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
+            }}
+            onMouseEnter={(e) => !loading && (e.currentTarget.style.background = "#f0f4ff")}
+            onMouseLeave={(e) => !loading && (e.currentTarget.style.background = "#ffffff")}
           >
-            {loading ? (
-              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            {loadingGoogle ? (
+              <Loader2 className="w-5 h-5 animate-spin" style={{ color: "#5a75dc" }} />
             ) : (
               <GoogleIcon />
             )}
-            {loading ? "מתחבר..." : "המשך עם Google"}
+            {loadingGoogle ? "מתחבר לגוגל..." : "התחבר עם Google"}
           </button>
 
-          {/* Divider */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-[11px] text-muted-foreground">או</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
+          {/* Global error */}
+          <AnimatePresence>
+            {error && (
+              <motion.p
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="text-center text-[12px]"
+                style={{ color: "#f87171" }}
+              >
+                {error}
+              </motion.p>
+            )}
+          </AnimatePresence>
 
-          {/* Email placeholder (future) */}
-          <button
-            onClick={onSkip}
-            className="w-full h-11 flex items-center justify-center gap-2 rounded-[12px] border border-border bg-transparent hover:bg-elevated transition-all text-[14px] text-muted-foreground hover:text-foreground"
-          >
-            המשך ללא חשבון
-            <ArrowLeft className="w-4 h-4 rotate-180" />
-          </button>
-
-          {/* Error */}
-          {error && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center text-[12px] text-destructive"
+          {/* Register link */}
+          <p className="text-center text-[13px]" style={{ color: "#8899bb" }}>
+            אין לך חשבון?{" "}
+            <button
+              type="button"
+              onClick={onSkip}
+              className="font-semibold transition-opacity hover:opacity-70"
+              style={{ color: "#5a75dc" }}
             >
-              {error}
-            </motion.p>
-          )}
-
-          {/* Terms */}
-          <p className="text-center text-[11px] text-muted-foreground leading-relaxed">
-            בהתחברות אתה מסכים ל
-            <button className="underline underline-offset-2 hover:text-foreground transition-colors mx-1">תנאי השימוש</button>
-            ול
-            <button className="underline underline-offset-2 hover:text-foreground transition-colors mr-1">מדיניות הפרטיות</button>
+              הירשם כאן
+            </button>
           </p>
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -235,30 +361,6 @@ function GoogleIcon() {
       <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
       <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
       <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-    </svg>
-  );
-}
-
-// ── Gmail branded icon (envelope with M) ───────────────────────────────────
-function GmailIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <path d="M2 6a2 2 0 012-2h16a2 2 0 012 2v12a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" fill="#fff" fillOpacity="0.05"/>
-      <path d="M2 6l10 7 10-7" stroke="#EA4335" strokeWidth="1.8" strokeLinecap="round"/>
-      <path d="M2 6v12h20V6L12 13 2 6z" fill="#EA4335" fillOpacity="0.15"/>
-      <path d="M2 6l10 7 10-7" stroke="#EA4335" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
-}
-
-// ── Outlook branded icon ───────────────────────────────────────────────────
-function OutlookIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <rect x="2" y="5" width="10" height="14" rx="1.5" fill="#0078D4" fillOpacity="0.9"/>
-      <rect x="10" y="8" width="12" height="10" rx="1" fill="#0078D4" fillOpacity="0.4" stroke="#0078D4" strokeWidth="1"/>
-      <path d="M10 8l5 4.5L22 8" stroke="#0078D4" strokeWidth="1.2" strokeLinecap="round"/>
-      <ellipse cx="7" cy="12" rx="2.5" ry="3" fill="white" fillOpacity="0.9"/>
     </svg>
   );
 }
