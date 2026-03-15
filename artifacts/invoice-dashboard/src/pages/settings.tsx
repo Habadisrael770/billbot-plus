@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Mail,
   Shield,
@@ -25,6 +25,7 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
   FlaskConical,
   Tag,
   Pencil,
@@ -38,7 +39,14 @@ import {
   Percent,
   DollarSign,
   X,
+  LogOut,
+  Crown,
+  Zap,
+  Lock,
+  Calculator,
+  ChevronRight,
 } from "lucide-react";
+import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -105,6 +113,27 @@ const INITIAL: Record<"outlook", EmailConnector> = {
 };
 
 export default function Settings() {
+  const [, navigate] = useLocation();
+
+  // ── Mobile hub navigation ─────────────────────────────────────────────────
+  type MobileSection = null | "connectors" | "biz" | "plan" | "security" | "usage" | "accountant" | "ai";
+  const [mobileSection, setMobileSection] = useState<MobileSection>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
+  const goToSection = (id: Exclude<MobileSection, null>) => {
+    setMobileSection(id);
+    setTimeout(() => {
+      document.getElementById(`sec-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 80);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("bb_user");
+    localStorage.removeItem("bb_wizard_done");
+    localStorage.removeItem("bb_onboarding_progress");
+    window.location.reload();
+  };
+
   // ── Categories state ──────────────────────────────────────────────────────
   interface Category { id: string; name: string; color: string; is_deletable: boolean; is_default: boolean; }
   interface Entity { id: string; name: string; type: string; tax_id: string | null; registration_type: string | null; is_default: boolean; }
@@ -626,28 +655,219 @@ export default function Settings() {
 
   const webhookBaseUrl = `${window.location.origin}/api`;
 
+  // ── Derived values for mobile hub ─────────────────────────────────────────
+  const hubUser = localStorage.getItem("bb_user") ?? "משתמש";
+  const hubPlan = (() => {
+    try { const d = JSON.parse(localStorage.getItem("bb_onboarding_progress") ?? "{}"); return d.plan ?? "free"; }
+    catch { return "free"; }
+  })();
+  const planLabel: Record<string, string> = { free: "ניסיון חינם", starter: "Starter", business: "Business" };
+
+  const MENU_ITEMS = [
+    { id: "biz",        icon: Building2,   label: "פרטי עסק",         sub: "לוגו, שמות, מספרי זיהוי",     color: "text-blue-400",   bg: "bg-blue-500/10"   },
+    { id: "connectors", icon: Inbox,        label: "חיבורי מייל ו-API", sub: "Gmail, Outlook, Green Invoice", color: "text-primary",    bg: "bg-primary/10"    },
+    { id: "plan",       icon: Crown,        label: "תוכנית ומנוי",      sub: `${planLabel[hubPlan]} · ניהול תשלומים`, color: "text-amber-400",  bg: "bg-amber-500/10"  },
+    { id: "usage",      icon: Zap,          label: "שימוש ומגבלות",     sub: "שימוש החודש, מכסות",          color: "text-teal",       bg: "bg-teal/10"       },
+    { id: "security",   icon: Lock,         label: "אבטחה ופרטיות",     sub: "סיסמה, אימות דו-שלבי",        color: "text-violet-400", bg: "bg-violet-500/10" },
+    { id: "accountant", icon: Calculator,   label: "רואה חשבון",        sub: "ייצוא דוחות, שיתוף גישה",    color: "text-emerald-400",bg: "bg-emerald-500/10"},
+    { id: "ai",         icon: Bot,          label: "AI ושיחות",          sub: "היסטוריית שיחות עם היועץ",    color: "text-purple",     bg: "bg-purple/10"     },
+  ] as const;
+
   return (
     <Layout>
+      <div dir="rtl">
+
+      {/* ═══ MOBILE HUB (shows when no section active) ═══ */}
+      <AnimatePresence>
+        {mobileSection === null && (
+          <motion.div
+            key="hub"
+            initial={{ opacity: 0, x: -24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -24 }}
+            transition={{ duration: 0.22 }}
+            className="md:hidden flex flex-col gap-4 pb-24"
+          >
+            {/* ── Profile card ── */}
+            <div className="flex flex-col items-center gap-2.5 pt-6 pb-5 px-4">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 border-2 border-primary/25 flex items-center justify-center">
+                <User className="w-8 h-8 text-primary" />
+              </div>
+              <div className="text-center">
+                <p className="text-[17px] font-bold text-foreground">{hubUser}</p>
+                {gmailStatus?.email && (
+                  <p className="text-[12px] text-muted-foreground mt-0.5" dir="ltr">{gmailStatus.email}</p>
+                )}
+                <span className={`mt-1.5 inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${
+                  hubPlan === "business" ? "bg-violet-500/15 border-violet-500/30 text-violet-400"
+                  : hubPlan === "starter" ? "bg-teal/15 border-teal/30 text-teal"
+                  : "bg-muted border-border text-muted-foreground"
+                }`}>{planLabel[hubPlan]}</span>
+              </div>
+            </div>
+
+            {/* ── Menu list ── */}
+            <div className="px-3 space-y-1.5">
+              {MENU_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const isAccountant = item.id === "accountant";
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => isAccountant ? navigate("/integrations") : goToSection(item.id as Exclude<MobileSection, null>)}
+                    className="w-full flex items-center gap-3 px-3.5 py-3.5 rounded-2xl bg-card border border-border hover:bg-elevated active:scale-[0.98] transition-all text-right"
+                  >
+                    <div className={`w-10 h-10 rounded-xl ${item.bg} flex items-center justify-center shrink-0`}>
+                      <Icon className={`w-5 h-5 ${item.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-semibold text-foreground leading-tight">{item.label}</p>
+                      <p className="text-[11px] text-muted-foreground truncate mt-0.5">{item.sub}</p>
+                    </div>
+                    <ChevronLeft className="w-4 h-4 text-muted-foreground rotate-180 shrink-0" />
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* ── Logout ── */}
+            <div className="px-3 mt-2">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-3.5 py-3.5 rounded-2xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 active:scale-[0.98] transition-all text-right"
+              >
+                <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+                  <LogOut className="w-5 h-5 text-destructive" />
+                </div>
+                <p className="text-[14px] font-semibold text-destructive">יציאה מהחשבון</p>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ═══ MOBILE BACK HEADER ═══ */}
+      {mobileSection !== null && (
+        <div className="md:hidden flex items-center gap-3 px-3 pt-3 pb-2 sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border">
+          <button
+            onClick={() => setMobileSection(null)}
+            className="flex items-center gap-1.5 text-sm font-medium text-primary"
+          >
+            <ChevronLeft className="w-4 h-4" /> חזרה להגדרות
+          </button>
+          <span className="text-sm font-semibold text-foreground">
+            {MENU_ITEMS.find((m) => m.id === mobileSection)?.label ?? "הגדרות"}
+          </span>
+        </div>
+      )}
+
+      {/* ═══ MAIN SETTINGS CONTENT ═══ */}
       <motion.div
+        ref={mainContentRef}
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="max-w-2xl mx-auto flex flex-col gap-6 pb-8"
+        className={`max-w-2xl mx-auto flex flex-col gap-6 pb-8 ${mobileSection === null ? "hidden md:flex" : "flex"}`}
         dir="rtl"
       >
-        {/* Page header */}
-        <div className="flex items-center gap-3">
+        {/* ── Desktop page header (hidden on mobile) ── */}
+        <div className="hidden md:flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
             <Shield className="w-5 h-5 text-primary" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-white">הגדרות מערכת</h1>
-            <p className="text-sm text-muted-foreground">סופר אדמין — ניהול חיבורים ו-AI</p>
+            <p className="text-sm text-muted-foreground">ניהול חיבורים, פרופיל עסקי ו-AI</p>
           </div>
         </div>
 
+        {/* ── Placeholder sections (mobile only, no desktop equivalent) ── */}
+        <div id="sec-plan" className="md:hidden rounded-2xl border border-border bg-card p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+              <Crown className="w-5 h-5 text-amber-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">תוכנית ומנוי</p>
+              <p className="text-xs text-muted-foreground">{planLabel[hubPlan]}</p>
+            </div>
+            <span className={`mr-auto text-[11px] font-bold px-2.5 py-1 rounded-full ${
+              hubPlan === "business" ? "bg-violet-500/15 text-violet-400"
+              : hubPlan === "starter" ? "bg-teal/15 text-teal"
+              : "bg-muted text-muted-foreground"
+            }`}>{planLabel[hubPlan]}</span>
+          </div>
+          <div className="space-y-2">
+            {[
+              { label: "חשבוניות בחודש", val: hubPlan === "free" ? "עד 50" : hubPlan === "starter" ? "עד 500" : "ללא הגבלה" },
+              { label: "סריקת מייל", val: hubPlan === "free" ? "לא כלול" : "כלול" },
+              { label: "יועץ AI", val: hubPlan === "free" ? "לא כלול" : "כלול" },
+            ].map((row) => (
+              <div key={row.label} className="flex items-center justify-between text-sm py-2 border-b border-border last:border-0">
+                <span className="text-muted-foreground">{row.label}</span>
+                <span className="font-medium text-foreground">{row.val}</span>
+              </div>
+            ))}
+          </div>
+          <button className="w-full btn-primary justify-center py-2.5 text-sm">
+            <Crown className="w-4 h-4" /> שדרג תוכנית
+          </button>
+        </div>
+
+        <div id="sec-usage" className="md:hidden rounded-2xl border border-border bg-card p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-teal/10 flex items-center justify-center">
+              <Zap className="w-5 h-5 text-teal" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">שימוש ומגבלות</p>
+              <p className="text-xs text-muted-foreground">מרץ 2026</p>
+            </div>
+          </div>
+          {[
+            { label: "חשבוניות הועלו", val: 12, max: hubPlan === "free" ? 50 : 500, unit: "" },
+          ].map((item) => (
+            <div key={item.label} className="space-y-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">{item.label}</span>
+                <span className="font-semibold text-foreground">{item.val} / {item.max}</span>
+              </div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${(item.val / item.max) * 100}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div id="sec-security" className="md:hidden rounded-2xl border border-border bg-card p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
+              <Lock className="w-5 h-5 text-violet-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">אבטחה ופרטיות</p>
+              <p className="text-xs text-muted-foreground">הגן על החשבון שלך</p>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {[
+              { label: "שינוי סיסמה", icon: Key },
+              { label: "אימות דו-שלבי (2FA)", icon: Shield },
+              { label: "פעילות אחרונה", icon: Globe },
+            ].map(({ label, icon: Icon }) => (
+              <button key={label} disabled className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-muted/50 border border-border cursor-not-allowed">
+                <Icon className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground flex-1 text-right">{label}</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">בקרוב</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* existing sections below — tagged with IDs for mobile scroll-to */}
+
         {/* Email connectors section */}
-        <div>
+        <div id="sec-connectors">
           <div className="flex items-center gap-2 mb-3">
             <Inbox className="w-4 h-4 text-primary" />
             <h2 className="text-sm font-semibold text-white">חיבורי מייל</h2>
@@ -1204,7 +1424,7 @@ export default function Settings() {
         </div>
 
         {/* ── Business Profile ── */}
-        <div className="rounded-2xl border border-white/10 bg-card/30 p-5 space-y-5" dir="rtl">
+        <div id="sec-biz" className="rounded-2xl border border-white/10 bg-card/30 p-5 space-y-5" dir="rtl">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -1721,6 +1941,7 @@ export default function Settings() {
           {isSaving ? "שומר..." : "שמור הגדרות"}
         </Button>
       </motion.div>
+      </div>
     </Layout>
   );
 }
