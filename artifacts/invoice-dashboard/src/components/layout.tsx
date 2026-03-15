@@ -633,16 +633,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           );
         })}
-        <Link
-          href="/settings"
-          className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-[10px] transition-colors ${
-            location === "/settings" ? "text-white" : "text-white"
-          }`}
-        >
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Settings className="w-4.5 h-4.5 text-white" />
-          </div>
-        </Link>
       </nav>
 
       {/* Global Upload Modal */}
