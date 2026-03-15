@@ -534,7 +534,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <span className="hidden md:inline text-[14px] font-semibold text-foreground tracking-wide">{currentLabel}</span>
             </div>
 
-            {/* Action buttons */}
+            {/* Action buttons — desktop only for Upload; mobile has sub-bar below */}
             <div className="flex items-center gap-2">
               <button
                 className="hidden sm:flex items-center gap-1.5 h-9 px-3 rounded-[10px] border border-border bg-card text-muted-foreground text-[12px] hover:bg-elevated hover:text-foreground transition-colors whitespace-nowrap shrink-0"
@@ -545,7 +545,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </button>
               <button
                 onClick={() => setUploadOpen(true)}
-                className="btn-primary h-9 px-4 py-0 text-[12px]"
+                className="hidden sm:flex btn-primary h-9 px-4 py-0 text-[12px]"
               >
                 <Upload className="w-4 h-4" />
                 <span className="hidden sm:inline">העלה חשבונית</span>
@@ -572,6 +572,24 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </div>
             </div>
           </header>
+
+          {/* ── Mobile action bar — Upload + Calendar side by side ── */}
+          <div className="md:hidden flex gap-3 px-4 py-2.5 border-b border-border bg-card shrink-0">
+            <button
+              onClick={() => setUploadOpen(true)}
+              className="flex-1 flex items-center justify-center gap-2 h-10 rounded-[10px] text-[13px] font-bold text-white transition-all active:scale-[0.97]"
+              style={{ background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--teal)) 100%)" }}
+            >
+              <Upload className="w-4 h-4 shrink-0" />
+              העלה חשבונית
+            </button>
+            <button
+              className="flex-1 flex items-center justify-center gap-2 h-10 rounded-[10px] text-[13px] font-semibold text-foreground transition-all active:scale-[0.97] border border-border hover:bg-elevated"
+            >
+              <CalendarDays className="w-4 h-4 shrink-0" />
+              יומן
+            </button>
+          </div>
 
           {/* Page content */}
           <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 z-10 pb-20 md:pb-8">
