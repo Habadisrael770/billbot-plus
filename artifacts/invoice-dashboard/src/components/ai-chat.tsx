@@ -11,7 +11,11 @@ import {
   Sparkles,
   Lock,
   Zap,
+  Clock,
 } from "lucide-react";
+
+const TRIAL_DAYS = 7;
+const TRIAL_KEY = "bb_chat_trial_start";
 
 function getSelectedPlan(): string {
   try {
@@ -22,6 +26,23 @@ function getSelectedPlan(): string {
     }
   } catch { /* ignore */ }
   return "free";
+}
+
+function getTrialInfo(): { inTrial: boolean; daysLeft: number; trialExpired: boolean } {
+  let startStr = localStorage.getItem(TRIAL_KEY);
+  if (!startStr) {
+    startStr = new Date().toISOString();
+    localStorage.setItem(TRIAL_KEY, startStr);
+  }
+  const startDate = new Date(startStr);
+  const now = new Date();
+  const elapsed = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+  const daysLeft = Math.max(0, Math.ceil(TRIAL_DAYS - elapsed));
+  return {
+    inTrial: elapsed < TRIAL_DAYS,
+    daysLeft,
+    trialExpired: elapsed >= TRIAL_DAYS,
+  };
 }
 
 const BASE_URL = import.meta.env.BASE_URL ?? "/";
@@ -42,7 +63,9 @@ type Conversation = {
 export function AIChat() {
   const [isOpen, setIsOpen] = useState(false);
   const plan = getSelectedPlan();
-  const hasAccess = plan === "starter" || plan === "business";
+  const isPaid = plan === "starter" || plan === "business";
+  const trial = getTrialInfo();
+  const hasAccess = isPaid || trial.inTrial;
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId] = useState<number | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -189,8 +212,19 @@ export function AIChat() {
       <button
         onClick={() => setIsOpen((o) => !o)}
         className="fixed bottom-[72px] right-2 md:bottom-6 md:right-6 z-50 w-12 h-12 md:w-14 md:h-14 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
-        style={{ background: hasAccess ? "linear-gradient(135deg, #7c3aed, #2563eb)" : "linear-gradient(135deg, #374151, #1f2937)", boxShadow: hasAccess ? "0 8px 24px rgba(124,58,237,0.35)" : "0 8px 24px rgba(0,0,0,0.3)" }}
-        title={hasAccess ? "יועץ BillBOT+" : "AI יועץ — נעול לתוכנית Starter"}
+        style={{
+          background: hasAccess
+            ? "linear-gradient(135deg, #7c3aed, #2563eb)"
+            : "linear-gradient(135deg, #374151, #1f2937)",
+          boxShadow: hasAccess
+            ? "0 8px 24px rgba(124,58,237,0.35)"
+            : "0 8px 24px rgba(0,0,0,0.3)",
+        }}
+        title={
+          isPaid ? "יועץ BillBOT+"
+          : trial.inTrial ? `יועץ AI — ניסיון חינם (${trial.daysLeft} ימים)`
+          : "AI יועץ — נעול"
+        }
       >
         <AnimatePresence mode="wait">
           {isOpen ? (
@@ -206,6 +240,9 @@ export function AIChat() {
             </motion.div>
           )}
         </AnimatePresence>
+        {!isPaid && trial.inTrial && (
+          <span className="absolute -top-1 -left-1 min-w-[18px] h-[18px] rounded-full bg-teal text-[9px] font-bold text-white flex items-center justify-center px-0.5">{trial.daysLeft}</span>
+        )}
         {!hasAccess && (
           <span className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-amber-500 text-[9px] font-bold text-white flex items-center justify-center">!</span>
         )}
@@ -230,7 +267,9 @@ export function AIChat() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-white">יועץ BillBOT+</p>
-                  <p className="text-xs text-violet-400">AI חכם · זוכר שיחות</p>
+                  <p className="text-xs text-violet-400">
+                    {isPaid ? "AI חכם · זוכר שיחות" : trial.inTrial ? `ניסיון חינם · ${trial.daysLeft} ימים נותרו` : "תקופת ניסיון הסתיימה"}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -251,16 +290,30 @@ export function AIChat() {
               </div>
             </div>
 
-            {/* ── Upgrade wall for free plan ── */}
+            {/* ── Trial banner (free plan, trial active) ── */}
+            {!isPaid && trial.inTrial && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-teal/10 border-b border-teal/20">
+                <Clock className="w-3.5 h-3.5 text-teal shrink-0" />
+                <span className="text-xs text-teal font-medium">ניסיון חינם · {trial.daysLeft} ימים נותרו</span>
+                <button
+                  onClick={() => { setIsOpen(false); window.location.href = "/settings"; }}
+                  className="mr-auto text-[10px] font-bold text-violet-400 hover:text-violet-300 transition-colors"
+                >
+                  שדרג
+                </button>
+              </div>
+            )}
+
+            {/* ── Upgrade wall (trial expired, free plan) ── */}
             {!hasAccess && (
               <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-4">
                 <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/25 flex items-center justify-center">
                   <Lock className="w-7 h-7 text-amber-400" />
                 </div>
                 <div>
-                  <p className="text-white font-semibold text-[15px]">יועץ AI חכם</p>
+                  <p className="text-white font-semibold text-[15px]">תקופת הניסיון הסתיימה</p>
                   <p className="text-white/50 text-xs mt-1 leading-relaxed">
-                    שיחות AI עם זיכרון, תובנות עסקיות וייעוץ פיננסי<br/>זמינים בתוכנית Starter ומעלה
+                    נגמרו 7 ימי הניסיון החינם.<br/>שדרג לתוכנית Starter כדי להמשיך להשתמש ביועץ AI
                   </p>
                 </div>
                 <div className="space-y-2 w-full text-right">
@@ -272,7 +325,7 @@ export function AIChat() {
                   ))}
                 </div>
                 <button
-                  onClick={() => { setIsOpen(false); window.location.href = "/?reset=1"; }}
+                  onClick={() => { setIsOpen(false); window.location.href = "/settings"; }}
                   className="w-full flex items-center justify-center gap-2 h-9 rounded-xl bg-gradient-to-r from-violet-600 to-blue-600 text-white text-sm font-medium hover:opacity-90 transition-opacity"
                 >
                   <Zap className="w-4 h-4" /> שדרג לStarter
