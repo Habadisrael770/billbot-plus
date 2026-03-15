@@ -110,6 +110,7 @@ function MobileSidebar({
   onClose: () => void;
   onUpload: () => void;
 }) {
+  const { theme } = useTheme();
   const hubUserData = (() => {
     try {
       const raw = localStorage.getItem("bb_user");
@@ -143,7 +144,11 @@ function MobileSidebar({
   return (
     <div
       className="h-full flex flex-col dark-panel"
-      style={{ background: "linear-gradient(180deg, #1a1d3a 0%, #0f1219 100%)" }}
+      style={{
+        background: theme === "light"
+          ? "linear-gradient(180deg, #f0f4ff 0%, #e8edf8 100%)"
+          : "linear-gradient(180deg, #1a1d3a 0%, #0f1219 100%)"
+      }}
       dir="rtl"
     >
       {/* ── Header bar ── */}

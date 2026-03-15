@@ -282,6 +282,27 @@ html.light .text-white\/70 { color: hsl(var(--muted-foreground))  !important; }
 .dark-panel .bg-muted { background-color: rgba(255,255,255,0.08) !important; }
 .dark-panel .bg-muted\/50 { background-color: rgba(255,255,255,0.04) !important; }
 
+/* ── Light mode: dark-panel resets to light colors ── */
+html.light .dark-panel {
+  --foreground:          220 15% 20%;
+  --muted-foreground:    220 10% 45%;
+  --card-foreground:     220 15% 20%;
+  --border:              220 15% 20% / 0.12;
+  --muted:               220 15% 20% / 0.06;
+  color-scheme: light;
+}
+html.light .dark-panel .text-white     { color: hsl(220 15% 15%)    !important; }
+html.light .dark-panel .text-white\/70 { color: hsl(220 10% 40%)    !important; }
+html.light .dark-panel .text-white\/60 { color: hsl(220 10% 45%)    !important; }
+html.light .dark-panel .text-white\/50 { color: hsl(220 10% 50%)    !important; }
+html.light .dark-panel .text-foreground { color: hsl(220 15% 15%)   !important; }
+html.light .dark-panel .text-muted-foreground { color: hsl(220 10% 45%) !important; }
+html.light .dark-panel .text-card-foreground  { color: hsl(220 15% 15%) !important; }
+html.light .dark-panel .border-border   { border-color: rgba(60,80,140,0.15) !important; }
+html.light .dark-panel .bg-card         { background-color: rgba(67,97,238,0.06) !important; }
+html.light .dark-panel .bg-muted        { background-color: rgba(67,97,238,0.08) !important; }
+html.light .dark-panel .bg-muted\/50    { background-color: rgba(67,97,238,0.04) !important; }
+
 html.light .glass-panel {
   background-color: hsl(var(--card));
   border-color: hsl(var(--border));

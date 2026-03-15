@@ -256,18 +256,18 @@ export function AIChat() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-[136px] right-2 md:bottom-24 md:right-6 z-50 w-[calc(100vw-1rem)] sm:w-80 md:w-96 h-[520px] rounded-2xl border border-white/10 bg-[#0f0f1a] shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-[136px] right-2 md:bottom-24 md:right-6 z-50 w-[calc(100vw-1rem)] sm:w-80 md:w-96 h-[520px] rounded-2xl border border-[#4361ee]/25 bg-[#060d20] shadow-2xl flex flex-col overflow-hidden"
             dir="rtl"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-gradient-to-r from-violet-900/40 to-blue-900/40">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-[#4361ee]/15" style={{ background: "linear-gradient(90deg, #4361ee22 0%, #2dd4bf18 100%)" }}>
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-violet-500/20 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-violet-400" />
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "linear-gradient(135deg, #4361ee33, #2dd4bf22)" }}>
+                  <Sparkles className="w-4 h-4" style={{ color: "#2dd4bf" }} />
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-white">יועץ BillBOT+</p>
-                  <p className="text-xs text-violet-400">
+                  <p className="text-xs" style={{ color: "#2dd4bf" }}>
                     {isPaid ? "AI חכם · זוכר שיחות" : trial.inTrial ? `ניסיון חינם · ${trial.daysLeft} ימים נותרו` : "תקופת ניסיון הסתיימה"}
                   </p>
                 </div>
@@ -297,7 +297,7 @@ export function AIChat() {
                 <span className="text-xs text-teal font-medium">ניסיון חינם · {trial.daysLeft} ימים נותרו</span>
                 <button
                   onClick={() => { setIsOpen(false); window.location.href = "/settings"; }}
-                  className="mr-auto text-[10px] font-bold text-violet-400 hover:text-violet-300 transition-colors"
+                  className="mr-auto text-[10px] font-bold transition-colors" style={{ color: "#4361ee" }}
                 >
                   שדרג
                 </button>
