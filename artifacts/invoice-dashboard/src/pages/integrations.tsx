@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
-  RefreshCw,
   Copy,
   LogOut,
   ScanLine,
@@ -19,6 +18,11 @@ import {
   FlaskConical,
   ChevronDown,
   ChevronUp,
+  UserCheck,
+  FileSpreadsheet,
+  Download,
+  Pencil,
+  Calendar,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { useToast } from "@/hooks/use-toast";
@@ -764,6 +768,242 @@ function OutlookCard() {
   );
 }
 
+/* ── Accountant ──────────────────────────────────────────────────────────── */
+const ACCOUNTANT_KEY = "bb_accountant_config";
+const FREQ_OPTIONS = [
+  { value: "manual",    label: "שליחה ידנית בלבד" },
+  { value: "monthly",   label: "אחת לחודש" },
+  { value: "quarterly", label: "אחת לרבעון" },
+];
+
+interface AccountantConfig {
+  name: string;
+  email: string;
+  frequency: string;
+  notes: string;
+}
+
+function AccountantCard() {
+  const { toast } = useToast();
+  const [config, setConfig]   = useState<AccountantConfig | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [form, setForm] = useState<AccountantConfig>({ name: "", email: "", frequency: "manual", notes: "" });
+  const [emailErr, setEmailErr] = useState("");
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(ACCOUNTANT_KEY);
+      if (saved) { const c = JSON.parse(saved) as AccountantConfig; setConfig(c); setForm(c); }
+    } catch { /* ignore */ }
+  }, []);
+
+  const validateEmail = (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
+
+  const save = () => {
+    if (!form.name.trim()) { toast({ title: "נא להכניס שם", variant: "destructive" }); return; }
+    if (!validateEmail(form.email)) { setEmailErr("כתובת מייל לא תקינה"); return; }
+    setEmailErr("");
+    const c = { ...form, name: form.name.trim(), email: form.email.trim() };
+    localStorage.setItem(ACCOUNTANT_KEY, JSON.stringify(c));
+    setConfig(c);
+    setEditing(false);
+    toast({ title: "פרטי רואה החשבון נשמרו" });
+  };
+
+  const disconnect = () => {
+    localStorage.removeItem(ACCOUNTANT_KEY);
+    setConfig(null);
+    setForm({ name: "", email: "", frequency: "manual", notes: "" });
+    setEditing(false);
+    toast({ title: "רואה החשבון נותק" });
+  };
+
+  const sendReport = async () => {
+    if (!config?.email) return;
+    setSending(true);
+    try {
+      const res = await fetch(`${API_BASE}/invoices/send-accountant`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: config.email, name: config.name }),
+      });
+      const data = await res.json() as { ok?: boolean; error?: string };
+      if (data.ok) {
+        toast({ title: "הדוח נשלח!", description: `נשלח אל ${config.email}` });
+      } else {
+        toast({ title: "שגיאה בשליחה", description: data.error ?? "בדוק שהטלגרם מחובר", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "שגיאת רשת", variant: "destructive" });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const exportExcel = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch(`${API_BASE}/invoices/export`);
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url;
+      a.download = `חשבוניות_${new Date().toLocaleDateString("he-IL").replace(/\//g, "-")}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "הקובץ הורד" });
+    } catch {
+      toast({ title: "שגיאת ייצוא", variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const freqLabel = FREQ_OPTIONS.find((f) => f.value === (config?.frequency ?? "manual"))?.label ?? "";
+
+  return (
+    <SectionCard
+      icon={<UserCheck className="w-5 h-5 text-violet-500" />}
+      iconBg="bg-violet-500/10"
+      title='רואה חשבון'
+      description="שליחת דוחות חשבוניות לרואה החשבון שלך בלחיצה אחת"
+      badge={
+        config
+          ? <StatusPill ok={true} label="מוגדר" />
+          : <StatusPill ok={false} label="לא מוגדר" />
+      }
+    >
+      {config && !editing ? (
+        /* ── Connected state ── */
+        <div className="space-y-3">
+          <div className="grid sm:grid-cols-2 gap-2">
+            <div className="p-3 rounded-xl bg-card border border-border">
+              <p className="text-[11px] text-muted-foreground mb-0.5">שם</p>
+              <p className="text-sm font-medium text-foreground">{config.name}</p>
+            </div>
+            <div className="p-3 rounded-xl bg-card border border-border">
+              <p className="text-[11px] text-muted-foreground mb-0.5">מייל</p>
+              <p className="text-sm font-medium text-foreground" dir="ltr">{config.email}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Calendar className="w-3.5 h-3.5 shrink-0" />
+            {freqLabel}
+          </div>
+          {config.notes && (
+            <p className="text-xs text-muted-foreground bg-muted/50 rounded-xl px-3 py-2">{config.notes}</p>
+          )}
+          <div className="flex flex-wrap gap-2 pt-1">
+            <button
+              onClick={exportExcel}
+              disabled={exporting}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-primary text-white text-xs font-medium hover:bg-primary/90 disabled:opacity-60 transition-colors"
+            >
+              {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+              ייצא Excel
+            </button>
+            <button
+              onClick={sendReport}
+              disabled={sending}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-60 transition-colors"
+            >
+              {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileSpreadsheet className="w-3.5 h-3.5" />}
+              שלח דוח
+            </button>
+            <button
+              onClick={() => setEditing(true)}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              ערוך
+            </button>
+            <button
+              onClick={disconnect}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-border text-xs text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              הסר
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* ── Form state ── */
+        <div className="space-y-3">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1.5">שם רואה החשבון *</label>
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder='לדוגמא: משה לוי'
+                dir="rtl"
+                className="w-full h-9 px-3 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground block mb-1.5">כתובת מייל *</label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => { setForm((p) => ({ ...p, email: e.target.value })); setEmailErr(""); }}
+                placeholder="cpa@example.com"
+                dir="ltr"
+                className={`w-full h-9 px-3 rounded-xl border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${emailErr ? "border-destructive" : "border-border"}`}
+              />
+              {emailErr && <p className="text-[11px] text-destructive mt-1">{emailErr}</p>}
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1.5">תדירות שליחת דוח</label>
+            <select
+              value={form.frequency}
+              onChange={(e) => setForm((p) => ({ ...p, frequency: e.target.value }))}
+              className="w-full h-9 px-3 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              dir="rtl"
+            >
+              {FREQ_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1.5">הערות (אופציונלי)</label>
+            <input
+              type="text"
+              value={form.notes}
+              onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
+              placeholder="הוראות מיוחדות, מספר לקוח, וכו'"
+              dir="rtl"
+              className="w-full h-9 px-3 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={save}
+              className="flex items-center gap-1.5 h-8 px-4 rounded-xl bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              שמור
+            </button>
+            {config && (
+              <button
+                onClick={() => { setEditing(false); setForm(config); setEmailErr(""); }}
+                className="h-8 px-4 rounded-xl border border-border text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                ביטול
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  );
+}
+
 /* ── Page ────────────────────────────────────────────────────────────────── */
 export default function IntegrationsPage() {
   return (
@@ -778,6 +1018,7 @@ export default function IntegrationsPage() {
 
         <div className="grid gap-4">
           <GmailCard />
+          <AccountantCard />
           <TelegramCard />
           <WhatsAppCard />
           <OutlookCard />

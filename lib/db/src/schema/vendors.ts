@@ -6,6 +6,7 @@ export const vendorsTable = pgTable("vendors", {
   id: uuid("id").primaryKey().defaultRandom(),
   canonical_name: text("canonical_name").notNull(),
   tax_id: text("tax_id"),
+  default_category: text("default_category"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
