@@ -28,6 +28,7 @@ import {
   MailOpen,
   Plus,
   ChevronRight,
+  ScanLine,
 } from "lucide-react";
 import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
 import { GmailScanDialog } from "@/components/gmail-scan-dialog";
@@ -689,15 +690,46 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {/* ── Mobile search bar — full width below header ── */}
           <div className="md:hidden px-4 py-2.5 border-b border-border bg-card shrink-0">
             <div className="relative">
+              {/* Search icon — right */}
               <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-muted-foreground pointer-events-none" />
+
               <input
                 type="text"
                 placeholder="חיפוש ספק, מספר חשבונית..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 dir="rtl"
-                className="mobile-search-input w-full h-11 rounded-[10px] pr-10 pl-3 text-[14px] outline-none transition-all bg-elevated border border-border text-foreground placeholder:text-muted-foreground"
+                className="mobile-search-input w-full h-11 rounded-[10px] pr-10 pl-[84px] text-[14px] outline-none transition-all bg-elevated border border-border text-foreground placeholder:text-muted-foreground"
               />
+
+              {/* Action buttons — left side of search bar */}
+              <div className="absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                {/* Upload invoice */}
+                <button
+                  onClick={() => setUploadOpen(true)}
+                  title="העלה חשבונית"
+                  className="w-8 h-8 rounded-[8px] flex items-center justify-center transition-all active:scale-90"
+                  style={{
+                    background: theme === "dark" ? "rgba(75,126,245,0.18)" : "rgba(75,126,245,0.12)",
+                    border: "1.5px solid rgba(75,126,245,0.35)",
+                  }}
+                >
+                  <Plus className="w-[15px] h-[15px]" style={{ color: "#4B7EF5" }} />
+                </button>
+
+                {/* Scan email */}
+                <button
+                  onClick={() => setGmailScanOpen(true)}
+                  title="סרוק מייל"
+                  className="w-8 h-8 rounded-[8px] flex items-center justify-center transition-all active:scale-90"
+                  style={{
+                    background: theme === "dark" ? "rgba(45,212,191,0.18)" : "rgba(45,212,191,0.12)",
+                    border: "1.5px solid rgba(45,212,191,0.35)",
+                  }}
+                >
+                  <ScanLine className="w-[15px] h-[15px]" style={{ color: "#2dd4bf" }} />
+                </button>
+              </div>
             </div>
           </div>
 
