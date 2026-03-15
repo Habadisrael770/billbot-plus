@@ -425,14 +425,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
           {/* Header */}
           <header className="h-20 md:h-14 flex items-center gap-3 px-4 sm:px-6 border-b border-border bg-card z-10 shrink-0" style={{ boxShadow: "var(--shadow-sm)" }}>
-            {/* Mobile hamburger */}
-            <div className="flex items-center gap-2 min-w-0">
+            {/* Mobile hamburger + theme toggle */}
+            <div className="flex items-center gap-1.5 min-w-0">
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="md:hidden p-2 rounded-[8px] text-muted-foreground hover:text-foreground hover:bg-elevated transition-colors"
                 aria-label="Open menu"
               >
                 <Menu className="w-5 h-5" />
+              </button>
+              {/* Mobile-only theme toggle — prominent day/night switch */}
+              <button
+                onClick={toggleTheme}
+                aria-label="Toggle theme"
+                className="md:hidden w-9 h-9 rounded-xl flex items-center justify-center transition-all duration-200 shrink-0"
+                style={{
+                  background: theme === "dark"
+                    ? "rgba(251,191,36,0.15)"
+                    : "rgba(99,102,241,0.12)",
+                  border: theme === "dark"
+                    ? "1.5px solid rgba(251,191,36,0.35)"
+                    : "1.5px solid rgba(99,102,241,0.35)",
+                }}
+              >
+                {theme === "dark"
+                  ? <Sun  className="w-[18px] h-[18px]" style={{ color: "#fbbf24" }} />
+                  : <Moon className="w-[18px] h-[18px]" style={{ color: "#6366f1" }} />}
               </button>
               <PersonalAreaDropdown />
             </div>
