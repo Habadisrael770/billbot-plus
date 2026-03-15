@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import path from "path";
 import fs from "fs";
-import { getGmailClient, getGmailStatus } from "../services/gmailOAuth.js";
+import { getUncachableGmailClient, isGmailConnected } from "../services/gmailClient.js";
 import { processInvoice } from "../services/invoiceProcessingService.js";
 
 const router: IRouter = Router();
@@ -15,41 +15,59 @@ function getMonthUploadsDir(): string {
   return dir;
 }
 
-// GET /api/email-connectors/gmail/status
 router.get("/gmail/status", async (_req, res) => {
   try {
-    const status = await getGmailStatus();
-    res.json(status);
+    const connected = await isGmailConnected();
+    if (!connected) {
+      return res.json({ connected: false, email: null });
+    }
+    const gmail = await getUncachableGmailClient();
+    const profile = await gmail.users.getProfile({ userId: "me" });
+    res.json({
+      connected: true,
+      email: profile.data.emailAddress ?? null,
+      credentialsConfigured: true,
+    });
   } catch (err) {
     res.json({ connected: false, email: null, error: String(err) });
   }
 });
 
-// POST /api/email-connectors/gmail/scan
-// Scans Gmail for invoice attachments and processes them
-router.post("/gmail/scan", async (_req, res) => {
+router.post("/gmail/scan", async (req, res) => {
   try {
-    const { client: gmail } = await getGmailClient();
+    const gmail = await getUncachableGmailClient();
 
-    // Search for emails with PDF/image attachments that look like invoices
+    const yearsBack = Math.min(Math.max(Number(req.body?.yearsBack) || 4, 1), 4);
+    const afterDate = new Date();
+    afterDate.setFullYear(afterDate.getFullYear() - yearsBack);
+    const afterStr = `${afterDate.getFullYear()}/${String(afterDate.getMonth() + 1).padStart(2, "0")}/${String(afterDate.getDate()).padStart(2, "0")}`;
+
     const SEARCH_QUERIES = [
-      "has:attachment filename:pdf חשבונית",
-      "has:attachment filename:pdf invoice",
-      "has:attachment filename:pdf receipt",
-      "has:attachment (filename:jpg OR filename:png) חשבונית",
+      `has:attachment filename:pdf חשבונית after:${afterStr}`,
+      `has:attachment filename:pdf invoice after:${afterStr}`,
+      `has:attachment filename:pdf receipt after:${afterStr}`,
+      `has:attachment filename:pdf קבלה after:${afterStr}`,
+      `has:attachment filename:pdf tax after:${afterStr}`,
+      `has:attachment (filename:jpg OR filename:png) חשבונית after:${afterStr}`,
     ];
 
     const messageIds = new Set<string>();
+    const MAX_PER_QUERY = 100;
 
     for (const q of SEARCH_QUERIES) {
-      const listRes = await gmail.users.messages.list({
-        userId: "me",
-        q,
-        maxResults: 20,
-      });
-      for (const msg of listRes.data.messages ?? []) {
-        if (msg.id) messageIds.add(msg.id);
-      }
+      let pageToken: string | undefined;
+      do {
+        const listRes = await gmail.users.messages.list({
+          userId: "me",
+          q,
+          maxResults: MAX_PER_QUERY,
+          pageToken,
+        });
+        for (const msg of listRes.data.messages ?? []) {
+          if (msg.id) messageIds.add(msg.id);
+        }
+        pageToken = listRes.data.nextPageToken ?? undefined;
+      } while (pageToken && messageIds.size < 500);
     }
 
     let processed = 0;
@@ -88,6 +106,10 @@ router.post("/gmail/scan", async (_req, res) => {
           continue;
         }
 
+        const emailDate = msg.data.internalDate
+          ? new Date(Number(msg.data.internalDate))
+          : new Date();
+
         for (const part of attachmentParts) {
           const attachId = part.body!.attachmentId!;
           const attachRes = await gmail.users.messages.attachments.get({
@@ -99,7 +121,6 @@ router.post("/gmail/scan", async (_req, res) => {
           const data = attachRes.data.data;
           if (!data) continue;
 
-          // Gmail uses URL-safe base64
           const buffer = Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
           const mime = part.mimeType ?? "application/pdf";
           const extMap: Record<string, string> = {
@@ -115,10 +136,9 @@ router.post("/gmail/scan", async (_req, res) => {
           const filePath = path.join(monthDir, filename);
           fs.writeFileSync(filePath, buffer);
 
-          const now = new Date();
           await processInvoice({
             filePath,
-            extracted: { date: now.toISOString().split("T")[0] },
+            extracted: { date: emailDate.toISOString().split("T")[0] },
             sourceType: "email",
           });
           processed++;
@@ -134,25 +154,23 @@ router.post("/gmail/scan", async (_req, res) => {
       processed,
       skipped,
       errors: errors.slice(0, 5),
+      yearsScanned: yearsBack,
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err) });
   }
 });
 
-// POST /api/email-connectors/test  (stub — kept for backward compat with old UI)
 router.post("/test", (_req, res) => {
   res.json({ success: false, error: "השתמש בכפתור Connect with Google במקום." });
 });
 
-// POST /api/email-connectors/scan  (stub — kept for backward compat with old UI)
 router.post("/scan", (_req, res) => {
   res.json({ count: 0, error: "השתמש ב-Gmail OAuth." });
 });
 
 export default router;
 
-// ---- helpers ----
 interface GmailPart {
   filename?: string | null;
   mimeType?: string | null;

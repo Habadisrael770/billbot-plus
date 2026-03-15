@@ -456,7 +456,11 @@ export default function Settings() {
     setIsScanningGmail(true);
     setGmailScanResult(null);
     try {
-      const res = await fetch(`${API_BASE}/email-connectors/gmail/scan`, { method: "POST" });
+      const res = await fetch(`${API_BASE}/email-connectors/gmail/scan`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ yearsBack: 4 }),
+      });
       const data = await res.json() as { ok?: boolean; processed?: number; found?: number; error?: string };
       if (data.ok) {
         setGmailScanResult({ processed: data.processed ?? 0, found: data.found ?? 0 });
