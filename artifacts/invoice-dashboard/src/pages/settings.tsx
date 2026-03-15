@@ -45,6 +45,7 @@ import {
   Lock,
   Calculator,
   ChevronRight,
+  Bell,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
@@ -681,140 +682,127 @@ export default function Settings() {
       <AnimatePresence>
         {mobileSection === null && (
           <>
-            {/* Gradient background overlay */}
-            <motion.div
-              key="hub-bg"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="md:hidden fixed inset-0 z-40 pointer-events-none"
-              style={{ background: "linear-gradient(160deg, hsl(var(--primary)/0.06) 0%, transparent 60%)" }}
-            />
-
-            {/* Slide-in panel from right (RTL) */}
+            {/* Slide-in panel */}
             <motion.div
               key="hub"
-              initial={{ opacity: 0, x: 60 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 60 }}
-              transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
-              className="md:hidden fixed inset-0 z-40 flex flex-col overflow-hidden"
-              style={{ background: "linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--background)) 100%)" }}
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+              className="md:hidden fixed inset-0 z-40 flex flex-col"
+              style={{ background: "linear-gradient(180deg, #1a1d3a 0%, #0f1219 100%)" }}
             >
-              {/* ── Top bar ── */}
-              <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/5">
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-destructive transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  יציאה
+              {/* ── Header bar (Quote Plus style) ── */}
+              <div className="flex items-center justify-between px-5 pt-5 pb-5 border-b border-white/8">
+                {/* Left: bell icon */}
+                <button className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:bg-white/10 transition-colors">
+                  <Bell className="w-4 h-4 text-muted-foreground" />
                 </button>
-                <span dir="ltr" className="text-[15px] font-black text-primary tracking-tight">BillBOT+</span>
-              </div>
 
-              {/* ── Scrollable content ── */}
-              <div className="flex-1 overflow-y-auto overscroll-contain">
-
-                {/* Profile section */}
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05, duration: 0.28 }}
-                  className="flex items-center gap-4 px-5 py-5"
-                >
-                  {/* Avatar */}
-                  <div className="relative shrink-0">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/30 to-teal/20 border border-primary/20 flex items-center justify-center">
-                      <User className="w-7 h-7 text-primary" />
-                    </div>
-                    <div className="absolute -bottom-1 -left-1 w-4 h-4 rounded-full bg-success border-2 border-card" />
-                  </div>
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[16px] font-bold text-foreground truncate">{hubUser}</p>
-                    {gmailStatus?.email
-                      ? <p className="text-[11px] text-muted-foreground truncate mt-0.5" dir="ltr">{gmailStatus.email}</p>
-                      : <p className="text-[11px] text-muted-foreground mt-0.5">לא מחובר Gmail</p>
-                    }
-                  </div>
-                  {/* Plan badge */}
-                  <span className={`shrink-0 text-[10px] font-bold px-2 py-1 rounded-lg ${
-                    hubPlan === "business" ? "bg-violet-500/15 text-violet-400 border border-violet-500/25"
-                    : hubPlan === "starter" ? "bg-teal/15 text-teal border border-teal/25"
-                    : "bg-white/5 text-muted-foreground border border-white/8"
+                {/* Center: BillBOT+ logo */}
+                <div className="flex items-center gap-2">
+                  <span dir="ltr" className="text-[18px] font-black text-white tracking-tight">BillBOT+</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                    hubPlan === "business" ? "bg-violet-500 text-white"
+                    : hubPlan === "starter" ? "bg-teal text-white"
+                    : "bg-primary text-white"
                   }`}>{planLabel[hubPlan]}</span>
-                </motion.div>
-
-                {/* Upgrade CTA (only for free plan) */}
-                {hubPlan === "free" && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1, duration: 0.25 }}
-                    className="mx-4 mb-4"
-                  >
-                    <button
-                      onClick={() => goToSection("plan")}
-                      className="w-full flex items-center justify-center gap-2 h-11 rounded-2xl text-sm font-semibold text-white transition-all active:scale-[0.97]"
-                      style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--teal)))" }}
-                    >
-                      <Crown className="w-4 h-4" />
-                      שדרג לStarter
-                    </button>
-                  </motion.div>
-                )}
-
-                {/* Divider */}
-                <div className="h-px bg-white/5 mx-4 mb-3" />
-
-                {/* Menu items */}
-                <div className="px-3 pb-6 space-y-0.5">
-                  {MENU_ITEMS.map((item, i) => {
-                    const Icon = item.icon;
-                    const isAccountant = item.id === "accountant";
-                    const isLast = i === MENU_ITEMS.length - 1;
-                    return (
-                      <motion.button
-                        key={item.id}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.12 + i * 0.045, duration: 0.24 }}
-                        onClick={() => isAccountant ? navigate("/integrations") : goToSection(item.id as Exclude<MobileSection, null>)}
-                        className="w-full flex items-center gap-3.5 px-3 py-4 rounded-2xl active:bg-white/5 transition-colors text-right group"
-                      >
-                        {/* Icon pill */}
-                        <div className={`w-9 h-9 rounded-xl ${item.bg} flex items-center justify-center shrink-0 transition-transform group-active:scale-90`}>
-                          <Icon className={`w-[18px] h-[18px] ${item.color}`} />
-                        </div>
-
-                        {/* Text */}
-                        <div className="flex-1 min-w-0 text-right">
-                          <p className="text-[15px] font-semibold text-foreground leading-none">{item.label}</p>
-                          <p className="text-[11px] text-muted-foreground mt-1 truncate">{item.sub}</p>
-                        </div>
-
-                        {/* Arrow */}
-                        <ChevronRight className="w-4 h-4 text-muted-foreground/50 shrink-0 group-active:translate-x-0.5 transition-transform" />
-                      </motion.button>
-                    );
-                  })}
                 </div>
 
+                {/* Right: X close (navigate away from settings on mobile) */}
+                <button
+                  onClick={() => navigate("/")}
+                  className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:bg-white/10 transition-colors"
+                >
+                  <X className="w-4 h-4 text-muted-foreground" />
+                </button>
               </div>
 
-              {/* ── Bottom logout bar ── */}
-              <div className="border-t border-white/5 px-4 pb-8 pt-4">
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-destructive/5 border border-destructive/15 active:bg-destructive/10 transition-colors text-right"
-                >
-                  <div className="w-8 h-8 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
-                    <LogOut className="w-4 h-4 text-destructive" />
+              {/* ── Profile row ── */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.08, duration: 0.25 }}
+                className="flex items-center gap-3.5 px-5 py-4 border-b border-white/5"
+              >
+                <div className="relative shrink-0">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/40 to-teal/20 border border-primary/25 flex items-center justify-center">
+                    <User className="w-5.5 h-5.5 text-primary" />
                   </div>
-                  <span className="text-[14px] font-semibold text-destructive flex-1">יציאה מהחשבון</span>
-                </button>
+                  <div className="absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full bg-success border-2 border-[#1a1d3a]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[14px] font-bold text-white truncate leading-tight">{hubUser}</p>
+                  <p className="text-[11px] text-white/50 truncate mt-0.5" dir={gmailStatus?.email ? "ltr" : "rtl"}>
+                    {gmailStatus?.email ?? "לא מחובר Gmail"}
+                  </p>
+                </div>
+              </motion.div>
+
+              {/* ── Scrollable list ── */}
+              <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-3">
+
+                {/* Primary CTA — שדרג / השלם פרופיל */}
+                <motion.button
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1, duration: 0.25 }}
+                  onClick={() => goToSection("plan")}
+                  className="w-full flex items-center justify-center gap-2.5 h-14 rounded-2xl text-[16px] font-bold text-white active:scale-[0.97] transition-all"
+                  style={{ background: "linear-gradient(135deg, #4B7EF5, hsl(var(--teal)))" }}
+                >
+                  <Crown className="w-5 h-5" />
+                  {hubPlan === "free" ? "שדרג לStarter" : "ניהול תוכנית"}
+                </motion.button>
+
+                {/* Menu items — Quote Plus card style */}
+                {MENU_ITEMS.map((item, i) => {
+                  const Icon = item.icon;
+                  const isAccountant = item.id === "accountant";
+                  return (
+                    <motion.button
+                      key={item.id}
+                      initial={{ opacity: 0, x: 30 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.14 + i * 0.05, duration: 0.24, ease: "easeOut" }}
+                      onClick={() => isAccountant ? navigate("/integrations") : goToSection(item.id as Exclude<MobileSection, null>)}
+                      className="w-full flex items-center gap-4 px-5 h-[58px] rounded-2xl border transition-all active:scale-[0.97] text-right group"
+                      style={{
+                        background: "rgba(75, 126, 245, 0.06)",
+                        borderColor: "rgba(75, 126, 245, 0.22)",
+                      }}
+                      onPointerDown={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(75,126,245,0.7)";
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(75,126,245,0.14)";
+                      }}
+                      onPointerUp={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(75,126,245,0.22)";
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(75,126,245,0.06)";
+                      }}
+                      onPointerLeave={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(75,126,245,0.22)";
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(75,126,245,0.06)";
+                      }}
+                    >
+                      <Icon className={`w-5 h-5 shrink-0 ${item.color}`} />
+                      <span className="flex-1 text-[16px] font-medium text-white">{item.label}</span>
+                    </motion.button>
+                  );
+                })}
+
+                {/* Logout card */}
+                <motion.button
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.14 + MENU_ITEMS.length * 0.05, duration: 0.22 }}
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-4 px-5 h-[58px] rounded-2xl border border-destructive/30 active:scale-[0.97] transition-all text-right"
+                  style={{ background: "rgba(239,68,68,0.06)" }}
+                >
+                  <LogOut className="w-5 h-5 shrink-0 text-destructive" />
+                  <span className="flex-1 text-[16px] font-medium text-destructive">יציאה מהחשבון</span>
+                </motion.button>
+
               </div>
             </motion.div>
           </>
