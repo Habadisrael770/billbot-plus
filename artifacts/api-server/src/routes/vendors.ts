@@ -9,6 +9,24 @@ const router: IRouter = Router();
  * GET /api/vendors
  * Returns all vendors with their aliases.
  */
+router.post("/", async (req, res) => {
+  try {
+    const { canonicalName, taxId } = req.body as { canonicalName?: string; taxId?: string };
+    if (!canonicalName?.trim()) {
+      res.status(400).json({ error: "שם ספק חסר" });
+      return;
+    }
+    const [vendor] = await db
+      .insert(vendorsTable)
+      .values({ canonical_name: canonicalName.trim(), tax_id: taxId?.trim() || null })
+      .returning();
+    res.status(201).json({ id: vendor.id, canonicalName: vendor.canonical_name, taxId: vendor.tax_id, aliases: [] });
+  } catch (err) {
+    console.error("Failed to create vendor:", err);
+    res.status(500).json({ error: "שגיאה ביצירת ספק" });
+  }
+});
+
 router.get("/", async (_req, res) => {
   try {
     const vendors = await db.select().from(vendorsTable).orderBy(vendorsTable.canonical_name);

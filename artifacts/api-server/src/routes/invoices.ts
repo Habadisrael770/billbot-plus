@@ -121,6 +121,46 @@ router.get("/summary", async (_req, res) => {
 });
 
 /**
+ * POST /api/invoices/manual
+ * Creates a manual invoice entry without file upload.
+ */
+router.post("/manual", async (req, res) => {
+  try {
+    const { vendorName, total, invoiceDate, invoiceNumber, notes } = req.body as {
+      vendorName?: string;
+      total?: number;
+      invoiceDate?: string;
+      invoiceNumber?: string;
+      notes?: string;
+    };
+    if (!vendorName?.trim()) {
+      res.status(400).json({ error: "שם ספק חסר" });
+      return;
+    }
+    const [invoice] = await db
+      .insert(invoicesTable)
+      .values({
+        raw_vendor_name: vendorName.trim(),
+        normalized_vendor_name: vendorName.trim().toLowerCase(),
+        total: total != null ? String(total) : null,
+        invoice_date: invoiceDate ?? null,
+        invoice_number: invoiceNumber?.trim() ?? null,
+        file_path: "manual",
+        file_sha256: "manual-" + Date.now(),
+        source_type: "manual",
+        document_type: "supplier_invoice",
+        status: "pending_review",
+        duplicate_status: "unique",
+      })
+      .returning();
+    res.status(201).json(invoice);
+  } catch (err) {
+    console.error("Failed to create manual invoice:", err);
+    res.status(500).json({ error: "שגיאה ביצירת חשבונית" });
+  }
+});
+
+/**
  * POST /api/invoices/process
  * Processes an extracted invoice through the full pipeline (JSON body, filePath already on disk).
  */

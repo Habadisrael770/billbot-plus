@@ -9,3 +9,4 @@ export * from "./categories";
 export * from "./entities";
 export * from "./businessProfile";
 export * from "./gmailTokens";
+export * from "./chatMemories";
