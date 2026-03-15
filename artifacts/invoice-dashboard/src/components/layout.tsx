@@ -195,7 +195,7 @@ function MobileSidebar({
           העלה חשבונית
         </motion.button>
 
-        {/* Primary nav — Quote Plus card style */}
+        {/* Primary nav — white border cards */}
         {PRIMARY_NAV.map((item, i) => {
           const active = location === item.href;
           return (
@@ -210,23 +210,20 @@ function MobileSidebar({
                 onClick={onClose}
                 className="flex items-center gap-4 px-5 h-[58px] rounded-2xl transition-all active:scale-[0.97] w-full"
                 style={{
-                  background: active ? item.bg.replace("0.08", "0.18") : item.bg,
-                  border: `1px solid ${active ? item.border.replace("0.25", "0.7") : item.border}`,
-                  boxShadow: active ? `0 0 12px ${item.border.replace("0.25", "0.15")}` : "none",
+                  background: active ? "rgba(255,255,255,0.07)" : "transparent",
+                  border: `1px solid ${active ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.16)"}`,
                 }}
               >
                 <item.icon className={`w-5 h-5 shrink-0 ${item.color}`} />
                 <span className="flex-1 text-[16px] font-medium text-white">{item.label}</span>
-                {active && (
-                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: item.border.replace("rgba(", "rgb(").replace(", 0.25)", ")") }} />
-                )}
+                {active && <div className="w-2 h-2 rounded-full bg-white/60 shrink-0" />}
               </Link>
             </motion.div>
           );
         })}
 
         {/* Divider */}
-        <div className="h-px bg-white/8 mx-1" />
+        <div className="h-px bg-white/10 mx-1" />
 
         {/* Secondary nav */}
         {SECONDARY_NAV.map((item, i) => {
@@ -243,12 +240,12 @@ function MobileSidebar({
                 onClick={onClose}
                 className="flex items-center gap-4 px-5 h-[54px] rounded-2xl transition-all active:scale-[0.97] w-full"
                 style={{
-                  background: active ? "rgba(255,255,255,0.08)" : item.bg,
-                  border: `1px solid ${active ? "rgba(255,255,255,0.2)" : item.border}`,
+                  background: active ? "rgba(255,255,255,0.07)" : "transparent",
+                  border: `1px solid ${active ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.12)"}`,
                 }}
               >
-                <item.icon className="w-5 h-5 shrink-0 text-white/50" />
-                <span className="flex-1 text-[15px] font-medium text-white/70">{item.label}</span>
+                <item.icon className={`w-5 h-5 shrink-0 ${item.color}`} />
+                <span className="flex-1 text-[15px] font-medium text-white/80">{item.label}</span>
               </Link>
             </motion.div>
           );
@@ -264,11 +261,11 @@ function MobileSidebar({
             <Link
               href="/settings"
               onClick={onClose}
-              className="flex items-center gap-4 px-5 h-[54px] rounded-2xl transition-all active:scale-[0.97] w-full border border-amber-400/25"
-              style={{ background: "rgba(251,191,36,0.07)" }}
+              className="flex items-center gap-4 px-5 h-[54px] rounded-2xl transition-all active:scale-[0.97] w-full"
+              style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.16)" }}
             >
               <Crown className="w-5 h-5 shrink-0 text-amber-400" />
-              <span className="flex-1 text-[15px] font-medium text-amber-300">שדרג לStarter</span>
+              <span className="flex-1 text-[15px] font-medium text-white/80">שדרג לStarter</span>
             </Link>
           </motion.div>
         )}
@@ -283,11 +280,11 @@ function MobileSidebar({
             localStorage.removeItem("bb_wizard_done");
             window.location.href = "/login";
           }}
-          className="w-full flex items-center gap-4 px-5 h-[54px] rounded-2xl border border-red-500/25 active:scale-[0.97] transition-all"
-          style={{ background: "rgba(239,68,68,0.06)" }}
+          className="w-full flex items-center gap-4 px-5 h-[54px] rounded-2xl active:scale-[0.97] transition-all"
+          style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.16)" }}
         >
           <LogOut className="w-5 h-5 shrink-0 text-red-400" />
-          <span className="text-[15px] font-medium text-red-400">יציאה מהחשבון</span>
+          <span className="text-[15px] font-medium text-white/80">יציאה מהחשבון</span>
         </motion.button>
 
       </div>
@@ -405,15 +402,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 onClick={() => setSidebarOpen(false)}
               />
 
-              {/* Panel — slides in from right (RTL = right side of screen) */}
+              {/* Panel — full screen slide from right */}
               <motion.div
                 key="mobile-panel"
                 initial={{ x: "100%" }}
                 animate={{ x: 0 }}
                 exit={{ x: "100%" }}
                 transition={{ duration: 0.32, ease: [0.25, 0.46, 0.45, 0.94] }}
-                className="md:hidden fixed top-0 right-0 bottom-0 z-50 w-[85%] max-w-[320px] flex flex-col"
-                style={{ boxShadow: "-8px 0 40px rgba(0,0,0,0.5)" }}
+                className="md:hidden fixed inset-0 z-50 flex flex-col"
               >
                 <MobileSidebar
                   location={location}

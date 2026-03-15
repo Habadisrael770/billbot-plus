@@ -755,7 +755,7 @@ export default function Settings() {
                   {hubPlan === "free" ? "שדרג לStarter" : "ניהול תוכנית"}
                 </motion.button>
 
-                {/* Menu items — Quote Plus card style */}
+                {/* Menu items — white border cards */}
                 {MENU_ITEMS.map((item, i) => {
                   const Icon = item.icon;
                   const isAccountant = item.id === "accountant";
@@ -766,22 +766,19 @@ export default function Settings() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.14 + i * 0.05, duration: 0.24, ease: "easeOut" }}
                       onClick={() => isAccountant ? navigate("/integrations") : goToSection(item.id as Exclude<MobileSection, null>)}
-                      className="w-full flex items-center gap-4 px-5 h-[58px] rounded-2xl border transition-all active:scale-[0.97] text-right group"
-                      style={{
-                        background: "rgba(75, 126, 245, 0.06)",
-                        borderColor: "rgba(75, 126, 245, 0.22)",
-                      }}
+                      className="w-full flex items-center gap-4 px-5 h-[58px] rounded-2xl transition-all active:scale-[0.97] text-right"
+                      style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.16)" }}
                       onPointerDown={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(75,126,245,0.7)";
-                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(75,126,245,0.14)";
+                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.45)";
                       }}
                       onPointerUp={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(75,126,245,0.22)";
-                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(75,126,245,0.06)";
+                        (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.16)";
                       }}
                       onPointerLeave={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(75,126,245,0.22)";
-                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(75,126,245,0.06)";
+                        (e.currentTarget as HTMLButtonElement).style.background = "transparent";
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.16)";
                       }}
                     >
                       <Icon className={`w-5 h-5 shrink-0 ${item.color}`} />
@@ -796,11 +793,11 @@ export default function Settings() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.14 + MENU_ITEMS.length * 0.05, duration: 0.22 }}
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-4 px-5 h-[58px] rounded-2xl border border-destructive/30 active:scale-[0.97] transition-all text-right"
-                  style={{ background: "rgba(239,68,68,0.06)" }}
+                  className="w-full flex items-center gap-4 px-5 h-[58px] rounded-2xl active:scale-[0.97] transition-all text-right"
+                  style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.16)" }}
                 >
-                  <LogOut className="w-5 h-5 shrink-0 text-destructive" />
-                  <span className="flex-1 text-[16px] font-medium text-destructive">יציאה מהחשבון</span>
+                  <LogOut className="w-5 h-5 shrink-0 text-red-400" />
+                  <span className="flex-1 text-[16px] font-medium text-white/80">יציאה מהחשבון</span>
                 </motion.button>
 
               </div>
