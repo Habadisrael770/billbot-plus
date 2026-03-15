@@ -51,9 +51,15 @@ function GmailRedirectHandler() {
 }
 
 function AppRouter() {
-  const [onboarded, setOnboarded] = useState(
-    () => localStorage.getItem("bb_wizard_done") === "1"
-  );
+  const [onboarded, setOnboarded] = useState(() => {
+    if (new URLSearchParams(window.location.search).get("reset") === "1") {
+      localStorage.removeItem("bb_wizard_done");
+      localStorage.removeItem("bb_onboarding_progress");
+      window.history.replaceState({}, "", window.location.pathname);
+      return false;
+    }
+    return localStorage.getItem("bb_wizard_done") === "1";
+  });
 
   if (!onboarded) {
     return (
