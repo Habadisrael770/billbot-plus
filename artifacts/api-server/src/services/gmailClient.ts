@@ -1,24 +1,17 @@
-// Gmail client via Replit Connector (googleapis integration)
+// Gmail client via Replit Connector (google-mail integration)
 // WARNING: Never cache this client — access tokens expire.
+// Always call getUncachableGmailClient() fresh on every request.
 import { google } from "googleapis";
 
-let connectionSettings: {
-  settings: {
-    expires_at?: string;
-    access_token?: string;
-    oauth?: { credentials?: { access_token?: string } };
-  };
-} | null = null;
+let connectionSettings: any;
 
 async function getAccessToken(): Promise<string> {
   if (
     connectionSettings &&
-    connectionSettings.settings.expires_at &&
+    connectionSettings.settings?.expires_at &&
     new Date(connectionSettings.settings.expires_at).getTime() > Date.now()
   ) {
-    const cached =
-      connectionSettings.settings.access_token ||
-      connectionSettings.settings.oauth?.credentials?.access_token;
+    const cached = connectionSettings.settings.access_token;
     if (cached) return cached;
   }
 
@@ -33,7 +26,7 @@ async function getAccessToken(): Promise<string> {
     throw new Error("Replit connector environment not available");
   }
 
-  const res = await fetch(
+  connectionSettings = await fetch(
     `https://${hostname}/api/v2/connection?include_secrets=true&connector_names=google-mail`,
     {
       headers: {
@@ -41,9 +34,9 @@ async function getAccessToken(): Promise<string> {
         "X-Replit-Token": xReplitToken,
       },
     }
-  );
-  const data = (await res.json()) as { items?: typeof connectionSettings[] };
-  connectionSettings = data.items?.[0] ?? null;
+  )
+    .then((res) => res.json())
+    .then((data) => data.items?.[0]);
 
   const accessToken =
     connectionSettings?.settings?.access_token ||
@@ -56,6 +49,8 @@ async function getAccessToken(): Promise<string> {
 }
 
 export async function getUncachableGmailClient() {
+  // Always fetch a fresh token — never reuse across requests
+  connectionSettings = null;
   const accessToken = await getAccessToken();
   const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({ access_token: accessToken });

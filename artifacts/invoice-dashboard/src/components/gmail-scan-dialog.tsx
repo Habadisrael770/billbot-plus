@@ -74,10 +74,17 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
   }, [isOpen]);
 
   const handleConnectGmail = async () => {
+    if (!status?.credentialsConfigured) {
+      toast({ title: "דרושה הגדרה", description: "יש לקבוע GOOGLE_CLIENT_ID ו-GOOGLE_CLIENT_SECRET", variant: "destructive" });
+      return;
+    }
     setConnectingGmail(true);
     try {
-      // Re-check connection status (Replit Connector manages the OAuth token)
-      await loadStatus();
+      const res = await fetch(`${API_BASE}/gmail-auth/url`);
+      const { url } = await res.json();
+      if (url) window.location.href = url;
+    } catch {
+      toast({ title: "שגיאה", description: "לא ניתן לפתוח חיבור Gmail", variant: "destructive" });
     } finally {
       setConnectingGmail(false);
     }
@@ -194,20 +201,26 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
                 </>
               ) : (
                 <>
-                  <p className="text-sm font-medium text-red-400">Gmail לא מחובר</p>
-                  <p className="text-[11px] text-white/40">החיבור ל-Gmail אינו פעיל כרגע</p>
+                  <p className="text-sm font-medium text-red-400">
+                    {status?.credentialsConfigured === false ? "Google OAuth לא מוגדר" : "Gmail לא מחובר"}
+                  </p>
+                  <p className="text-[11px] text-white/40">
+                    {status?.credentialsConfigured === false
+                      ? "נדרש GOOGLE_CLIENT_ID ו-SECRET"
+                      : "לחץ 'חבר' כדי להתחבר ל-Gmail"}
+                  </p>
                 </>
               )}
             </div>
-            {!loadingStatus && !status?.connected && (
+            {!loadingStatus && !status?.connected && status?.credentialsConfigured && (
               <button
                 onClick={handleConnectGmail}
                 disabled={connectingGmail}
                 className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white transition-all active:scale-95"
-                style={{ background: "rgba(99,102,241,0.3)", border: "1px solid rgba(99,102,241,0.4)" }}
+                style={{ background: "linear-gradient(90deg, #4361ee, #2dd4bf)" }}
               >
-                {connectingGmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Loader2 className="w-3.5 h-3.5" />}
-                רענן
+                {connectingGmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+                חבר
               </button>
             )}
           </div>
