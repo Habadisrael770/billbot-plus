@@ -46,6 +46,7 @@ import {
   Calculator,
   ChevronRight,
   Bell,
+  Phone,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
@@ -661,7 +662,20 @@ export default function Settings() {
   const webhookBaseUrl = `${window.location.origin}/api`;
 
   // ── Derived values for mobile hub ─────────────────────────────────────────
-  const hubUser = localStorage.getItem("bb_user") ?? "משתמש";
+  const hubUserData = (() => {
+    try {
+      const raw = localStorage.getItem("bb_user");
+      if (!raw) return { name: "משתמש", email: "", phone: "", company: "" };
+      const p = JSON.parse(raw);
+      return {
+        name:    p.name    ?? p.email  ?? "משתמש",
+        email:   p.email   ?? gmailStatus?.email ?? "",
+        phone:   p.phone   ?? "",
+        company: p.company ?? p.businessName ?? "",
+      };
+    } catch { return { name: "משתמש", email: gmailStatus?.email ?? "", phone: "", company: "" }; }
+  })();
+  const hubUser = hubUserData.name;
   const hubPlan = (() => {
     try { const d = JSON.parse(localStorage.getItem("bb_onboarding_progress") ?? "{}"); return d.plan ?? "free"; }
     catch { return "free"; }

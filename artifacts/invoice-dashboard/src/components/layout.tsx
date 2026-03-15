@@ -21,6 +21,8 @@ import {
   CalendarDays,
   Crown,
   Menu,
+  Mail,
+  Phone,
 } from "lucide-react";
 import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
 import { useTheme } from "@/context/theme-context";
@@ -104,14 +106,20 @@ function MobileSidebar({
   onClose: () => void;
   onUpload: () => void;
 }) {
-  const hubUser = (() => {
+  const hubUserData = (() => {
     try {
       const raw = localStorage.getItem("bb_user");
-      if (!raw) return "משתמש";
-      const parsed = JSON.parse(raw);
-      return parsed.name ?? parsed.email ?? "משתמש";
-    } catch { return "משתמש"; }
+      if (!raw) return { name: "משתמש", email: "", phone: "", company: "" };
+      const p = JSON.parse(raw);
+      return {
+        name:    p.name    ?? p.email  ?? "משתמש",
+        email:   p.email   ?? "",
+        phone:   p.phone   ?? "",
+        company: p.company ?? p.businessName ?? "",
+      };
+    } catch { return { name: "משתמש", email: "", phone: "", company: "" }; }
   })();
+  const hubUser = hubUserData.name;
 
   const hubPlan = (() => {
     try {
@@ -160,22 +168,72 @@ function MobileSidebar({
         </button>
       </div>
 
-      {/* ── Profile row (2× size) ── */}
+      {/* ── Profile card ── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.06, duration: 0.22 }}
-        className="flex items-center gap-5 px-6 py-6 border-b border-white/5 shrink-0"
+        className="px-4 pt-4 pb-3 shrink-0"
       >
-        <div className="relative shrink-0">
-          <div className="w-[72px] h-[72px] rounded-2xl bg-gradient-to-br from-primary/40 to-teal/20 border border-primary/25 flex items-center justify-center">
-            <User className="w-8 h-8 text-white" />
+        <div
+          className="rounded-2xl p-4"
+          style={{ border: "1.5px solid rgba(255,255,255,0.22)", background: "rgba(255,255,255,0.04)" }}
+        >
+          <div className="flex items-center gap-4 mb-3">
+            {/* Avatar */}
+            <div className="relative shrink-0">
+              <div className="w-[60px] h-[60px] rounded-2xl bg-gradient-to-br from-primary/40 to-teal/20 border border-primary/25 flex items-center justify-center">
+                <User className="w-7 h-7 text-white" />
+              </div>
+              <div className="absolute -bottom-0.5 -left-0.5 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-[#1a1d3a]" />
+            </div>
+            {/* Name + plan */}
+            <div className="flex-1 min-w-0">
+              <p className="text-[24px] font-black text-white truncate leading-tight">{hubUser}</p>
+              <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-md text-white mt-0.5 ${
+                hubPlan === "business" ? "bg-violet-500"
+                : hubPlan === "starter" ? "bg-teal"
+                : "bg-primary/60"
+              }`}>{planLabel[hubPlan] ?? "חינם"}</span>
+            </div>
           </div>
-          <div className="absolute -bottom-0.5 -left-0.5 w-4 h-4 rounded-full bg-green-500 border-[2.5px] border-[#1a1d3a]" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[20px] font-bold text-white truncate leading-tight">{hubUser}</p>
-          <p className="text-[14px] text-white/70 mt-1">{planLabel[hubPlan]} · BillBOT+</p>
+
+          {/* Info rows */}
+          <div className="space-y-1.5 border-t border-white/10 pt-3">
+            {hubUserData.email ? (
+              <div className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-white/40 shrink-0" />
+                <span className="text-[12px] text-white/70 truncate" dir="ltr">{hubUserData.email}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Mail className="w-3.5 h-3.5 text-white/25 shrink-0" />
+                <span className="text-[12px] text-white/30 italic">אימייל לא מוגדר</span>
+              </div>
+            )}
+            {hubUserData.phone ? (
+              <div className="flex items-center gap-2">
+                <Phone className="w-3.5 h-3.5 text-white/40 shrink-0" />
+                <span className="text-[12px] text-white/70" dir="ltr">{hubUserData.phone}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Phone className="w-3.5 h-3.5 text-white/25 shrink-0" />
+                <span className="text-[12px] text-white/30 italic">נייד לא מוגדר</span>
+              </div>
+            )}
+            {hubUserData.company ? (
+              <div className="flex items-center gap-2">
+                <Building2 className="w-3.5 h-3.5 text-white/40 shrink-0" />
+                <span className="text-[12px] text-white/70 truncate">{hubUserData.company}</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Building2 className="w-3.5 h-3.5 text-white/25 shrink-0" />
+                <span className="text-[12px] text-white/30 italic">חברה / ח.פ לא מוגדר</span>
+              </div>
+            )}
+          </div>
         </div>
       </motion.div>
 
