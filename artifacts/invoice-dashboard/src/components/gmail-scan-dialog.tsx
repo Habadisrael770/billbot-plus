@@ -59,9 +59,9 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
   const loadStatus = async () => {
     setLoadingStatus(true);
     try {
-      const res = await fetch(`${API_BASE}/gmail-auth/status`);
+      const res = await fetch(`${API_BASE}/email-connectors/gmail/status`);
       const data = await res.json();
-      setStatus(data);
+      setStatus({ ...data, credentialsConfigured: data.connected });
     } catch {
       setStatus({ connected: false, email: null, credentialsConfigured: false });
     } finally {
@@ -76,11 +76,8 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
   const handleConnectGmail = async () => {
     setConnectingGmail(true);
     try {
-      const res = await fetch(`${API_BASE}/gmail-auth/url`);
-      const { url } = await res.json();
-      if (url) window.location.href = url;
-    } catch {
-      toast({ title: "שגיאה", description: "לא ניתן לפתוח חיבור Gmail", variant: "destructive" });
+      // Re-check connection status (Replit Connector manages the OAuth token)
+      await loadStatus();
     } finally {
       setConnectingGmail(false);
     }
@@ -198,7 +195,7 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
               ) : (
                 <>
                   <p className="text-sm font-medium text-red-400">Gmail לא מחובר</p>
-                  <p className="text-[11px] text-white/40">יש לחבר חשבון כדי לסרוק</p>
+                  <p className="text-[11px] text-white/40">החיבור ל-Gmail אינו פעיל כרגע</p>
                 </>
               )}
             </div>
@@ -207,10 +204,10 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
                 onClick={handleConnectGmail}
                 disabled={connectingGmail}
                 className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white transition-all active:scale-95"
-                style={{ background: "linear-gradient(90deg, #4361ee, #2dd4bf)" }}
+                style={{ background: "rgba(99,102,241,0.3)", border: "1px solid rgba(99,102,241,0.4)" }}
               >
-                {connectingGmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
-                חבר
+                {connectingGmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Loader2 className="w-3.5 h-3.5" />}
+                רענן
               </button>
             )}
           </div>
