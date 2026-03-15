@@ -52,7 +52,6 @@ function GmailRedirectHandler() {
 }
 
 function AppRouter() {
-  // ── Reset gate ──────────────────────────────────────────────────────────
   const isReset = new URLSearchParams(window.location.search).get("reset") === "1";
   if (isReset) {
     localStorage.removeItem("bb_wizard_done");
@@ -64,7 +63,6 @@ function AppRouter() {
   const [loggedIn,  setLoggedIn]  = useState(() => !!localStorage.getItem("bb_user"));
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem("bb_wizard_done") === "1");
 
-  // ── Login gate ──────────────────────────────────────────────────────────
   if (!loggedIn) {
     return (
       <LoginPage
@@ -75,18 +73,6 @@ function AppRouter() {
         onSkip={() => {
           localStorage.setItem("bb_user", "guest");
           setLoggedIn(true);
-        }}
-      />
-    );
-  }
-
-  // ── Onboarding gate ─────────────────────────────────────────────────────
-  if (!onboarded) {
-    return (
-      <Onboarding
-        onComplete={() => {
-          localStorage.setItem("bb_wizard_done", "1");
-          setOnboarded(true);
         }}
       />
     );
@@ -105,6 +91,16 @@ function AppRouter() {
         <Route path="/settings" component={SettingsPage} />
         <Route component={NotFound} />
       </Switch>
+
+      {/* Onboarding modal — renders on top of dashboard */}
+      {!onboarded && (
+        <Onboarding
+          onComplete={() => {
+            localStorage.setItem("bb_wizard_done", "1");
+            setOnboarded(true);
+          }}
+        />
+      )}
     </>
   );
 }
