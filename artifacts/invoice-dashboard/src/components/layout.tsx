@@ -245,7 +245,7 @@ function MobileSidebar({
                 }}
               >
                 <item.icon className={`w-5 h-5 shrink-0 ${item.color}`} />
-                <span className="flex-1 text-[15px] font-medium text-white/80">{item.label}</span>
+                <span className="flex-1 text-[15px] font-medium text-white">{item.label}</span>
               </Link>
             </motion.div>
           );
@@ -265,7 +265,7 @@ function MobileSidebar({
               style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.16)" }}
             >
               <Crown className="w-5 h-5 shrink-0 text-amber-400" />
-              <span className="flex-1 text-[15px] font-medium text-white/80">שדרג לStarter</span>
+              <span className="flex-1 text-[15px] font-medium text-white">שדרג לStarter</span>
             </Link>
           </motion.div>
         )}
@@ -284,7 +284,7 @@ function MobileSidebar({
           style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.16)" }}
         >
           <LogOut className="w-5 h-5 shrink-0 text-red-400" />
-          <span className="text-[15px] font-medium text-white/80">יציאה מהחשבון</span>
+          <span className="text-[15px] font-medium text-white">יציאה מהחשבון</span>
         </motion.button>
 
       </div>
