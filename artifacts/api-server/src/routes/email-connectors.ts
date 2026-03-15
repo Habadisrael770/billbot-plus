@@ -37,9 +37,14 @@ router.post("/gmail/scan", async (req, res) => {
   try {
     const gmail = await getUncachableGmailClient();
 
-    const yearsBack = Math.min(Math.max(Number(req.body?.yearsBack) || 4, 1), 4);
-    const afterDate = new Date();
-    afterDate.setFullYear(afterDate.getFullYear() - yearsBack);
+    let afterDate: Date;
+    if (req.body?.sinceDate) {
+      afterDate = new Date(req.body.sinceDate);
+    } else {
+      const yearsBack = Math.min(Math.max(Number(req.body?.yearsBack) || 4, 1), 4);
+      afterDate = new Date();
+      afterDate.setFullYear(afterDate.getFullYear() - yearsBack);
+    }
     const afterStr = `${afterDate.getFullYear()}/${String(afterDate.getMonth() + 1).padStart(2, "0")}/${String(afterDate.getDate()).padStart(2, "0")}`;
 
     const SEARCH_QUERIES = [

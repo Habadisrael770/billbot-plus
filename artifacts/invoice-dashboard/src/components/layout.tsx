@@ -28,6 +28,7 @@ import {
   MailOpen,
 } from "lucide-react";
 import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
+import { GmailScanDialog } from "@/components/gmail-scan-dialog";
 import { useTheme } from "@/context/theme-context";
 import { useSearch } from "@/context/search-context";
 import {
@@ -105,10 +106,12 @@ function MobileSidebar({
   location,
   onClose,
   onUpload,
+  onScanEmail,
 }: {
   location: string;
   onClose: () => void;
   onUpload: () => void;
+  onScanEmail: () => void;
 }) {
   const { theme } = useTheme();
   const hubUserData = (() => {
@@ -277,7 +280,7 @@ function MobileSidebar({
               צלם חשבונית
             </button>
             <button
-              onClick={onClose}
+              onClick={() => { onClose(); onScanEmail(); }}
               className="flex-1 flex items-center justify-center gap-1.5 h-[48px] rounded-xl text-[14px] font-semibold text-white active:scale-[0.97] transition-transform"
               style={{ background: "rgba(99,102,241,0.18)", border: "1.5px solid rgba(99,102,241,0.38)" }}
             >
@@ -444,6 +447,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [trialDismissed, setTrialDismissed] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [gmailScanOpen, setGmailScanOpen] = useState(false);
   const [location] = useLocation();
   const { search, setSearch } = useSearch();
   const { theme, toggleTheme } = useTheme();
@@ -508,6 +512,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   location={location}
                   onClose={() => setSidebarOpen(false)}
                   onUpload={() => setUploadOpen(true)}
+                  onScanEmail={() => setGmailScanOpen(true)}
                 />
               </motion.div>
             </>
@@ -644,6 +649,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <UploadInvoiceModal
         isOpen={uploadOpen}
         onClose={() => setUploadOpen(false)}
+      />
+
+      {/* Gmail Scan Dialog */}
+      <GmailScanDialog
+        isOpen={gmailScanOpen}
+        onClose={() => setGmailScanOpen(false)}
       />
     </div>
   );
