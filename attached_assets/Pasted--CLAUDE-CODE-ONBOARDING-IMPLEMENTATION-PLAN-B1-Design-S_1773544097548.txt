@@ -1,0 +1,338 @@
+# 📊 CLAUDE CODE - ONBOARDING IMPLEMENTATION PLAN
+
+---
+
+## 🎨 **סקירת B1 Design System**
+
+### **צבעים:**
+- **Primary Button:** #2D5A6B (כחול כהה)
+- **Success:** #10B981 (ירוק)
+- **Error:** #DC2626 (אדום)
+- **Background:** #F9FAFB (אפור בהיר)
+- **Text:** #1F2937 (אפור כהה)
+- **Border:** #E5E7EB (אפור בהיר)
+- **Focus state:** #2D5A6B (כחול כהה)
+
+### **Typography:**
+- **Font Family:** -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif
+- **Heading (h2):** 24px, bold, #1F2937
+- **Subheading:** 16px, medium, #6B7280
+- **Body:** 14px, regular, #1F2937
+- **Label:** 12px, bold, #1F2937
+
+### **Components שכבר קיימים ב-B1:**
+- Button component (primary/secondary)
+- Input field component
+- Progress bar
+- Card component
+- Modal/Dialog wrapper
+
+---
+
+## 🎯 **ONBOARDING FLOW - 3 STEPS**
+
+---
+
+### **STEP 1: Complete Business Details**
+
+**URL:** `/onboarding/business-info`
+
+**Progress:** "שלב 1 מתוך 3"
+
+```
+┌────────────────────────────────────┐
+│     Progress Bar (33% filled)       │
+├────────────────────────────────────┤
+│                                    │
+│  👋 ברוכים הבאים! בואו נתחיל     │
+│                                    │
+│  תן לנו מידע בסיסי על העסק        │
+│  שלך כדי שנוכל להתחיל             │
+│                                    │
+│  ┌──────────────────────────────┐  │
+│  │ שם עסק / שם מלא *            │  │
+│  │ [                          ]  │  │
+│  │ לדוגמא: דני כהן בע״מ         │  │
+│  └──────────────────────────────┘  │
+│                                    │
+│  ┌──────────────────────────────┐  │
+│  │ מספר טלפון *                 │  │
+│  │ [         +972-50-1234-567]   │  │
+│  │ בחירת מדינה: 🇮🇱 Israel     │  │
+│  └──────────────────────────────┘  │
+│                                    │
+│  ┌──────────────────────────────┐  │
+│  │       המשך →                  │  │
+│  │   (#2D5A6B כחול כהה)          │  │
+│  └──────────────────────────────┘  │
+│                                    │
+└────────────────────────────────────┘
+```
+
+**Form Fields:**
+
+| שדה | סוג | דרישה | Validation |
+|-----|-----|-------|-----------|
+| שם עסק | Text | Required | Min 2 characters |
+| טלפון | Tel | Required | Valid Israeli format |
+
+**Validation Messages:**
+- ❌ "חובה הכנסת שם עסק"
+- ❌ "מספר טלפון לא תקין"
+- ✅ Green border on valid input
+
+**Button:**
+- Text: "המשך"
+- Color: #2D5A6B (כחול כהה)
+- On click: Validate → Spinner → Next step
+
+**Animation:**
+- Fade in: 0.3s
+- Input focus: Border color #2D5A6B
+- Loading spinner: Inside button
+
+---
+
+### **STEP 2: Choose Plan / Pricing**
+
+**URL:** `/onboarding/plan`
+
+**Progress:** "שלב 2 מתוך 3"
+
+```
+┌────────────────────────────────────────────────┐
+│        Progress Bar (66% filled)               │
+├────────────────────────────────────────────────┤
+│                                                │
+│  בחרו את המסלול המתאים ביותר                 │
+│                                                │
+│  התחילו בחינם או בהצעה המיוחדת שלנו          │
+│                                                │
+│  ┌──────────────┐ ┌──────────────┐ ┌────────┐│
+│  │              │ │   ⭐         │ │        ││
+│  │ 🆓 חינם     │ │ הכי פופולרי │ │ 💼    ││
+│  │ 12 ימים    │ │              │ │Business││
+│  │              │ │ 🚀 Starter  │ │        ││
+│  │ ✅ Feature 1 │ │              │ │ ✅ F. 1││
+│  │ ✅ Feature 2 │ │ ✅ Feature 1 │ │ ✅ F. 2││
+│  │ ✅ Feature 3 │ │ ✅ Feature 2 │ │ ✅ F. 3││
+│  │              │ │ ✅ Feature 3 │ │        ││
+│  │ [בחר]        │ │ ₪299/חודש   │ │ [צרו] ││
+│  │              │ │ [בחר]        │ │        ││
+│  │              │ │              │ │        ││
+│  └──────────────┘ └──────────────┘ └────────┘│
+│                                                │
+│  ┌──────────────────────────────────────────┐ │
+│  │            המשך                          │ │
+│  │     (Disabled עד בחירת תוכנית)           │ │
+│  └──────────────────────────────────────────┘ │
+│                                                │
+└────────────────────────────────────────────────┘
+```
+
+**Three Plan Cards:**
+
+#### **Card 1: Free Trial**
+- Heading: "🆓 חינם 12 ימים"
+- Subheading: "בדקו את כל התכונות"
+- Badge: None
+- Features (3):
+  - ✅ "גישה מלאה לכל התכונות"
+  - ✅ "ללא צורך בכרטיס אשראי"
+  - ✅ "ביטול בכל עת"
+- Button: "התחל ניסיון חינם"
+- Border: 2px solid #E5E7EB
+- Hover: Background #F9FAFB
+
+#### **Card 2: Starter (HIGHLIGHTED)**
+- Badge: "⭐ הכי פופולרי" (Green #10B981 background)
+- Heading: "🚀 Starter"
+- Subheading: "שני חודשים בשקל אחד"
+- Price: "₪299 / חודש" (After trial)
+- Features (3):
+  - ✅ "גישה מלאה לכל התכונות"
+  - ✅ "תמיכה טכנית 24/7"
+  - ✅ "דוחות וניתוח נתונים"
+- Button: "בחר עכשיו"
+- Border: 3px solid #2D5A6B (כחול כהה)
+- Box shadow: 0 4px 12px rgba(45, 90, 107, 0.2)
+- Scale: 1.05 on desktop
+
+#### **Card 3: Business**
+- Badge: None
+- Heading: "💼 Business"
+- Subheading: "לעסקים גדולים"
+- Price: "₪799 / חודש"
+- Features (3):
+  - ✅ "כל תכונות Starter"
+  - ✅ "API access"
+  - ✅ "Customer success manager"
+- Button: "צרו קשר"
+- Border: 2px solid #E5E7EB
+- Hover: Background #F9FAFB
+
+**Layout:**
+- Display: flex
+- Gap: 20px
+- Justify-content: space-around
+- On mobile: stack vertically (column)
+
+**Button at Bottom:**
+- Text: "המשך"
+- State: Disabled (ברור) עד בחירת plan
+- After selection: Enabled
+- Color: #2D5A6B
+
+---
+
+### **STEP 3: Connect Gmail**
+
+**URL:** `/onboarding/connect-gmail`
+
+**Progress:** "שלב 3 מתוך 3 - שלב אחרון!"
+
+```
+┌────────────────────────────────────┐
+│     Progress Bar (100% - GREEN)    │
+├────────────────────────────────────┤
+│                                    │
+│  📧 חברו את ה-Gmail שלכם          │
+│                                    │
+│  אנחנו נסרוק חשבוניות באופן        │
+│  אוטומטי מתיבת הדוא״ל שלכם       │
+│                                    │
+│  ┌──────────────────────────────┐  │
+│  │  🔗 חבור עם Google           │  │
+│  │  (כחול כהה #2D5A6B)         │  │
+│  └──────────────────────────────┘  │
+│                                    │
+│  [Loading spinner אם מחובר]       │
+│  "מתחברים..."                     │
+│                                    │
+│  [או אחרי הצלחה:]                 │
+│  ✅ Gmail מחובר בהצלחה!           │
+│  user@gmail.com                    │
+│  סנכרון אחרון: כעת                 │
+│                                    │
+│  ┌──────────────────────────────┐  │
+│  │  ✨ סיום וכניסה למערכת      │  │
+│  │  (#2D5A6B כחול כהה)        │  │
+│  └──────────────────────────────┘  │
+│                                    │
+└────────────────────────────────────┘
+```
+
+**Heading:** "📧 חברו את ה-Gmail שלכם"
+
+**Description:** "אנחנו נסרוק חשבוניות באופן אוטומטי מתיבת הדוא״ל שלכם"
+
+**OAuth Button:**
+- Text: "🔗 חבור עם Google"
+- Color: #2D5A6B
+- Icon: Google logo
+- On click: Open Google OAuth
+
+**Loading State:**
+- Spinner visible
+- Text: "מתחברים..."
+- Duration: Until OAuth completes
+
+**Success State:**
+- ✅ Green checkmark (#10B981)
+- Text: "Gmail מחובר בהצלחה!"
+- Display: Email address
+- Show: "סנכרון אחרון: כעת"
+
+**Final CTA:**
+- Text: "✨ סיום וכניסה למערכת"
+- Color: #2D5A6B (כחול כהה)
+- Size: Large (padding: 15px)
+- On click: Redirect to `/dashboard`
+
+---
+
+## 🎉 **SUCCESS PAGE (After Step 3)**
+
+**URL:** `/onboarding/success`
+
+```
+┌────────────────────────────────────┐
+│         Progress Bar (100%)        │
+│         Color: #10B981 (Green)     │
+├────────────────────────────────────┤
+│                                    │
+│  🎉 מזל טוב! הכל מוכן             │
+│                                    │
+│  החשבון שלך הוגדר בהצלחה           │
+│  החשבוניות שלך כבר בדרך...        │
+│                                    │
+│  ✅ ביזנס מוגדר                    │
+│  ✅ תוכנית בחרה (Starter)         │
+│  ✅ Gmail מחובר                    │
+│                                    │
+│  ┌──────────────────────────────┐  │
+│  │  🚀 כניסה לDashboard          │  │
+│  └──────────────────────────────┘  │
+│                                    │
+└────────────────────────────────────┘
+```
+
+**Heading:** "🎉 מזל טוב! הכל מוכן"
+
+**Subheading:** "החשבון שלך הוגדר בהצלחה"
+
+**Checklist:**
+- ✅ "ביזנס מוגדר"
+- ✅ "תוכנית בחרה"
+- ✅ "Gmail מחובר"
+
+**Final Button:**
+- Text: "🚀 כניסה לDashboard"
+- Color: #2D5A6B
+- On click: Redirect to `/dashboard`
+
+---
+
+## 🔧 **Technical Implementation:**
+
+### **State Management:**
+```javascript
+const [step, setStep] = useState(1);
+const [formData, setFormData] = useState({
+  businessName: '',
+  phoneNumber: '',
+  selectedPlan: null,
+  gmailConnected: false,
+});
+const [errors, setErrors] = useState({});
+const [loading, setLoading] = useState(false);
+```
+
+### **Validation:**
+- Step 1: businessName (min 2), phoneNumber (Israeli format)
+- Step 2: Must select a plan
+- Step 3: Must complete OAuth
+
+### **localStorage:**
+- Save progress after each step
+- Allow resume if user refreshes
+
+### **Animations:**
+- Fade in/out: 0.3s
+- Progress bar fill: 0.6s smooth
+- Checkmark: scale + fade
+
+### **Responsive:**
+- Mobile first
+- Max-width: 90vw mobile, 500px desktop
+- Button height: 48px (touch-friendly)
+- Stack cards vertically on mobile
+
+### **RTL Support:**
+- direction: rtl
+- text-align: right
+- flex-direction: row-reverse where needed
+
+---
+
+**זה הפירוט המלא של כל Onboarding!** 🚀
