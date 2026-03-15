@@ -683,13 +683,13 @@ export default function Settings() {
   const planLabel: Record<string, string> = { free: "ניסיון חינם", starter: "Starter", business: "Business" };
 
   const MENU_ITEMS = [
-    { id: "biz",        icon: Building2,   label: "פרטי עסק",         sub: "לוגו, שמות, מספרי זיהוי",     color: "text-blue-400",   bg: "bg-blue-500/10"   },
-    { id: "connectors", icon: Inbox,        label: "חיבורי מייל ו-API", sub: "Gmail, Outlook, Green Invoice", color: "text-primary",    bg: "bg-primary/10"    },
-    { id: "plan",       icon: Crown,        label: "תוכנית ומנוי",      sub: `${planLabel[hubPlan]} · ניהול תשלומים`, color: "text-amber-400",  bg: "bg-amber-500/10"  },
-    { id: "usage",      icon: Zap,          label: "שימוש ומגבלות",     sub: "שימוש החודש, מכסות",          color: "text-teal",       bg: "bg-teal/10"       },
-    { id: "security",   icon: Lock,         label: "אבטחה ופרטיות",     sub: "סיסמה, אימות דו-שלבי",        color: "text-violet-400", bg: "bg-violet-500/10" },
-    { id: "accountant", icon: Calculator,   label: "רואה חשבון",        sub: "ייצוא דוחות, שיתוף גישה",    color: "text-emerald-400",bg: "bg-emerald-500/10"},
-    { id: "ai",         icon: Bot,          label: "AI ושיחות",          sub: "היסטוריית שיחות עם היועץ",    color: "text-purple",     bg: "bg-purple/10"     },
+    { id: "biz",        icon: Building2,   label: "פרטי עסק",         sub: "לוגו, שמות, מספרי זיהוי",     color: "text-blue-400",    borderRgba: "rgba(96,165,250,0.25)",  bgRgba: "rgba(96,165,250,0.08)"  },
+    { id: "connectors", icon: Inbox,        label: "חיבורי מייל ו-API", sub: "Gmail, Outlook, Green Invoice", color: "text-primary",     borderRgba: "rgba(75,126,245,0.25)",  bgRgba: "rgba(75,126,245,0.08)"  },
+    { id: "plan",       icon: Crown,        label: "תוכנית ומנוי",      sub: `${planLabel[hubPlan]} · ניהול תשלומים`, color: "text-amber-400", borderRgba: "rgba(251,191,36,0.25)", bgRgba: "rgba(251,191,36,0.08)"  },
+    { id: "usage",      icon: Zap,          label: "שימוש ומגבלות",     sub: "שימוש החודש, מכסות",          color: "text-teal",        borderRgba: "rgba(45,212,191,0.25)", bgRgba: "rgba(45,212,191,0.08)"  },
+    { id: "security",   icon: Lock,         label: "אבטחה ופרטיות",     sub: "סיסמה, אימות דו-שלבי",        color: "text-violet-400",  borderRgba: "rgba(139,92,246,0.25)", bgRgba: "rgba(139,92,246,0.08)"  },
+    { id: "accountant", icon: Calculator,   label: "רואה חשבון",        sub: "ייצוא דוחות, שיתוף גישה",    color: "text-emerald-400", borderRgba: "rgba(52,211,153,0.25)", bgRgba: "rgba(52,211,153,0.08)"  },
+    { id: "ai",         icon: Bot,          label: "AI ושיחות",          sub: "היסטוריית שיחות עם היועץ",    color: "text-purple",      borderRgba: "rgba(168,85,247,0.25)", bgRgba: "rgba(168,85,247,0.08)"  },
   ] as const;
 
   return (
@@ -773,34 +773,37 @@ export default function Settings() {
                   {hubPlan === "free" ? "שדרג לStarter" : "ניהול תוכנית"}
                 </motion.button>
 
-                {/* Menu items — white border cards */}
+                {/* Menu items — category cards */}
                 {MENU_ITEMS.map((item, i) => {
                   const Icon = item.icon;
                   const isAccountant = item.id === "accountant";
+                  const b = item.borderRgba;
                   return (
                     <motion.button
                       key={item.id}
-                      initial={{ opacity: 0, x: 30 }}
+                      initial={{ opacity: 0, x: 40 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.14 + i * 0.05, duration: 0.24, ease: "easeOut" }}
+                      transition={{ delay: 0.06 + i * 0.07, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                       onClick={() => isAccountant ? navigate("/integrations") : goToSection(item.id as Exclude<MobileSection, null>)}
-                      className="w-full flex items-center gap-4 px-5 h-[58px] rounded-2xl transition-all active:scale-[0.97] text-right"
-                      style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.16)" }}
-                      onPointerDown={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.06)";
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.45)";
-                      }}
-                      onPointerUp={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.16)";
-                      }}
-                      onPointerLeave={(e) => {
-                        (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-                        (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.16)";
+                      className="w-full flex items-center gap-[14px] rounded-[14px] transition-all active:scale-[0.97] text-right"
+                      style={{
+                        padding: "14px 16px",
+                        background: "transparent",
+                        border: `1.5px solid ${b}`,
+                        boxShadow: "none",
                       }}
                     >
-                      <Icon className="w-5 h-5 shrink-0 text-white" />
-                      <span className="flex-1 text-[16px] font-medium text-white">{item.label}</span>
+                      <div
+                        className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                        style={{ background: item.bgRgba, border: `1.5px solid ${b}` }}
+                      >
+                        <Icon className={`w-[22px] h-[22px] ${item.color}`} />
+                      </div>
+                      <div className="flex-1 min-w-0 text-right">
+                        <p className="text-[15px] font-bold text-white leading-tight mb-[2px]">{item.label}</p>
+                        <p className="text-[12px] text-white/50 truncate whitespace-nowrap overflow-hidden">{item.sub}</p>
+                      </div>
+                      <ChevronRight className={`w-[18px] h-[18px] shrink-0 rotate-180 ${item.color}`} />
                     </motion.button>
                   );
                 })}

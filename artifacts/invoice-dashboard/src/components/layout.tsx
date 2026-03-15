@@ -27,6 +27,7 @@ import {
   Search,
   MailOpen,
   Plus,
+  ChevronRight,
 } from "lucide-react";
 import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
 import { GmailScanDialog } from "@/components/gmail-scan-dialog";
@@ -43,17 +44,22 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const PRIMARY_NAV = [
-  { href: "/",             icon: LayoutDashboard, label: "דשבורד",       color: "text-primary",       bg: "rgba(75,126,245,0.08)",  border: "rgba(75,126,245,0.25)" },
-  { href: "/expenses",     icon: Receipt,         label: "הוצאות",       color: "text-teal",          bg: "rgba(45,212,191,0.08)",  border: "rgba(45,212,191,0.25)" },
-  { href: "/suppliers",    icon: Building2,       label: "ספקים",        color: "text-amber-400",     bg: "rgba(251,191,36,0.08)",  border: "rgba(251,191,36,0.25)" },
-  { href: "/export",       icon: SendHorizonal,   label: 'ייצוא לרו"ח', color: "text-violet-400",    bg: "rgba(139,92,246,0.08)",  border: "rgba(139,92,246,0.25)" },
-  { href: "/integrations", icon: Zap,             label: "אינטגרציות",   color: "text-rose-400",      bg: "rgba(244,63,94,0.08)",   border: "rgba(244,63,94,0.25)" },
+  { href: "/",             icon: LayoutDashboard, label: "דשבורד",       desc: "סקירה כללית ותזרים",         color: "text-primary",    bg: "rgba(75,126,245,0.08)",  border: "rgba(75,126,245,0.25)"  },
+  { href: "/expenses",     icon: Receipt,         label: "הוצאות",       desc: "חשבוניות ותשלומים",          color: "text-teal",       bg: "rgba(45,212,191,0.08)",  border: "rgba(45,212,191,0.25)"  },
+  { href: "/suppliers",    icon: Building2,       label: "ספקים",        desc: "ניהול ספקים וקשרים",         color: "text-amber-400",  bg: "rgba(251,191,36,0.08)",  border: "rgba(251,191,36,0.25)"  },
+  { href: "/export",       icon: SendHorizonal,   label: 'ייצוא לרו"ח', desc: "שליחת דוחות לרואה חשבון",   color: "text-violet-400", bg: "rgba(139,92,246,0.08)",  border: "rgba(139,92,246,0.25)"  },
+  { href: "/integrations", icon: Zap,             label: "אינטגרציות",   desc: "Gmail, Telegram, API",       color: "text-rose-400",   bg: "rgba(244,63,94,0.08)",   border: "rgba(244,63,94,0.25)"   },
 ];
 
 const SECONDARY_NAV = [
-  { href: "/settings", icon: Settings,   label: "הגדרות", color: "text-muted-foreground", bg: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.1)" },
-  { href: "/help",     icon: HelpCircle, label: "עזרה",   color: "text-muted-foreground", bg: "rgba(255,255,255,0.04)", border: "rgba(255,255,255,0.1)" },
+  { href: "/settings", icon: Settings,   label: "הגדרות", desc: "העדפות ופרטי חשבון",  color: "text-slate-400",  bg: "rgba(148,163,184,0.08)", border: "rgba(148,163,184,0.25)" },
+  { href: "/help",     icon: HelpCircle, label: "עזרה",   desc: "תמיכה ומדריכים",      color: "text-sky-400",    bg: "rgba(56,189,248,0.08)",  border: "rgba(56,189,248,0.25)"  },
 ];
+
+// Helper: replace alpha in rgba string
+function accentAt(rgba: string, alpha: number) {
+  return rgba.replace(/[\d.]+\)$/, `${alpha})`);
+}
 
 const ALL_NAV = [...PRIMARY_NAV, ...SECONDARY_NAV];
 
@@ -304,32 +310,45 @@ function MobileSidebar({
           </div>
         </motion.div>
 
-        {/* Primary nav — white border cards, uniform icon color */}
+        {/* Primary nav — category cards */}
         {PRIMARY_NAV.map((item, i) => {
           const active = location === item.href;
+          const cardBorder = active ? accentAt(item.border, 0.85) : accentAt(item.border, 0.33);
+          const iconBg = lm ? accentAt(item.border, 0.13) : accentAt(item.border, 0.20);
+          const cardBg = active
+            ? (lm ? accentAt(item.border, 0.07) : accentAt(item.border, 0.12))
+            : (lm ? "#ffffff" : "transparent");
           return (
             <motion.div
               key={item.href}
-              initial={{ opacity: 0, x: 30 }}
+              initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.14 + i * 0.05, duration: 0.24, ease: "easeOut" }}
+              transition={{ delay: 0.06 + i * 0.07, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             >
               <Link
                 href={item.href}
                 onClick={onClose}
-                className="flex items-center gap-4 px-5 h-[58px] rounded-2xl transition-all active:scale-[0.97] w-full"
-                style={lm ? {
-                  background: active ? "rgba(75,126,245,0.07)" : "#ffffff",
-                  border: `1px solid ${active ? "rgba(75,126,245,0.30)" : "rgb(0 0 0/0.07)"}`,
-                  boxShadow: "0 1px 4px rgb(0 0 0/0.05)",
-                } : {
-                  background: active ? "rgba(255,255,255,0.07)" : "transparent",
-                  border: `1px solid ${active ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.16)"}`,
+                className="flex items-center gap-[14px] rounded-[14px] transition-all active:scale-[0.97] w-full"
+                style={{
+                  padding: "14px 16px",
+                  background: cardBg,
+                  border: `1.5px solid ${cardBorder}`,
+                  boxShadow: active
+                    ? `0 0 0 2px ${accentAt(item.border, 0.26)}, 0 1px 4px rgba(0,0,0,0.06)`
+                    : lm ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
                 }}
               >
-                <item.icon className="w-5 h-5 shrink-0 text-white" />
-                <span className="flex-1 text-[16px] font-medium text-white">{item.label}</span>
-                {active && <div className={`w-2 h-2 rounded-full shrink-0 ${lm ? "bg-primary/40" : "bg-white/60"}`} />}
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: iconBg, border: `1.5px solid ${accentAt(item.border, 0.33)}` }}
+                >
+                  <item.icon className={`w-[22px] h-[22px] ${item.color}`} />
+                </div>
+                <div className="flex-1 min-w-0 text-right">
+                  <p className="text-[15px] font-bold text-white leading-tight mb-[2px]">{item.label}</p>
+                  <p className="text-[12px] text-white/50 truncate whitespace-nowrap overflow-hidden">{item.desc}</p>
+                </div>
+                <ChevronRight className={`w-[18px] h-[18px] shrink-0 rotate-180 ${item.color}`} />
               </Link>
             </motion.div>
           );
@@ -338,31 +357,45 @@ function MobileSidebar({
         {/* Divider */}
         <div className={`h-px mx-1 ${lm ? "bg-black/8" : "bg-white/10"}`} />
 
-        {/* Secondary nav */}
+        {/* Secondary nav — same category card style */}
         {SECONDARY_NAV.map((item, i) => {
           const active = location === item.href;
+          const cardBorder = active ? accentAt(item.border, 0.85) : accentAt(item.border, 0.33);
+          const iconBg = lm ? accentAt(item.border, 0.13) : accentAt(item.border, 0.20);
+          const cardBg = active
+            ? (lm ? accentAt(item.border, 0.07) : accentAt(item.border, 0.12))
+            : (lm ? "#ffffff" : "transparent");
           return (
             <motion.div
               key={item.href}
-              initial={{ opacity: 0, x: 30 }}
+              initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.39 + i * 0.05, duration: 0.22, ease: "easeOut" }}
+              transition={{ delay: 0.06 + (PRIMARY_NAV.length + 1 + i) * 0.07, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             >
               <Link
                 href={item.href}
                 onClick={onClose}
-                className="flex items-center gap-4 px-5 h-[54px] rounded-2xl transition-all active:scale-[0.97] w-full"
-                style={lm ? {
-                  background: active ? "rgba(75,126,245,0.06)" : "#ffffff",
-                  border: `1px solid ${active ? "rgba(75,126,245,0.25)" : "rgb(0 0 0/0.07)"}`,
-                  boxShadow: "0 1px 4px rgb(0 0 0/0.05)",
-                } : {
-                  background: active ? "rgba(255,255,255,0.07)" : "transparent",
-                  border: `1px solid ${active ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.12)"}`,
+                className="flex items-center gap-[14px] rounded-[14px] transition-all active:scale-[0.97] w-full"
+                style={{
+                  padding: "14px 16px",
+                  background: cardBg,
+                  border: `1.5px solid ${cardBorder}`,
+                  boxShadow: active
+                    ? `0 0 0 2px ${accentAt(item.border, 0.26)}, 0 1px 4px rgba(0,0,0,0.06)`
+                    : lm ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
                 }}
               >
-                <item.icon className="w-5 h-5 shrink-0 text-white" />
-                <span className="flex-1 text-[15px] font-medium text-white">{item.label}</span>
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: iconBg, border: `1.5px solid ${accentAt(item.border, 0.33)}` }}
+                >
+                  <item.icon className={`w-[22px] h-[22px] ${item.color}`} />
+                </div>
+                <div className="flex-1 min-w-0 text-right">
+                  <p className="text-[15px] font-bold text-white leading-tight mb-[2px]">{item.label}</p>
+                  <p className="text-[12px] text-white/50 truncate whitespace-nowrap overflow-hidden">{item.desc}</p>
+                </div>
+                <ChevronRight className={`w-[18px] h-[18px] shrink-0 rotate-180 ${item.color}`} />
               </Link>
             </motion.div>
           );
