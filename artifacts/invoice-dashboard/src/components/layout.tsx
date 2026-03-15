@@ -115,6 +115,7 @@ function MobileSidebar({
   onScanEmail: () => void;
 }) {
   const { theme } = useTheme();
+  const lm = theme === "light"; // light-mode shorthand
   const hubUserData = (() => {
     try {
       const raw = localStorage.getItem("bb_user");
@@ -156,10 +157,10 @@ function MobileSidebar({
       dir="rtl"
     >
       {/* ── Header bar ── */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-5 border-b border-white/8 shrink-0">
+      <div className={`flex items-center justify-between px-5 pt-5 pb-5 shrink-0 border-b ${lm ? "border-black/8" : "border-white/8"}`}>
         <button
           onClick={onClose}
-          className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:bg-white/10 transition-colors"
+          className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all ${lm ? "bg-white border border-black/8 shadow-sm" : "bg-white/5 border border-white/10"}`}
         >
           <Bell className="w-4 h-4 text-white/50" />
         </button>
@@ -175,7 +176,7 @@ function MobileSidebar({
 
         <button
           onClick={onClose}
-          className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:bg-white/10 transition-colors"
+          className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all ${lm ? "bg-white border border-black/8 shadow-sm" : "bg-white/5 border border-white/10"}`}
         >
           <X className="w-4 h-4 text-white/50" />
         </button>
@@ -190,7 +191,11 @@ function MobileSidebar({
       >
         <div
           className="rounded-2xl p-4"
-          style={{ border: "1.5px solid rgba(255,255,255,0.22)", background: "rgba(255,255,255,0.04)" }}
+          style={{
+            border: lm ? "1.5px solid rgb(0 0 0/0.09)" : "1.5px solid rgba(255,255,255,0.22)",
+            background: lm ? "#ffffff" : "rgba(255,255,255,0.04)",
+            boxShadow: lm ? "0 2px 12px rgb(0 0 0/0.07), 0 1px 3px rgb(0 0 0/0.05)" : "none",
+          }}
         >
           <div className="flex items-center gap-4 mb-3">
             {/* Avatar */}
@@ -198,7 +203,7 @@ function MobileSidebar({
               <div className="w-[60px] h-[60px] rounded-2xl bg-gradient-to-br from-primary/40 to-teal/20 border border-primary/25 flex items-center justify-center">
                 <User className="w-7 h-7 text-white" />
               </div>
-              <div className="absolute -bottom-0.5 -left-0.5 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-[#1a1d3a]" />
+              <div className={`absolute -bottom-0.5 -left-0.5 w-3.5 h-3.5 rounded-full bg-green-500 border-2 ${lm ? "border-white" : "border-[#1a1d3a]"}`} />
             </div>
             {/* Name + plan */}
             <div className="flex-1 min-w-0">
@@ -275,7 +280,11 @@ function MobileSidebar({
             <button
               onClick={() => { onClose(); onUpload(); }}
               className="flex-1 flex items-center justify-center gap-1.5 h-[48px] rounded-xl text-[14px] font-semibold text-white active:scale-[0.97] transition-transform"
-              style={{ background: "rgba(255,255,255,0.07)", border: "1.5px solid rgba(255,255,255,0.22)" }}
+              style={{
+                background: lm ? "#f1f5f9" : "rgba(255,255,255,0.07)",
+                border: lm ? "1.5px solid rgb(0 0 0/0.09)" : "1.5px solid rgba(255,255,255,0.22)",
+                boxShadow: lm ? "0 1px 4px rgb(0 0 0/0.06)" : "none",
+              }}
             >
               <Camera style={{ width: 18, height: 18 }} className="shrink-0" />
               צלם חשבונית
@@ -283,7 +292,11 @@ function MobileSidebar({
             <button
               onClick={() => { onClose(); onScanEmail(); }}
               className="flex-1 flex items-center justify-center gap-1.5 h-[48px] rounded-xl text-[14px] font-semibold text-white active:scale-[0.97] transition-transform"
-              style={{ background: "rgba(99,102,241,0.18)", border: "1.5px solid rgba(99,102,241,0.38)" }}
+              style={{
+                background: lm ? "rgba(99,102,241,0.08)" : "rgba(99,102,241,0.18)",
+                border: lm ? "1.5px solid rgba(99,102,241,0.25)" : "1.5px solid rgba(99,102,241,0.38)",
+                boxShadow: lm ? "0 1px 4px rgba(99,102,241,0.12)" : "none",
+              }}
             >
               <MailOpen className="w-4.5 h-4.5 shrink-0" style={{ width: 18, height: 18 }} />
               סרוק מייל
@@ -305,21 +318,25 @@ function MobileSidebar({
                 href={item.href}
                 onClick={onClose}
                 className="flex items-center gap-4 px-5 h-[58px] rounded-2xl transition-all active:scale-[0.97] w-full"
-                style={{
+                style={lm ? {
+                  background: active ? "rgba(75,126,245,0.07)" : "#ffffff",
+                  border: `1px solid ${active ? "rgba(75,126,245,0.30)" : "rgb(0 0 0/0.07)"}`,
+                  boxShadow: "0 1px 4px rgb(0 0 0/0.05)",
+                } : {
                   background: active ? "rgba(255,255,255,0.07)" : "transparent",
                   border: `1px solid ${active ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.16)"}`,
                 }}
               >
                 <item.icon className="w-5 h-5 shrink-0 text-white" />
                 <span className="flex-1 text-[16px] font-medium text-white">{item.label}</span>
-                {active && <div className="w-2 h-2 rounded-full bg-white/60 shrink-0" />}
+                {active && <div className={`w-2 h-2 rounded-full shrink-0 ${lm ? "bg-primary/40" : "bg-white/60"}`} />}
               </Link>
             </motion.div>
           );
         })}
 
         {/* Divider */}
-        <div className="h-px bg-white/10 mx-1" />
+        <div className={`h-px mx-1 ${lm ? "bg-black/8" : "bg-white/10"}`} />
 
         {/* Secondary nav */}
         {SECONDARY_NAV.map((item, i) => {
@@ -335,7 +352,11 @@ function MobileSidebar({
                 href={item.href}
                 onClick={onClose}
                 className="flex items-center gap-4 px-5 h-[54px] rounded-2xl transition-all active:scale-[0.97] w-full"
-                style={{
+                style={lm ? {
+                  background: active ? "rgba(75,126,245,0.06)" : "#ffffff",
+                  border: `1px solid ${active ? "rgba(75,126,245,0.25)" : "rgb(0 0 0/0.07)"}`,
+                  boxShadow: "0 1px 4px rgb(0 0 0/0.05)",
+                } : {
                   background: active ? "rgba(255,255,255,0.07)" : "transparent",
                   border: `1px solid ${active ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.12)"}`,
                 }}
@@ -358,7 +379,14 @@ function MobileSidebar({
               href="/settings"
               onClick={onClose}
               className="flex items-center gap-4 px-5 h-[54px] rounded-2xl transition-all active:scale-[0.97] w-full"
-              style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.16)" }}
+              style={lm ? {
+                background: "rgba(139,92,246,0.06)",
+                border: "1px solid rgba(139,92,246,0.22)",
+                boxShadow: "0 1px 4px rgb(0 0 0/0.05)",
+              } : {
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.16)",
+              }}
             >
               <Crown className="w-5 h-5 shrink-0 text-white" />
               <span className="flex-1 text-[15px] font-medium text-white">שדרג לStarter</span>
@@ -377,7 +405,14 @@ function MobileSidebar({
             window.location.href = "/login";
           }}
           className="w-full flex items-center gap-4 px-5 h-[54px] rounded-2xl active:scale-[0.97] transition-all"
-          style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.16)" }}
+          style={lm ? {
+            background: "rgba(239,68,68,0.05)",
+            border: "1px solid rgba(239,68,68,0.18)",
+            boxShadow: "0 1px 4px rgb(0 0 0/0.05)",
+          } : {
+            background: "transparent",
+            border: "1px solid rgba(255,255,255,0.16)",
+          }}
         >
           <LogOut className="w-5 h-5 shrink-0 text-white" />
           <span className="text-[15px] font-medium text-white">יציאה מהחשבון</span>
