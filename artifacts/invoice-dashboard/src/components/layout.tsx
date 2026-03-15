@@ -19,6 +19,7 @@ import {
   Gift,
   Upload,
   CalendarDays,
+  Camera,
   Crown,
   Menu,
   Mail,
@@ -263,11 +264,12 @@ function MobileSidebar({
           {/* Row 2: Calendar + Scan Email — equal halves */}
           <div className="flex gap-2.5">
             <button
+              onClick={() => { onClose(); onUpload(); }}
               className="flex-1 flex items-center justify-center gap-1.5 h-[48px] rounded-xl text-[14px] font-semibold text-white active:scale-[0.97] transition-transform"
               style={{ background: "rgba(255,255,255,0.07)", border: "1.5px solid rgba(255,255,255,0.22)" }}
             >
-              <CalendarDays className="w-4.5 h-4.5 shrink-0" style={{ width: 18, height: 18 }} />
-              יומן
+              <Camera style={{ width: 18, height: 18 }} className="shrink-0" />
+              צלם חשבונית
             </button>
             <button
               onClick={onClose}
