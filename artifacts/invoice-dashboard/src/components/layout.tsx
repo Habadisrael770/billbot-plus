@@ -240,18 +240,29 @@ function MobileSidebar({
       {/* ── Scrollable content ── */}
       <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-3">
 
-        {/* Primary CTA: upload invoice */}
-        <motion.button
+        {/* ── Primary CTAs: Upload + Calendar — equal width ── */}
+        <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.22 }}
-          onClick={() => { onClose(); onUpload(); }}
-          className="w-full flex items-center justify-center gap-2.5 h-14 rounded-2xl text-[16px] font-bold text-white active:scale-[0.97] transition-transform"
-          style={{ background: "linear-gradient(135deg, #4B7EF5, hsl(var(--teal)))" }}
+          className="flex gap-3"
         >
-          <Upload className="w-5 h-5" />
-          העלה חשבונית
-        </motion.button>
+          <button
+            onClick={() => { onClose(); onUpload(); }}
+            className="flex-1 flex items-center justify-center gap-2 h-14 rounded-2xl text-[15px] font-bold text-white active:scale-[0.97] transition-transform"
+            style={{ background: "linear-gradient(135deg, #4B7EF5, hsl(var(--teal)))" }}
+          >
+            <Upload className="w-5 h-5 shrink-0" />
+            העלה חשבונית
+          </button>
+          <button
+            className="flex-1 flex items-center justify-center gap-2 h-14 rounded-2xl text-[15px] font-bold text-white active:scale-[0.97] transition-transform"
+            style={{ background: "rgba(255,255,255,0.07)", border: "1.5px solid rgba(255,255,255,0.22)" }}
+          >
+            <CalendarDays className="w-5 h-5 shrink-0" />
+            יומן
+          </button>
+        </motion.div>
 
         {/* Primary nav — white border cards, uniform icon color */}
         {PRIMARY_NAV.map((item, i) => {
