@@ -23,9 +23,11 @@ import {
   Menu,
   Mail,
   Phone,
+  Search,
 } from "lucide-react";
 import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
 import { useTheme } from "@/context/theme-context";
+import { useSearch } from "@/context/search-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -422,6 +424,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [trialDismissed, setTrialDismissed] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [location] = useLocation();
+  const { search, setSearch } = useSearch();
   const { theme, toggleTheme } = useTheme();
 
   const currentLabel = ALL_NAV.find((n) => n.href === location)?.label ?? "דשבורד";
@@ -573,22 +576,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          {/* ── Mobile action bar — Upload + Calendar side by side ── */}
-          <div className="md:hidden flex gap-3 px-4 py-2.5 border-b border-border bg-card shrink-0">
-            <button
-              onClick={() => setUploadOpen(true)}
-              className="flex-1 flex items-center justify-center gap-2 h-10 rounded-[10px] text-[13px] font-bold text-white transition-all active:scale-[0.97]"
-              style={{ background: "linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--teal)) 100%)" }}
-            >
-              <Upload className="w-4 h-4 shrink-0" />
-              העלה חשבונית
-            </button>
-            <button
-              className="flex-1 flex items-center justify-center gap-2 h-10 rounded-[10px] text-[13px] font-semibold text-foreground transition-all active:scale-[0.97] border border-border hover:bg-elevated"
-            >
-              <CalendarDays className="w-4 h-4 shrink-0" />
-              יומן
-            </button>
+          {/* ── Mobile search bar — full width below header ── */}
+          <div className="md:hidden px-4 py-2 border-b border-border bg-card shrink-0">
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <input
+                type="text"
+                placeholder="חיפוש ספק, מספר חשבונית..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                dir="rtl"
+                className="w-full h-10 rounded-[10px] pr-9 pl-3 text-[13px] outline-none transition-all bg-elevated border border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+              />
+            </div>
           </div>
 
           {/* Page content */}

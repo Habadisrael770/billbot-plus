@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
+import { useSearch } from "@/context/search-context";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import {
@@ -256,7 +257,7 @@ export default function Dashboard() {
   const { approve, markNotDuplicate, mergeAlias, updateCategory, isPending } = useInvoiceMutations();
 
   const [filter, setFilter] = useState<FilterType>("all");
-  const [search, setSearch] = useState("");
+  const { search, setSearch } = useSearch();
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailMode, setEmailMode] = useState<"scan" | "attach">("scan");
   const [accountantOpen, setAccountantOpen] = useState(false);
@@ -302,14 +303,13 @@ export default function Dashboard() {
   return (
     <Layout>
       {/* ── Action bar (shares grid columns with stat cards) ── */}
-      {/* xl: 6 cols — spacer(1) spacer(2) | SEARCH(3=סה"כ) | cal+upload(4-6) */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 items-center mb-3" dir="rtl">
-        {/* cols 1-2 on xl: empty spacers above מסמכים + ספק */}
+      {/* Search + filters row — hidden on mobile (search is in the layout header bar) */}
+      <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 items-center mb-3" dir="rtl">
         <div className="hidden xl:block" />
         <div className="hidden xl:block" />
 
-        {/* col 3 on xl: Search — aligned above סה"כ חשבוניות */}
-        <div className="col-span-1 xl:col-span-1">
+        {/* Search field */}
+        <div className="col-span-2 sm:col-span-1 xl:col-span-1">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <input
@@ -323,12 +323,11 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* cols 4-6 on xl: action buttons */}
-        <div className="col-span-1 lg:col-span-2 xl:col-span-3 flex items-center gap-2">
-          {/* Calendar / date range */}
+        {/* Date range */}
+        <div className="col-span-2 lg:col-span-2 xl:col-span-3 flex items-center gap-2">
           <button className="btn-secondary h-10 px-3 sm:px-4 whitespace-nowrap shrink-0" dir="rtl">
             <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
-            <span className="hidden sm:inline text-[13px]">{monthStart} - {monthEnd}</span>
+            <span className="text-[13px]">{monthStart} - {monthEnd}</span>
           </button>
         </div>
       </div>

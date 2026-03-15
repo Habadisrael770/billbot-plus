@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider, useTheme } from "@/context/theme-context";
+import { SearchProvider } from "@/context/search-context";
 import { useToast } from "@/hooks/use-toast";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/dashboard";
@@ -120,11 +121,13 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <ThemeProvider>
+          <SearchProvider>
           <ThemedShell>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
               <AppRouter />
             </WouterRouter>
           </ThemedShell>
+          </SearchProvider>
           <Toaster />
         </ThemeProvider>
       </TooltipProvider>
