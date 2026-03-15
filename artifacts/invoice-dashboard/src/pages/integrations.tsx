@@ -76,7 +76,7 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
       className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full ${
         ok
           ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-          : "bg-muted text-muted-foreground border border-border"
+          : "bg-red-500/15 text-red-700 dark:text-red-400 border border-red-500/30"
       }`}
     >
       {ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
