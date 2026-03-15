@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from "react";
+import { Link } from "wouter";
 import { useSearch } from "@/context/search-context";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import {
   FileCheck,
@@ -24,6 +25,9 @@ import {
   MailPlus,
   FileSpreadsheet,
   CalendarDays,
+  ChevronDown,
+  ArrowLeft,
+  Receipt,
 } from "lucide-react";
 import { useInvoices, useInvoiceSummary, useInvoiceMutations } from "@/hooks/use-invoices";
 import { Layout } from "@/components/layout";
@@ -137,6 +141,128 @@ function formatCurrency(amount: string | null | undefined, currency: string) {
   const symbol = (currency || "ILS") === "ILS" ? "₪" : currency;
   const num = Number(amount).toLocaleString("he-IL", { maximumFractionDigits: 0 });
   return `${symbol}${num}`;
+}
+
+// ── Compact expandable expense row ──────────────────────────────────────────
+function MonthlyExpenseRow({ inv }: { inv: InvoiceRow }) {
+  const [expanded, setExpanded] = useState(false);
+  const vendor =
+    inv.canonicalVendorName ?? inv.normalizedVendorName ?? inv.rawVendorName ?? "—";
+  const amount = formatCurrency(inv.total, inv.currency);
+  const date = inv.invoiceDate
+    ? format(new Date(inv.invoiceDate), "dd/MM/yy")
+    : "—";
+  const isApproved = inv.status === "approved";
+
+  return (
+    <div className="border-b border-border last:border-b-0">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-2.5 px-4 py-3.5 text-right hover:bg-elevated/60 transition-colors"
+        dir="rtl"
+      >
+        <ChevronDown
+          className={`w-4 h-4 text-muted-foreground shrink-0 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+        />
+        <span className="flex-1 font-medium text-foreground truncate text-[14px] text-right">
+          {vendor}
+        </span>
+        <span className="text-[12px] text-muted-foreground shrink-0 hidden sm:inline">{date}</span>
+        <span
+          className="font-bold text-foreground text-[14px] shrink-0 min-w-[70px] text-left"
+          dir="ltr"
+        >
+          {amount}
+        </span>
+        <span className={`shrink-0 text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+          isApproved
+            ? "bg-emerald-500/15 text-emerald-500"
+            : "bg-amber-500/15 text-amber-500"
+        }`}>
+          {isApproved ? "אושר" : "ממתין"}
+        </span>
+      </button>
+
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="details"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div
+              className="px-4 pb-4 pt-2 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 bg-elevated/40 border-t border-border"
+              dir="rtl"
+            >
+              {inv.invoiceNumber && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">מס׳ מסמך</p>
+                  <p className="text-[13px] font-semibold text-foreground">{inv.invoiceNumber}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-[11px] text-muted-foreground mb-0.5">תאריך מלא</p>
+                <p className="text-[13px] font-semibold text-foreground">
+                  {inv.invoiceDate ? format(new Date(inv.invoiceDate), "dd/MM/yyyy") : "—"}
+                </p>
+              </div>
+              {(inv.finalCategory ?? inv.suggestedCategory) && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">קטגוריה</p>
+                  <p className="text-[13px] font-semibold text-foreground">
+                    {inv.finalCategory ?? inv.suggestedCategory}
+                  </p>
+                </div>
+              )}
+              {inv.subtotal && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">לפני מע״מ</p>
+                  <p className="text-[13px] font-semibold text-foreground" dir="ltr">
+                    {formatCurrency(inv.subtotal, inv.currency)}
+                  </p>
+                </div>
+              )}
+              {inv.vat && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">מע״מ</p>
+                  <p className="text-[13px] font-semibold text-foreground" dir="ltr">
+                    {formatCurrency(inv.vat, inv.currency)}
+                  </p>
+                </div>
+              )}
+              {inv.taxId && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">ח.פ. / עוסק מורשה</p>
+                  <p className="text-[13px] font-semibold text-foreground">{inv.taxId}</p>
+                </div>
+              )}
+              {inv.sourceType && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">מקור</p>
+                  <p className="text-[13px] font-semibold text-foreground capitalize">{inv.sourceType}</p>
+                </div>
+              )}
+              {inv.documentType && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">סוג מסמך</p>
+                  <p className="text-[13px] font-semibold text-foreground">{inv.documentType}</p>
+                </div>
+              )}
+              {inv.duplicateStatus !== "unique" && (
+                <div className="col-span-2">
+                  <p className="text-[11px] text-muted-foreground mb-1">סטטוס כפילות</p>
+                  {getDuplicateBadge(inv.duplicateStatus)}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 // ── Mobile invoice card ──────────────────────────────────────────────────────
@@ -300,8 +426,34 @@ export default function Dashboard() {
   const monthStart = format(new Date(now.getFullYear(), now.getMonth(), 1), "d MMM yyyy");
   const monthEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), "d MMM yyyy");
 
+  // Current month label (Hebrew style)
+  const monthLabel = format(now, "MMMM yyyy");
+  const recentInvoices = useMemo(() => (invoices ?? []).slice(0, 3) as InvoiceRow[], [invoices]);
+
+  // Greeting by hour
+  const hour = now.getHours();
+  const greeting = hour < 12 ? "בוקר טוב" : hour < 17 ? "צהריים טובים" : "ערב טוב";
+  const userName = (() => {
+    try {
+      const raw = localStorage.getItem("bb_user");
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      return p.name ?? p.email ?? null;
+    } catch { return null; }
+  })();
+
   return (
     <Layout>
+      {/* ── Page heading ── */}
+      <div className="mb-5" dir="rtl">
+        <h1 className="text-[22px] sm:text-[26px] font-black text-foreground leading-tight tracking-tight">
+          {userName ? `${greeting}, ${userName.split(" ")[0]} 👋` : "דשבורד"}
+        </h1>
+        <p className="text-[13px] text-muted-foreground mt-1">
+          סקירה כללית עבור {monthLabel}
+        </p>
+      </div>
+
       {/* ── Action bar (shares grid columns with stat cards) ── */}
       {/* Search + filters row — hidden on mobile (search is in the layout header bar) */}
       <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 items-center mb-3" dir="rtl">
@@ -384,6 +536,63 @@ export default function Dashboard() {
 
       {/* ── Optimize Account Widget ── */}
       <OptimizeWidget invoiceCount={invoices?.length ?? 0} />
+
+      {/* ── הוצאות החודש — compact preview ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.3 }}
+        className="bg-card border border-border rounded-[14px] overflow-hidden"
+        style={{ boxShadow: "var(--shadow-card)" }}
+        dir="rtl"
+      >
+        {/* Section header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-[10px] bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <Receipt className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-[15px] font-bold text-foreground leading-tight">הוצאות החודש</h2>
+              <p className="text-[11px] text-muted-foreground">{monthLabel}</p>
+            </div>
+          </div>
+          <Link href="/expenses">
+            <span className="flex items-center gap-1 text-[13px] font-medium text-primary hover:text-primary/80 transition-colors cursor-pointer">
+              צפה בהכל
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </span>
+          </Link>
+        </div>
+
+        {/* Rows */}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-10 gap-2 text-muted-foreground text-sm">
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            טוען...
+          </div>
+        ) : recentInvoices.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 gap-2 text-center px-4">
+            <CheckCircle2 className="w-8 h-8 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">אין הוצאות להצגה</p>
+          </div>
+        ) : (
+          <>
+            {recentInvoices.map((inv) => (
+              <MonthlyExpenseRow key={inv.id} inv={inv} />
+            ))}
+            {(invoices?.length ?? 0) > 3 && (
+              <div className="px-5 py-3 border-t border-border">
+                <Link href="/expenses">
+                  <span className="text-[13px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                    + עוד {(invoices?.length ?? 0) - 3} הוצאות
+                  </span>
+                </Link>
+              </div>
+            )}
+          </>
+        )}
+      </motion.div>
 
       {/* ── Table / cards panel ── */}
       <motion.div
