@@ -437,9 +437,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <PersonalAreaDropdown />
             </div>
 
-            {/* Center: current page title */}
+            {/* Center: BillBOT+ logo (mobile) / page title (desktop) */}
             <div className="flex-1 flex justify-center">
-              <span className="text-[14px] font-semibold text-foreground tracking-wide">{currentLabel}</span>
+              <span dir="ltr" className="md:hidden text-[22px] font-black tracking-tight">
+                <span className="text-foreground">Bill</span><span className="text-foreground">BOT</span><span className="bg-gradient-to-r from-violet-500 to-blue-500 bg-clip-text text-transparent">+</span>
+              </span>
+              <span className="hidden md:inline text-[14px] font-semibold text-foreground tracking-wide">{currentLabel}</span>
             </div>
 
             {/* Action buttons */}
@@ -461,22 +464,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Theme + Bell + Logo */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <button
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
-                className="p-2 rounded-[8px] text-muted-foreground hover:text-foreground hover:bg-elevated transition-all duration-200"
+                className="w-9 h-9 rounded-xl border border-white/15 bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all duration-200"
               >
                 {theme === "dark"
-                  ? <Sun className="w-5 h-5 text-warning" />
-                  : <Moon className="w-5 h-5 text-primary" />}
+                  ? <Sun className="w-4.5 h-4.5 text-warning" />
+                  : <Moon className="w-4.5 h-4.5 text-primary" />}
               </button>
-              <button className="relative p-2 rounded-[8px] text-muted-foreground hover:text-foreground hover:bg-elevated transition-colors">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-warning rounded-full" />
+              <button className="relative w-9 h-9 rounded-xl border border-white/15 bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
+                <Bell className="w-4.5 h-4.5 text-foreground" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-warning rounded-full" />
               </button>
               <div className="hidden sm:flex items-center gap-1.5 pr-3 border-r border-border mr-1">
-                <span dir="ltr" className="text-[17px] font-black text-primary">BillBOT+</span>
+                <span dir="ltr" className="text-[17px] font-black text-primary">BillBOT<span className="bg-gradient-to-r from-violet-500 to-blue-500 bg-clip-text text-transparent">+</span></span>
               </div>
             </div>
           </header>
@@ -507,6 +510,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           );
         })}
+        <Link
+          href="/settings"
+          className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-[10px] transition-colors ${
+            location === "/settings" ? "text-white" : "text-white"
+          }`}
+        >
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+            <Settings className="w-4.5 h-4.5 text-white" />
+          </div>
+        </Link>
       </nav>
 
       {/* Global Upload Modal */}

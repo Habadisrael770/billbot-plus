@@ -214,10 +214,10 @@ export function AIChat() {
         className="fixed bottom-[72px] right-2 md:bottom-6 md:right-6 z-50 w-12 h-12 md:w-14 md:h-14 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
         style={{
           background: hasAccess
-            ? "linear-gradient(135deg, #7c3aed, #2563eb)"
+            ? "hsl(var(--primary))"
             : "linear-gradient(135deg, #374151, #1f2937)",
           boxShadow: hasAccess
-            ? "0 8px 24px rgba(124,58,237,0.35)"
+            ? "0 8px 24px hsl(var(--primary) / 0.35)"
             : "0 8px 24px rgba(0,0,0,0.3)",
         }}
         title={
