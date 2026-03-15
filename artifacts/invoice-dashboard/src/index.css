@@ -469,6 +469,26 @@ html.light { color-scheme: light; }
     box-shadow: 0 0 0 3px rgb(67 97 238 / 0.15);
   }
 
+  /* Dark mode: white border + subtle neon glow */
+  html.dark .search-bar {
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 2px 14px rgba(67, 97, 238, 0.18), 0 1px 0 rgba(67, 97, 238, 0.10);
+  }
+  html.dark .search-bar:focus {
+    border-color: rgba(255, 255, 255, 0.34);
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.20), 0 4px 22px rgba(67, 97, 238, 0.25);
+  }
+
+  /* Mobile search bar — same neon effect */
+  html.dark .mobile-search-input {
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 2px 14px rgba(67, 97, 238, 0.18), 0 1px 0 rgba(67, 97, 238, 0.10);
+  }
+  html.dark .mobile-search-input:focus {
+    border-color: rgba(255, 255, 255, 0.34);
+    box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.20), 0 4px 22px rgba(67, 97, 238, 0.25);
+  }
+
   /* ── TABLE ───────────────────────────────────────────────────── */
   .table-wrapper {
     @apply w-full overflow-x-auto rounded-[14px] border border-border;

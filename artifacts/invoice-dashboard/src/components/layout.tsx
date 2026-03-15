@@ -681,7 +681,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 dir="rtl"
-                className="w-full h-11 rounded-[10px] pr-10 pl-3 text-[14px] outline-none transition-all bg-elevated border border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className="mobile-search-input w-full h-11 rounded-[10px] pr-10 pl-3 text-[14px] outline-none transition-all bg-elevated border border-border text-foreground placeholder:text-muted-foreground"
               />
             </div>
           </div>
