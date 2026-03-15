@@ -74,6 +74,8 @@ function buildSelectFields() {
     suggestedCategory: invoicesTable.suggested_category,
     finalCategory: invoicesTable.final_category,
     categoryConfidence: invoicesTable.category_confidence,
+    isForeign: invoicesTable.is_foreign,
+    supplierCountry: invoicesTable.supplier_country,
     createdAt: invoicesTable.created_at,
   };
 }

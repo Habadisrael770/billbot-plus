@@ -78,6 +78,8 @@ type InvoiceRow = {
   suggestedCategory?: string | null;
   finalCategory?: string | null;
   categoryConfidence?: string | null;
+  isForeign?: boolean | null;
+  supplierCountry?: string | null;
 };
 
 const FILTERS: { key: FilterType; label: string }[] = [
@@ -134,6 +136,19 @@ function getStatusBadge(status: string) {
 function getCategoryBadge(category: string | null | undefined) {
   if (!category) return <span className="text-xs text-muted-foreground">—</span>;
   return <span className="badge-primary">{category}</span>;
+}
+
+function ForeignBadge({ isForeign, country }: { isForeign?: boolean | null; country?: string | null }) {
+  if (!isForeign) return null;
+  const label = country === "US" ? "ארה\"ב" : country === "GB" ? "בריטניה" : country === "DE" ? "גרמניה" : country === "NL" ? "הולנד" : country === "SE" ? "שבדיה" : "חו\"ל";
+  return (
+    <span
+      title="חשבונית מחו\"ל — אין ניכוי מע\"מ"
+      className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/30 shrink-0"
+    >
+      🌍 {label}
+    </span>
+  );
 }
 
 function formatCurrency(amount: string | null | undefined, currency: string) {
@@ -306,9 +321,12 @@ function InvoiceCard({
 
       <div className="rounded-[10px] bg-elevated border border-border px-3 py-2">
         <p className="text-xs text-muted-foreground">ספק</p>
-        <p className="text-sm font-medium text-foreground truncate">
-          {inv.canonicalVendorName || inv.rawVendorName || "לא ידוע"}
-        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-medium text-foreground truncate">
+            {inv.canonicalVendorName || inv.rawVendorName || "לא ידוע"}
+          </p>
+          <ForeignBadge isForeign={inv.isForeign} country={inv.supplierCountry} />
+        </div>
         {inv.taxId && (
           <p className="text-xs text-muted-foreground">ח.פ. {inv.taxId}</p>
         )}
@@ -723,7 +741,10 @@ export default function Dashboard() {
                     <tr key={inv.id} className="group">
                       {/* Supplier */}
                       <td className="px-4 py-3.5 text-right">
-                        <span className="font-medium text-foreground">{vendorDisplay}</span>
+                        <div className="flex items-center gap-2 flex-wrap justify-end">
+                          <span className="font-medium text-foreground">{vendorDisplay}</span>
+                          <ForeignBadge isForeign={inv.isForeign} country={inv.supplierCountry} />
+                        </div>
                       </td>
 
                       {/* Doc # */}

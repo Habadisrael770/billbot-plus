@@ -6,6 +6,7 @@ import { computeFileHash } from "../utils/hashFile.js";
 import { findOrCreateVendor } from "./vendorService.js";
 import { detectDuplicate } from "./deduplicationService.js";
 import { suggestCategory } from "./categoryService.js";
+import { detectForeignSupplier } from "../utils/foreignSupplierDetector.js";
 
 export type SourceType = "upload" | "camera" | "email";
 export type DocumentType = "supplier_invoice" | "receipt" | "credit_note" | "other";
@@ -99,6 +100,13 @@ export async function processInvoice(
   const nameForCategory = canonicalVendorName || rawVendorName;
   const categoryResult = await suggestCategory(nameForCategory, extracted.tax_id);
 
+  // Step 5b: Detect foreign supplier (חשבוניות מחו"ל — אין ניכוי מע"מ)
+  const foreignResult = detectForeignSupplier(
+    canonicalVendorName || rawVendorName,
+    extracted.currency,
+    extracted.tax_id,
+  );
+
   // Step 6: Save invoice to database
   const [savedInvoice] = await db
     .insert(invoicesTable)
@@ -126,11 +134,13 @@ export async function processInvoice(
       source_type: sourceType,
       document_type: documentType,
       suggested_category: categoryResult.suggested_category,
-      final_category: categoryResult.suggested_category, // default = suggestion, user can override
+      final_category: categoryResult.suggested_category,
       category_confidence:
         categoryResult.category_confidence > 0
           ? String(categoryResult.category_confidence)
           : null,
+      is_foreign: foreignResult.is_foreign,
+      supplier_country: foreignResult.country,
     })
     .returning();
 
