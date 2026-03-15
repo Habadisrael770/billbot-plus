@@ -29,6 +29,12 @@ export const invoicesTable = pgTable("invoices", {
   // Foreign invoice fields — חשבוניות מחו"ל (אין ניכוי מע"מ)
   is_foreign: boolean("is_foreign").notNull().default(false),
   supplier_country: text("supplier_country"),
+  // Extraction pipeline metadata
+  extraction_source: text("extraction_source"),   // image | pdf_text | pdf_ocr | failed
+  extraction_status: text("extraction_status"),   // success | partial | failed
+  review_reason:     text("review_reason"),        // see ReviewReason type
+  pdf_type:          text("pdf_type"),             // text_pdf | scanned_pdf | encrypted_pdf | corrupted_pdf
+  line_items_count:  integer("line_items_count").notNull().default(0),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

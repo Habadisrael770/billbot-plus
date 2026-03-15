@@ -250,8 +250,29 @@ router.post(
         extractionConfidence,
         sourceType,
         documentType: (aiResult.document_type as "supplier_invoice" | "receipt" | "credit_note" | "other") ?? "supplier_invoice",
+        extractionMeta: {
+          line_items:            aiResult.line_items,
+          line_items_count:      aiResult.line_items_count,
+          extraction_source:     aiResult.extraction_source,
+          extraction_status:     aiResult.extraction_status,
+          review_reason:         aiResult.review_reason,
+          pdf_type:              aiResult.pdf_type,
+          header_confidence:     aiResult.header_confidence,
+          line_items_confidence: aiResult.line_items_confidence,
+        },
       });
-      res.status(201).json({ ...result, filePath });
+      res.status(201).json({
+        ...result,
+        filePath,
+        extraction_source:     aiResult.extraction_source,
+        extraction_status:     aiResult.extraction_status,
+        review_reason:         aiResult.review_reason,
+        pdf_type:              aiResult.pdf_type,
+        line_items_count:      aiResult.line_items_count,
+        header_confidence:     aiResult.header_confidence,
+        line_items_confidence: aiResult.line_items_confidence,
+        overall_confidence:    aiResult.confidence,
+      });
     } catch (err) {
       console.error("Upload processing failed:", err);
       // Clean up file on error
