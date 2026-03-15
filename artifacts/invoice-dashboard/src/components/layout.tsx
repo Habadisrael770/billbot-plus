@@ -424,7 +424,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* Main Content */}
         <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
           {/* Header */}
-          <header className="h-14 flex items-center gap-3 px-4 sm:px-6 border-b border-border bg-card z-10 shrink-0" style={{ boxShadow: "var(--shadow-sm)" }}>
+          <header className="h-20 md:h-14 flex items-center gap-3 px-4 sm:px-6 border-b border-border bg-card z-10 shrink-0" style={{ boxShadow: "var(--shadow-sm)" }}>
             {/* Mobile hamburger */}
             <div className="flex items-center gap-2 min-w-0">
               <button
@@ -438,10 +438,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Center: BillBOT+ logo (mobile) / page title (desktop) */}
-            <div className="flex-1 flex justify-center">
-              <span dir="ltr" className="md:hidden text-[22px] font-black tracking-tight">
-                <span className="text-foreground">Bill</span><span className="text-foreground">BOT</span><span className="bg-gradient-to-r from-violet-500 to-blue-500 bg-clip-text text-transparent">+</span>
-              </span>
+            <div className="flex-1 flex justify-center items-center">
+              <Link href="/">
+                <span dir="ltr" className="md:hidden text-[46px] font-black tracking-tight leading-none select-none cursor-pointer active:opacity-70 transition-opacity">
+                  <span className="text-foreground">Bill</span><span className="text-foreground">BOT</span><span className="bg-gradient-to-r from-violet-500 to-blue-500 bg-clip-text text-transparent">+</span>
+                </span>
+              </Link>
               <span className="hidden md:inline text-[14px] font-semibold text-foreground tracking-wide">{currentLabel}</span>
             </div>
 
