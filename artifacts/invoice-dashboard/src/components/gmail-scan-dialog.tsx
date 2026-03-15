@@ -59,9 +59,9 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
   const loadStatus = async () => {
     setLoadingStatus(true);
     try {
-      const res = await fetch(`${API_BASE}/email-connectors/gmail/status`);
+      const res = await fetch(`${API_BASE}/gmail-auth/status`);
       const data = await res.json();
-      setStatus({ ...data, credentialsConfigured: data.connected });
+      setStatus(data);
     } catch {
       setStatus({ connected: false, email: null, credentialsConfigured: false });
     } finally {

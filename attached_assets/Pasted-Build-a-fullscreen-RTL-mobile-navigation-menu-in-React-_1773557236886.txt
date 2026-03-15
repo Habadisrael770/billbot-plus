@@ -1,0 +1,115 @@
+Build a fullscreen RTL mobile navigation menu in React with the following 
+exact structural specs. Do NOT hardcode colors — use theme/CSS variables 
+for all colors. The layout must support dark/light mode switching.
+
+─────────────────────────────────────
+HEADER BAR
+─────────────────────────────────────
+- Height: 60px
+- Padding: 0 16px
+- Layout: flex row, space-between, center aligned
+- Left element: hamburger icon button (Menu icon, 24px)
+  → padding: 8px, borderRadius: 10px, no background (hover state shows subtle bg)
+- Center element: logo container
+  → Icon square: 32×32px, borderRadius: 8px (gradient background — color is up to theme)
+  → App icon inside: 17px
+  → App name text: fontSize 17px, fontWeight 700, letterSpacing -0.3px
+- Right element: theme toggle button
+  → padding: 6px 10px, borderRadius: 20px (pill shape)
+  → Shows Sun icon (16px) + label "בהיר" in light mode
+  → Shows Moon icon (16px) + label "כהה" in dark mode
+  → fontSize: 13px, fontWeight: 600
+
+─────────────────────────────────────
+FULLSCREEN MENU PANEL
+─────────────────────────────────────
+- Position: fixed, top:0, right:0 (RTL slide from right)
+- Width: 100%, Height: 100%
+- Direction: RTL (dir="rtl")
+- Layout: flex column
+- overflowY: auto
+- Animation: 
+    → Open:  translateX(100%) → translateX(0), duration 0.38s, 
+             easing cubic-bezier(0.32, 0, 0.15, 1)
+    → Overlay behind panel: opacity 0 → 1, duration 0.3s ease
+
+  MENU HEADER (inside panel):
+  - Height: 60px, padding: 0 16px
+  - flex row, space-between, center aligned
+  - borderBottom: 1px solid
+  - Left: same logo block as main header (32×32px icon square + title text)
+  - Right: close button
+    → Size: 36×36px, borderRadius: 10px
+    → X icon, 20px
+
+  SECTION LABEL (below menu header):
+  - padding: 20px 20px 8px
+  - Text: uppercase label (e.g. "ניווט ראשי")
+  - fontSize: 11px, fontWeight: 700, letterSpacing: 1.2px
+
+─────────────────────────────────────
+CATEGORY CARDS (the key component)
+─────────────────────────────────────
+Container: padding 0 16px 32px, flex column, gap: 10px
+
+Each card:
+  - borderRadius: 14px
+  - padding: 14px 16px
+  - border: 1.5px solid (accent color at 33% opacity; full opacity when active)
+  - boxShadow light mode: 0 1px 4px rgba(0,0,0,0.06)
+  - Active state: ring shadow 0 0 0 2px (accent color at 26% opacity)
+  - Layout: flex row, center aligned, gap: 14px
+  - cursor: pointer
+
+  STAGGERED ENTRY ANIMATION per card:
+    → translateX(40px) → translateX(0)
+    → opacity 0 → 1
+    → duration: 0.4s, easing: cubic-bezier(0.22, 1, 0.36, 1)
+    → delay per card: 0.06s + (index × 0.07s)
+      (card 0 = 0.06s, card 1 = 0.13s, card 2 = 0.20s, ...)
+
+  ICON CONTAINER (left/start side):
+    - Size: 44×44px
+    - borderRadius: 12px
+    - background: accent color at 13% opacity (light) / 20% opacity (dark)
+    - border: 1.5px solid (accent color at 33% opacity)
+    - flexShrink: 0
+    - Icon inside: 22px, accent color
+
+  TEXT BLOCK (flex: 1, takes remaining space):
+    - Title: fontSize 15px, fontWeight 700, marginBottom 2px
+    - Subtitle/description: fontSize 12px, color secondary
+      → overflow: hidden, whiteSpace: nowrap, textOverflow: ellipsis
+
+  ARROW (right/end side):
+    - ChevronRight icon: 18px, accent color
+    - Rotated 180deg (for RTL — arrow points left ←)
+    - flexShrink: 0
+
+─────────────────────────────────────
+FOOTER (bottom of menu panel)
+─────────────────────────────────────
+- marginTop: auto (pushes to bottom)
+- padding: 16px 20px
+- borderTop: 1px solid
+- Layout: flex row, space-between, center aligned
+- Left: company name (fontSize 13px, fontWeight 600) 
+        + version line (fontSize 11px, secondary color, marginTop 1px)
+- Right: second theme toggle button (same pill style as header toggle)
+  → padding: 7px 14px, borderRadius: 20px
+  → Sun/Moon icon (15px) + label text
+  → fontSize: 13px, fontWeight: 600
+
+─────────────────────────────────────
+TYPOGRAPHY
+─────────────────────────────────────
+- Font family: 'Heebo', 'Segoe UI', Arial, sans-serif
+  (Heebo is ideal for Hebrew RTL text)
+
+─────────────────────────────────────
+NOTES FOR CUSTOMIZATION
+─────────────────────────────────────
+- Each category has its own accent color — plug in any color per item
+- Card background = accent color tinted bg (theme-aware)
+- The text labels and icons are fully swappable per your categories
+- All colors should come from a theme config object, not hardcoded inline
