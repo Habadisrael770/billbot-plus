@@ -24,6 +24,7 @@ import {
   Mail,
   Phone,
   Search,
+  MailOpen,
 } from "lucide-react";
 import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
 import { useTheme } from "@/context/theme-context";
@@ -242,28 +243,41 @@ function MobileSidebar({
       {/* ── Scrollable content ── */}
       <div className="flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-3">
 
-        {/* ── Primary CTAs: Upload + Calendar — equal width ── */}
+        {/* ── Primary CTAs ── */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.22 }}
-          className="flex gap-3"
+          className="flex flex-col gap-2.5"
         >
+          {/* Row 1: Upload — full width */}
           <button
             onClick={() => { onClose(); onUpload(); }}
-            className="flex-1 flex items-center justify-center gap-2 h-14 rounded-2xl text-[15px] font-bold text-white active:scale-[0.97] transition-transform"
+            className="w-full flex items-center justify-center gap-2.5 h-[52px] rounded-2xl text-[16px] font-bold text-white active:scale-[0.97] transition-transform"
             style={{ background: "linear-gradient(135deg, #4B7EF5, hsl(var(--teal)))" }}
           >
             <Upload className="w-5 h-5 shrink-0" />
             העלה חשבונית
           </button>
-          <button
-            className="flex-1 flex items-center justify-center gap-2 h-14 rounded-2xl text-[15px] font-bold text-white active:scale-[0.97] transition-transform"
-            style={{ background: "rgba(255,255,255,0.07)", border: "1.5px solid rgba(255,255,255,0.22)" }}
-          >
-            <CalendarDays className="w-5 h-5 shrink-0" />
-            יומן
-          </button>
+
+          {/* Row 2: Calendar + Scan Email — equal halves */}
+          <div className="flex gap-2.5">
+            <button
+              className="flex-1 flex items-center justify-center gap-1.5 h-[48px] rounded-xl text-[14px] font-semibold text-white active:scale-[0.97] transition-transform"
+              style={{ background: "rgba(255,255,255,0.07)", border: "1.5px solid rgba(255,255,255,0.22)" }}
+            >
+              <CalendarDays className="w-4.5 h-4.5 shrink-0" style={{ width: 18, height: 18 }} />
+              יומן
+            </button>
+            <button
+              onClick={onClose}
+              className="flex-1 flex items-center justify-center gap-1.5 h-[48px] rounded-xl text-[14px] font-semibold text-white active:scale-[0.97] transition-transform"
+              style={{ background: "rgba(99,102,241,0.18)", border: "1.5px solid rgba(99,102,241,0.38)" }}
+            >
+              <MailOpen className="w-4.5 h-4.5 shrink-0" style={{ width: 18, height: 18 }} />
+              סרוק מייל
+            </button>
+          </div>
         </motion.div>
 
         {/* Primary nav — white border cards, uniform icon color */}
@@ -577,16 +591,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </header>
 
           {/* ── Mobile search bar — full width below header ── */}
-          <div className="md:hidden px-4 py-2 border-b border-border bg-card shrink-0">
+          <div className="md:hidden px-4 py-2.5 border-b border-border bg-card shrink-0">
             <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-muted-foreground pointer-events-none" />
               <input
                 type="text"
                 placeholder="חיפוש ספק, מספר חשבונית..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 dir="rtl"
-                className="w-full h-10 rounded-[10px] pr-9 pl-3 text-[13px] outline-none transition-all bg-elevated border border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
+                className="w-full h-11 rounded-[10px] pr-10 pl-3 text-[14px] outline-none transition-all bg-elevated border border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/20"
               />
             </div>
           </div>
