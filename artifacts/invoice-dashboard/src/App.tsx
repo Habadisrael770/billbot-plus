@@ -11,6 +11,7 @@ import ExpensesPage from "@/pages/expenses";
 import Profile from "@/pages/profile";
 import SettingsPage from "@/pages/settings";
 import Onboarding from "@/pages/onboarding";
+import LoginPage from "@/pages/login";
 import SuppliersPage from "@/pages/suppliers";
 import HelpPage from "@/pages/help";
 import IntegrationsPage from "@/pages/integrations";
@@ -51,16 +52,35 @@ function GmailRedirectHandler() {
 }
 
 function AppRouter() {
-  const [onboarded, setOnboarded] = useState(() => {
-    if (new URLSearchParams(window.location.search).get("reset") === "1") {
-      localStorage.removeItem("bb_wizard_done");
-      localStorage.removeItem("bb_onboarding_progress");
-      window.history.replaceState({}, "", window.location.pathname);
-      return false;
-    }
-    return localStorage.getItem("bb_wizard_done") === "1";
-  });
+  // ── Reset gate ──────────────────────────────────────────────────────────
+  const isReset = new URLSearchParams(window.location.search).get("reset") === "1";
+  if (isReset) {
+    localStorage.removeItem("bb_wizard_done");
+    localStorage.removeItem("bb_onboarding_progress");
+    localStorage.removeItem("bb_user");
+    window.history.replaceState({}, "", window.location.pathname);
+  }
 
+  const [loggedIn,  setLoggedIn]  = useState(() => !!localStorage.getItem("bb_user"));
+  const [onboarded, setOnboarded] = useState(() => localStorage.getItem("bb_wizard_done") === "1");
+
+  // ── Login gate ──────────────────────────────────────────────────────────
+  if (!loggedIn) {
+    return (
+      <LoginPage
+        onLogin={(email) => {
+          localStorage.setItem("bb_user", email || "user");
+          setLoggedIn(true);
+        }}
+        onSkip={() => {
+          localStorage.setItem("bb_user", "guest");
+          setLoggedIn(true);
+        }}
+      />
+    );
+  }
+
+  // ── Onboarding gate ─────────────────────────────────────────────────────
   if (!onboarded) {
     return (
       <Onboarding
