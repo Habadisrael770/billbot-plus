@@ -733,7 +733,7 @@ export default function Settings() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[14px] font-bold text-white truncate leading-tight">{hubUser}</p>
-                  <p className="text-[11px] text-white/50 truncate mt-0.5" dir={gmailStatus?.email ? "ltr" : "rtl"}>
+                  <p className="text-[11px] text-white/70 truncate mt-0.5" dir={gmailStatus?.email ? "ltr" : "rtl"}>
                     {gmailStatus?.email ?? "לא מחובר Gmail"}
                   </p>
                 </div>
@@ -781,7 +781,7 @@ export default function Settings() {
                         (e.currentTarget as HTMLButtonElement).style.borderColor = "rgba(255,255,255,0.16)";
                       }}
                     >
-                      <Icon className={`w-5 h-5 shrink-0 ${item.color}`} />
+                      <Icon className="w-5 h-5 shrink-0 text-white" />
                       <span className="flex-1 text-[16px] font-medium text-white">{item.label}</span>
                     </motion.button>
                   );

@@ -175,7 +175,7 @@ function MobileSidebar({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-[14px] font-bold text-white truncate leading-tight">{hubUser}</p>
-          <p className="text-[11px] text-white/50 mt-0.5">{planLabel[hubPlan]} · BillBOT+</p>
+          <p className="text-[11px] text-white/70 mt-0.5">{planLabel[hubPlan]} · BillBOT+</p>
         </div>
       </motion.div>
 
@@ -195,7 +195,7 @@ function MobileSidebar({
           העלה חשבונית
         </motion.button>
 
-        {/* Primary nav — white border cards */}
+        {/* Primary nav — white border cards, uniform icon color */}
         {PRIMARY_NAV.map((item, i) => {
           const active = location === item.href;
           return (
@@ -214,7 +214,7 @@ function MobileSidebar({
                   border: `1px solid ${active ? "rgba(255,255,255,0.45)" : "rgba(255,255,255,0.16)"}`,
                 }}
               >
-                <item.icon className={`w-5 h-5 shrink-0 ${item.color}`} />
+                <item.icon className="w-5 h-5 shrink-0 text-white" />
                 <span className="flex-1 text-[16px] font-medium text-white">{item.label}</span>
                 {active && <div className="w-2 h-2 rounded-full bg-white/60 shrink-0" />}
               </Link>
@@ -244,7 +244,7 @@ function MobileSidebar({
                   border: `1px solid ${active ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.12)"}`,
                 }}
               >
-                <item.icon className={`w-5 h-5 shrink-0 ${item.color}`} />
+                <item.icon className="w-5 h-5 shrink-0 text-white" />
                 <span className="flex-1 text-[15px] font-medium text-white">{item.label}</span>
               </Link>
             </motion.div>
@@ -264,7 +264,7 @@ function MobileSidebar({
               className="flex items-center gap-4 px-5 h-[54px] rounded-2xl transition-all active:scale-[0.97] w-full"
               style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.16)" }}
             >
-              <Crown className="w-5 h-5 shrink-0 text-amber-400" />
+              <Crown className="w-5 h-5 shrink-0 text-white" />
               <span className="flex-1 text-[15px] font-medium text-white">שדרג לStarter</span>
             </Link>
           </motion.div>
@@ -283,7 +283,7 @@ function MobileSidebar({
           className="w-full flex items-center gap-4 px-5 h-[54px] rounded-2xl active:scale-[0.97] transition-all"
           style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.16)" }}
         >
-          <LogOut className="w-5 h-5 shrink-0 text-red-400" />
+          <LogOut className="w-5 h-5 shrink-0 text-white" />
           <span className="text-[15px] font-medium text-white">יציאה מהחשבון</span>
         </motion.button>
 
