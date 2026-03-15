@@ -1,6 +1,10 @@
 import { openrouter } from "@workspace/integrations-openrouter-ai";
 import fs from "fs";
 import path from "path";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
 
 const VISION_MODEL = "google/gemini-flash-1.5";
 
@@ -97,26 +101,41 @@ async function extractFromImage(filePath: string): Promise<AiExtractResult> {
 
 async function extractFromPdfFallback(filePath: string): Promise<AiExtractResult> {
   try {
+    // Extract text content from PDF
+    const buffer = fs.readFileSync(filePath);
+    const parsed = await pdfParse(buffer);
+    const text = parsed.text?.trim();
+
+    if (!text || text.length < 20) {
+      // Scanned PDF with no selectable text — cannot process
+      console.warn("[AI Extract] PDF has no extractable text:", path.basename(filePath));
+      return { confidence: 0, currency: "ILS", document_type: "supplier_invoice" };
+    }
+
+    // Truncate to avoid token limits (keep first 3000 chars — enough for any invoice)
+    const truncated = text.slice(0, 3000);
+
     const response = await openrouter.chat.completions.create({
       model: "deepseek/deepseek-chat",
       messages: [
-        {
-          role: "system",
-          content: SYSTEM_PROMPT,
-        },
+        { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
-          content: `A PDF invoice was uploaded at path: ${path.basename(filePath)}. I cannot read the content directly. Return a JSON with only: {"confidence": 0, "currency": "ILS", "document_type": "supplier_invoice"}`,
+          content: `Extract invoice data from the following PDF text:\n\n${truncated}\n\nReturn only the JSON.`,
         },
       ],
-      max_tokens: 100,
-      temperature: 0,
+      max_tokens: 600,
+      temperature: 0.1,
     });
 
     const raw = response.choices[0]?.message?.content ?? "{}";
     const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
-    return { ...JSON.parse(cleaned), confidence: 0 };
-  } catch {
+    const result = JSON.parse(cleaned) as AiExtractResult;
+    const confidence = typeof result.confidence === "number" ? result.confidence : 0.5;
+    console.log(`[AI Extract PDF] vendor=${result.vendor} total=${result.total} confidence=${confidence}`);
+    return { ...result, confidence };
+  } catch (err) {
+    console.error("[AI Extract PDF] failed:", err);
     return { confidence: 0, currency: "ILS", document_type: "supplier_invoice" };
   }
 }
