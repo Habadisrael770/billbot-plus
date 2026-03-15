@@ -591,17 +591,44 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* Main Content */}
         <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
           {/* Header */}
-          <header className="h-20 md:h-14 flex items-center gap-3 px-4 sm:px-6 border-b border-border bg-card z-10 shrink-0" style={{ boxShadow: "var(--shadow-sm)" }}>
-            {/* Mobile hamburger + theme toggle */}
-            <div className="flex items-center gap-1.5 min-w-0">
+          <header className="h-16 md:h-14 flex items-center gap-2 px-3 sm:px-6 border-b border-border bg-card z-10 shrink-0" style={{ boxShadow: "var(--shadow-sm)" }}>
+
+            {/* ── RIGHT side (RTL start): hamburger + small logo ── */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Hamburger — mobile only, subtle border */}
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="md:hidden p-2 rounded-[8px] text-muted-foreground hover:text-foreground hover:bg-elevated transition-colors"
                 aria-label="Open menu"
+                className="md:hidden w-9 h-9 rounded-[10px] flex items-center justify-center text-foreground transition-all active:scale-95 shrink-0"
+                style={{
+                  border: theme === "dark"
+                    ? "1.5px solid rgba(255,255,255,0.18)"
+                    : "1.5px solid rgba(0,0,0,0.14)",
+                  background: theme === "dark"
+                    ? "rgba(255,255,255,0.05)"
+                    : "rgba(0,0,0,0.04)",
+                }}
               >
-                <Menu className="w-5 h-5" />
+                <Menu className="w-[18px] h-[18px]" />
               </button>
-              {/* Mobile-only theme toggle — prominent day/night switch */}
+
+              {/* BillBOT+ logo — mobile only, compact */}
+              <Link href="/" className="md:hidden">
+                <span dir="ltr" className="text-[22px] font-black tracking-tight leading-none select-none cursor-pointer active:opacity-70 transition-opacity">
+                  <span className="text-foreground">Bill</span><span className="text-foreground">BOT</span><span className="bg-gradient-to-r from-violet-500 to-blue-500 bg-clip-text text-transparent">+</span>
+                </span>
+              </Link>
+
+              {/* Desktop: page title */}
+              <span className="hidden md:inline text-[14px] font-semibold text-foreground tracking-wide">{currentLabel}</span>
+            </div>
+
+            {/* ── CENTER: spacer ── */}
+            <div className="flex-1" />
+
+            {/* ── LEFT side: user profile + theme toggle ── */}
+            <div className="flex items-center gap-1.5">
+              {/* Mobile theme toggle */}
               <button
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
@@ -619,21 +646,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   ? <Sun  className="w-[18px] h-[18px]" style={{ color: "#fbbf24" }} />
                   : <Moon className="w-[18px] h-[18px]" style={{ color: "#6366f1" }} />}
               </button>
+
+              {/* User profile (mobile + desktop) */}
               <PersonalAreaDropdown />
-            </div>
 
-            {/* Center: BillBOT+ logo (mobile) / page title (desktop) */}
-            <div className="flex-1 flex justify-center items-center">
-              <Link href="/">
-                <span dir="ltr" className="md:hidden text-[46px] font-black tracking-tight leading-none select-none cursor-pointer active:opacity-70 transition-opacity">
-                  <span className="text-foreground">Bill</span><span className="text-foreground">BOT</span><span className="bg-gradient-to-r from-violet-500 to-blue-500 bg-clip-text text-transparent">+</span>
-                </span>
-              </Link>
-              <span className="hidden md:inline text-[14px] font-semibold text-foreground tracking-wide">{currentLabel}</span>
-            </div>
-
-            {/* Action buttons — desktop only for Upload; mobile has sub-bar below */}
-            <div className="flex items-center gap-2">
+              {/* Desktop action buttons */}
               <button
                 className="hidden sm:flex items-center gap-1.5 h-9 px-3 rounded-[10px] border border-border bg-card text-muted-foreground text-[12px] hover:bg-elevated hover:text-foreground transition-colors whitespace-nowrap shrink-0"
                 title="יומן"
@@ -648,20 +665,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Upload className="w-4 h-4" />
                 <span className="hidden sm:inline">העלה חשבונית</span>
               </button>
-            </div>
 
-            {/* Theme + Bell + Logo */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* Desktop theme + bell + logo */}
               <button
                 onClick={toggleTheme}
                 aria-label="Toggle theme"
-                className="w-9 h-9 rounded-xl border border-white/15 bg-white/5 flex items-center justify-center hover:bg-white/10 transition-all duration-200"
+                className="hidden md:flex w-9 h-9 rounded-xl border border-white/15 bg-white/5 items-center justify-center hover:bg-white/10 transition-all duration-200"
               >
                 {theme === "dark"
                   ? <Sun className="w-4.5 h-4.5 text-warning" />
                   : <Moon className="w-4.5 h-4.5 text-primary" />}
               </button>
-              <button className="relative w-9 h-9 rounded-xl border border-white/15 bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
+              <button className="hidden md:flex relative w-9 h-9 rounded-xl border border-white/15 bg-white/5 items-center justify-center hover:bg-white/10 transition-colors">
                 <Bell className="w-4.5 h-4.5 text-foreground" />
                 <span className="absolute top-1 right-1 w-2 h-2 bg-warning rounded-full" />
               </button>
