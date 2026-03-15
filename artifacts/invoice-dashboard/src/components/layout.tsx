@@ -160,22 +160,22 @@ function MobileSidebar({
         </button>
       </div>
 
-      {/* ── Profile row ── */}
+      {/* ── Profile row (2× size) ── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.06, duration: 0.22 }}
-        className="flex items-center gap-3.5 px-5 py-4 border-b border-white/5 shrink-0"
+        className="flex items-center gap-5 px-6 py-6 border-b border-white/5 shrink-0"
       >
         <div className="relative shrink-0">
-          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/40 to-teal/20 border border-primary/25 flex items-center justify-center">
-            <User className="w-5 h-5 text-primary" />
+          <div className="w-[72px] h-[72px] rounded-2xl bg-gradient-to-br from-primary/40 to-teal/20 border border-primary/25 flex items-center justify-center">
+            <User className="w-8 h-8 text-white" />
           </div>
-          <div className="absolute -bottom-0.5 -left-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-[#1a1d3a]" />
+          <div className="absolute -bottom-0.5 -left-0.5 w-4 h-4 rounded-full bg-green-500 border-[2.5px] border-[#1a1d3a]" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[14px] font-bold text-white truncate leading-tight">{hubUser}</p>
-          <p className="text-[11px] text-white/70 mt-0.5">{planLabel[hubPlan]} · BillBOT+</p>
+          <p className="text-[20px] font-bold text-white truncate leading-tight">{hubUser}</p>
+          <p className="text-[14px] text-white/70 mt-1">{planLabel[hubPlan]} · BillBOT+</p>
         </div>
       </motion.div>
 
