@@ -291,13 +291,21 @@ html.light .dark-panel {
   --muted:               220 15% 20% / 0.06;
   color-scheme: light;
 }
-html.light .dark-panel .text-white     { color: hsl(220 15% 15%)    !important; }
-html.light .dark-panel .text-white\/70 { color: hsl(220 10% 40%)    !important; }
-html.light .dark-panel .text-white\/60 { color: hsl(220 10% 45%)    !important; }
-html.light .dark-panel .text-white\/50 { color: hsl(220 10% 50%)    !important; }
-html.light .dark-panel .text-foreground { color: hsl(220 15% 15%)   !important; }
+html.light .dark-panel .text-white      { color: hsl(220 15% 12%)    !important; }
+html.light .dark-panel .text-white\/90  { color: hsl(220 12% 18%)    !important; }
+html.light .dark-panel .text-white\/80  { color: hsl(220 10% 25%)    !important; }
+html.light .dark-panel .text-white\/70  { color: hsl(220 10% 32%)    !important; }
+html.light .dark-panel .text-white\/60  { color: hsl(220 10% 40%)    !important; }
+html.light .dark-panel .text-white\/50  { color: hsl(220 10% 47%)    !important; }
+html.light .dark-panel .text-white\/40  { color: hsl(220 10% 52%)    !important; }
+html.light .dark-panel .text-white\/30  { color: hsl(220 10% 58%)    !important; }
+html.light .dark-panel .text-white\/25  { color: hsl(220 10% 62%)    !important; }
+html.light .dark-panel .text-white\/20  { color: hsl(220 10% 67%)    !important; }
+html.light .dark-panel .text-white\/10  { color: hsl(220 10% 75%)    !important; }
+html.light .dark-panel .text-white\/8   { color: hsl(220 10% 78%)    !important; }
+html.light .dark-panel .text-foreground { color: hsl(220 15% 12%)    !important; }
 html.light .dark-panel .text-muted-foreground { color: hsl(220 10% 45%) !important; }
-html.light .dark-panel .text-card-foreground  { color: hsl(220 15% 15%) !important; }
+html.light .dark-panel .text-card-foreground  { color: hsl(220 15% 12%) !important; }
 html.light .dark-panel .border-border   { border-color: rgba(60,80,140,0.15) !important; }
 html.light .dark-panel .bg-card         { background-color: rgba(67,97,238,0.06) !important; }
 html.light .dark-panel .bg-muted        { background-color: rgba(67,97,238,0.08) !important; }
