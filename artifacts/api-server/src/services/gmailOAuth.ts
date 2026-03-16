@@ -25,6 +25,7 @@ function getOAuth2Client() {
 }
 
 function getRedirectUri(): string {
+  if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
   const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(",")[0];
   if (domain) return `https://${domain}/api/gmail-auth/callback`;
   return "http://localhost:8080/api/gmail-auth/callback";
@@ -112,14 +113,15 @@ export async function getGmailClient() {
 }
 
 // ── Check connection status ────────────────────────────────────────────────
-export async function getGmailStatus(): Promise<{ connected: boolean; email: string | null; credentialsConfigured: boolean }> {
+export async function getGmailStatus(): Promise<{ connected: boolean; email: string | null; credentialsConfigured: boolean; redirectUri: string }> {
   const credentialsConfigured = !!((process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_ID) && process.env.GOOGLE_CLIENT_SECRET);
+  const redirectUri = getRedirectUri();
   try {
     const { client, email } = await getGmailClient();
     const profile = await client.users.getProfile({ userId: "me" });
-    return { connected: true, email: profile.data.emailAddress ?? email, credentialsConfigured };
+    return { connected: true, email: profile.data.emailAddress ?? email, credentialsConfigured, redirectUri };
   } catch {
-    return { connected: false, email: null, credentialsConfigured };
+    return { connected: false, email: null, credentialsConfigured, redirectUri };
   }
 }
 

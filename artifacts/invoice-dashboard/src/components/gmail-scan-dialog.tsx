@@ -18,6 +18,7 @@ interface GmailStatus {
   connected: boolean;
   email: string | null;
   credentialsConfigured: boolean;
+  redirectUri?: string;
 }
 
 type DatePreset = "1m" | "3m" | "6m" | "1y" | "all";
@@ -224,6 +225,37 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
               </button>
             )}
           </div>
+
+          {/* Redirect URI setup instructions — shown when not connected */}
+          {!loadingStatus && !status?.connected && status?.credentialsConfigured && status?.redirectUri && (
+            <div
+              className="rounded-xl p-3.5 space-y-2"
+              style={{ background: "rgba(251,191,36,0.06)", border: "1px solid rgba(251,191,36,0.2)" }}
+            >
+              <p className="text-[12px] font-semibold text-amber-400 flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                נדרש: הוסף Redirect URI ב-Google Cloud Console
+              </p>
+              <p className="text-[11px] text-white/50 leading-relaxed">
+                כדי לחבר Gmail, יש להוסיף את הכתובת הבאה ב-
+                <strong className="text-white/70"> Google Cloud Console → Credentials → OAuth 2.0 Client → Authorized redirect URIs</strong>:
+              </p>
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded-lg"
+                style={{ background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.1)" }}
+              >
+                <code className="text-[10px] text-teal-300 flex-1 break-all select-all leading-relaxed">
+                  {status.redirectUri}
+                </code>
+                <button
+                  onClick={() => navigator.clipboard.writeText(status.redirectUri!)}
+                  className="shrink-0 text-[10px] px-2 py-1 rounded bg-white/10 text-white/60 hover:text-white hover:bg-white/20 transition-colors"
+                >
+                  העתק
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Add account — locked in trial */}
           <div className="flex items-center gap-2">
