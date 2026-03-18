@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import {
   HelpCircle,
   ChevronDown,
@@ -12,8 +13,13 @@ import {
   ShieldCheck,
   BookOpen,
   ExternalLink,
+  Loader2,
+  CheckCircle2,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
+
+const BASE_URL = import.meta.env.BASE_URL ?? "/";
+const API_BASE = BASE_URL.replace(/\/$/, "") + "/api";
 
 interface FAQItem {
   q: string;
@@ -56,10 +62,10 @@ const FAQ_ITEMS: FAQItem[] = [
 ];
 
 const QUICK_LINKS = [
-  { icon: Upload, label: "מדריך העלאת חשבוניות", color: "text-primary bg-primary/10" },
-  { icon: Zap, label: "הגדרת אינטגרציות", color: "text-amber-500 bg-amber-500/10" },
-  { icon: FileText, label: 'ייצוא לרו"ח', color: "text-emerald-500 bg-emerald-500/10" },
-  { icon: ShieldCheck, label: "אבטחה ופרטיות", color: "text-violet-500 bg-violet-500/10" },
+  { icon: Upload, label: "העלאת חשבוניות", color: "text-primary bg-primary/10", href: "/expenses" },
+  { icon: Zap, label: "הגדרת אינטגרציות", color: "text-amber-500 bg-amber-500/10", href: "/integrations" },
+  { icon: FileText, label: 'ייצוא לרו"ח', color: "text-emerald-500 bg-emerald-500/10", href: "/expenses" },
+  { icon: ShieldCheck, label: "אבטחה ופרטיות", color: "text-violet-500 bg-violet-500/10", href: "/settings" },
 ];
 
 function FAQAccordion({ items }: { items: FAQItem[] }) {
@@ -92,14 +98,40 @@ function FAQAccordion({ items }: { items: FAQItem[] }) {
 }
 
 export default function HelpPage() {
+  const [, navigate] = useLocation();
   const [contactForm, setContactForm] = useState({ name: "", email: "", message: "" });
   const [sent, setSent] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSent(true);
-    setContactForm({ name: "", email: "", message: "" });
-    setTimeout(() => setSent(false), 4000);
+    setSending(true);
+    setSendError(null);
+    try {
+      const res = await fetch(`${API_BASE}/email-connectors/support`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: `פנייה מ-${contactForm.name}: תמיכה BillBOT+`,
+          body: `שם: ${contactForm.name}\nמייל: ${contactForm.email}\n\n${contactForm.message}`,
+          from_name: contactForm.name,
+          from_email: contactForm.email,
+        }),
+      });
+      if (res.ok) {
+        setSent(true);
+        setContactForm({ name: "", email: "", message: "" });
+        setTimeout(() => setSent(false), 5000);
+      } else {
+        const data = await res.json().catch(() => ({})) as { error?: string };
+        setSendError(data.error ?? "שגיאה בשליחה, נסה שוב.");
+      }
+    } catch {
+      setSendError("לא ניתן להתחבר לשרת. בדוק את החיבור לאינטרנט ונסה שוב.");
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -123,7 +155,8 @@ export default function HelpPage() {
             {QUICK_LINKS.map((link) => (
               <button
                 key={link.label}
-                className="flex flex-col items-center gap-2 p-4 bg-card border border-border rounded-2xl text-center hover:bg-muted/40 transition-colors group"
+                onClick={() => navigate(link.href)}
+                className="flex flex-col items-center gap-2 p-4 bg-card border border-border rounded-2xl text-center hover:bg-muted/40 hover:border-primary/40 transition-colors group cursor-pointer"
               >
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${link.color}`}>
                   <link.icon className="w-5 h-5" />
@@ -213,16 +246,23 @@ export default function HelpPage() {
                 placeholder="תאר את הבעיה או השאלה שלך..."
               />
             </div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               {sent && (
-                <p className="text-sm text-emerald-500 font-medium">ההודעה נשלחה בהצלחה!</p>
+                <div className="flex items-center gap-1.5 text-sm text-emerald-500 font-medium">
+                  <CheckCircle2 className="w-4 h-4" />
+                  ההודעה נשלחה בהצלחה!
+                </div>
+              )}
+              {sendError && (
+                <p className="text-sm text-destructive">{sendError}</p>
               )}
               <button
                 type="submit"
-                className="mr-auto flex items-center gap-2 h-9 px-5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors"
+                disabled={sending}
+                className="mr-auto flex items-center gap-2 h-9 px-5 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <Send className="w-4 h-4" />
-                שלח הודעה
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                {sending ? "שולח..." : "שלח הודעה"}
               </button>
             </div>
           </form>

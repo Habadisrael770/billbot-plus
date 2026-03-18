@@ -123,6 +123,7 @@ function MobileSidebar({
 }) {
   const { theme } = useTheme();
   const lm = theme === "light"; // light-mode shorthand
+  const [bellTooltip, setBellTooltip] = useState(false);
   const hubUserData = (() => {
     try {
       const raw = localStorage.getItem("bb_user");
@@ -165,12 +166,24 @@ function MobileSidebar({
     >
       {/* ── Header bar ── */}
       <div className={`flex items-center justify-between px-5 pt-5 pb-5 shrink-0 border-b ${lm ? "border-black/8" : "border-white/8"}`}>
-        <button
-          onClick={onClose}
-          className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all ${lm ? "bg-white border border-black/8 shadow-sm" : "bg-white/5 border border-white/10"}`}
-        >
-          <Bell className="w-4 h-4 text-white/50" />
-        </button>
+        {/* Bell — notification indicator only, not close */}
+        <div className="relative">
+          <button
+            onClick={() => setBellTooltip((v) => !v)}
+            className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all ${lm ? "bg-white border border-black/8 shadow-sm" : "bg-white/5 border border-white/10"}`}
+            aria-label="התראות"
+          >
+            <Bell className="w-4 h-4 text-white/50" />
+          </button>
+          {bellTooltip && (
+            <div
+              className="absolute top-11 right-0 z-50 bg-card border border-border rounded-[10px] px-3 py-2 text-xs text-muted-foreground whitespace-nowrap shadow-lg"
+              dir="rtl"
+            >
+              אין התראות חדשות
+            </div>
+          )}
+        </div>
 
         <div className="flex items-center gap-2">
           <span dir="ltr" className="text-[18px] font-black text-white tracking-tight">BillBOT+</span>
@@ -181,9 +194,11 @@ function MobileSidebar({
           }`}>{planLabel[hubPlan] ?? "חינם"}</span>
         </div>
 
+        {/* X — close sidebar */}
         <button
           onClick={onClose}
           className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-95 transition-all ${lm ? "bg-white border border-black/8 shadow-sm" : "bg-white/5 border border-white/10"}`}
+          aria-label="סגור תפריט"
         >
           <X className="w-4 h-4 text-white/50" />
         </button>

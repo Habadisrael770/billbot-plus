@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { Loader2, Mail, Lock, Eye, EyeOff, X } from "lucide-react";
 
 const API_BASE = `${import.meta.env.BASE_URL}api`.replace(/\/+/g, "/").replace(/\/$/, "");
 
@@ -18,6 +18,8 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
   const [error, setError]           = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passError, setPassError]   = useState<string | null>(null);
+  const [showForgot, setShowForgot] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
 
   // Handle return from Google OAuth
   useEffect(() => {
@@ -96,6 +98,7 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
   const loading = loadingGoogle || loadingEmail;
 
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       dir="rtl"
@@ -209,6 +212,7 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
                 </label>
                 <button
                   type="button"
+                  onClick={() => setShowForgot(true)}
                   className="text-[12px] font-medium transition-opacity hover:opacity-70"
                   style={{ color: "#5a75dc" }}
                   tabIndex={-1}
@@ -340,7 +344,7 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
             אין לך חשבון?{" "}
             <button
               type="button"
-              onClick={onSkip}
+              onClick={() => setShowRegister(true)}
               className="font-semibold transition-opacity hover:opacity-70"
               style={{ color: "#5a75dc" }}
             >
@@ -350,6 +354,98 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
         </div>
       </motion.div>
     </div>
+    {/* ── Forgot Password Modal ── */}
+    <AnimatePresence>
+      {showForgot && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60"
+          onClick={() => setShowForgot(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 16 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-[400px] rounded-2xl p-6 space-y-4"
+            style={{ background: "#1f263f", border: "1px solid rgba(255,255,255,0.12)" }}
+            dir="rtl"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-[18px] font-bold" style={{ color: "#f8fafc" }}>איפוס סיסמה</h2>
+              <button onClick={() => setShowForgot(false)} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
+                <X style={{ width: 18, height: 18, color: "#8899bb" }} />
+              </button>
+            </div>
+            <div className="text-center py-3 space-y-3">
+              <div className="text-4xl">🔐</div>
+              <p className="font-semibold text-[15px]" style={{ color: "#f8fafc" }}>שחזור סיסמה — בקרוב</p>
+              <p className="text-[13px] leading-relaxed" style={{ color: "#8899bb" }}>
+                האפשרות לאיפוס סיסמה בדוא"ל תהיה זמינה בגרסה הבאה.
+                בינתיים, ניתן להתחבר עם Google.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowForgot(false)}
+              className="w-full h-11 rounded-[10px] font-bold text-[14px] text-white transition-all"
+              style={{ background: "linear-gradient(135deg, #5a75dc 0%, #4a65cc 100%)" }}
+            >
+              סגור
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    {/* ── Register Info Modal ── */}
+    <AnimatePresence>
+      {showRegister && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60"
+          onClick={() => setShowRegister(false)}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 16 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-[400px] rounded-2xl p-6 space-y-4"
+            style={{ background: "#1f263f", border: "1px solid rgba(255,255,255,0.12)" }}
+            dir="rtl"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-[18px] font-bold" style={{ color: "#f8fafc" }}>הרשמה ל-BillBOT+</h2>
+              <button onClick={() => setShowRegister(false)} className="p-1 rounded-lg hover:bg-white/10 transition-colors">
+                <X style={{ width: 18, height: 18, color: "#8899bb" }} />
+              </button>
+            </div>
+            <div className="text-center py-2 space-y-3">
+              <div className="text-4xl">🚀</div>
+              <p className="font-semibold text-[16px]" style={{ color: "#f8fafc" }}>ההרשמה בקרוב!</p>
+              <p className="text-[13px] leading-relaxed" style={{ color: "#8899bb" }}>
+                מערכת ההרשמה העצמאית עומדת להיפתח. בינתיים, ניתן להתחבר דרך Google
+                ולהתחיל את תקופת הניסיון החינמית.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setShowRegister(false); onSkip(); }}
+              className="w-full h-11 rounded-[10px] font-bold text-[14px] text-white transition-all"
+              style={{ background: "linear-gradient(135deg, #5a75dc 0%, #4a65cc 100%)" }}
+            >
+              המשך כאורח — ניסיון חינם
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+    </>
   );
 }
 

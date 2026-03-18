@@ -67,6 +67,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
   const [gmailEmail,     setGmailEmail]     = useState("");
   const [connecting, setConnecting]         = useState(false);
   const [errors, setErrors] = useState<{ bizName?: string; phone?: string }>({});
+  const [planError, setPlanError] = useState(false);
 
   // Restore progress
   useEffect(() => {
@@ -108,7 +109,11 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
 
   const next = () => {
     if (step === 0 && !validateStep1()) return;
-    if (step === 1 && !plan) return;
+    if (step === 1 && !plan) {
+      setPlanError(true);
+      return;
+    }
+    setPlanError(false);
     setDir(1);
     setStep((s) => Math.min(s + 1, TOTAL - 1));
   };
@@ -272,7 +277,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                         return (
                           <button
                             key={p.id}
-                            onClick={() => setPlan(p.id)}
+                            onClick={() => { setPlan(p.id); setPlanError(false); }}
                             className={`relative flex flex-col p-3.5 rounded-[14px] text-right border-2 transition-all ${
                               p.highlighted
                                 ? active ? "border-primary bg-primary/10" : "border-primary/50 bg-primary/5 hover:bg-primary/8"
@@ -304,7 +309,14 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
                         );
                       })}
                     </div>
-                    {!plan && <p className="text-center text-[11px] text-muted-foreground">בחרו תוכנית להמשיך</p>}
+                    {planError && !plan && (
+                      <p className="text-center text-[12px] font-medium text-destructive">
+                        יש לבחור מסלול כדי להמשיך
+                      </p>
+                    )}
+                    {!planError && !plan && (
+                      <p className="text-center text-[11px] text-muted-foreground">בחרו תוכנית להמשיך</p>
+                    )}
                   </div>
                 )}
 
@@ -434,7 +446,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
             {!(step === 2 && !gmailConnected) && (
               <button
                 onClick={next}
-                disabled={!canNext()}
+                disabled={step === 1 ? false : !canNext()}
                 className="btn-primary h-9 flex-1 justify-center disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {step === 2 && gmailConnected ? <><Sparkles className="w-3.5 h-3.5" /> סיום וכניסה</> : <>המשך <ChevronLeft className="w-3.5 h-3.5 rotate-180" /></>}

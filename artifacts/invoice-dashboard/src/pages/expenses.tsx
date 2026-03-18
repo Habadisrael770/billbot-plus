@@ -374,7 +374,86 @@ export default function ExpensesPage() {
         </div>
       </motion.div>
 
-      {/* ── Table ── */}
+      {/* ── Grid View ── */}
+      {view === "grid" && (
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          dir="rtl"
+        >
+          {filtered.length === 0 ? (
+            <div className="bg-card border border-border rounded-[14px] px-4 py-16 text-center text-muted-foreground" style={{ boxShadow: "var(--shadow-card)" }}>
+              לא נמצאו הוצאות
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filtered.map((inv, idx) => {
+                const statusInfo = STATUS_MAP[inv.status] ?? STATUS_MAP["pending_review"];
+                const srcKey = (inv.sourceType ?? "upload").toLowerCase();
+                const srcInfo = SOURCE_LABELS[srcKey] ?? SOURCE_LABELS.upload;
+                const cat = inv.finalCategory ?? inv.suggestedCategory ?? "לא מסווג";
+                const vendorDisplay = inv.canonicalVendorName ?? inv.normalizedVendorName ?? inv.rawVendorName ?? "—";
+                const initials = vendorDisplay.split(" ").slice(0, 2).map((w: string) => w[0] ?? "").join("").toUpperCase() || "?";
+
+                return (
+                  <motion.div
+                    key={inv.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.03 }}
+                    className="bg-card border border-border rounded-[14px] p-4 flex flex-col gap-3 hover:border-primary/40 transition-colors"
+                    style={{ boxShadow: "var(--shadow-card)" }}
+                  >
+                    {/* Header */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+                        {initials}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-foreground truncate text-sm">{vendorDisplay}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {inv.invoiceDate ? format(new Date(inv.invoiceDate), "dd/MM/yyyy") : "—"}
+                        </p>
+                      </div>
+                      <p className="font-bold text-foreground text-sm shrink-0" dir="ltr">{fmtAmount(inv.total)}</p>
+                    </div>
+
+                    {/* Category + Source */}
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="badge-primary text-[10px]">{cat}</span>
+                      <span className={`${srcInfo.cls} text-[10px]`}>{srcInfo.label}</span>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
+                      <span className={`${statusInfo.cls} text-[11px]`}>{statusInfo.label}</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="h-7 w-7 flex items-center justify-center rounded-[8px] border border-border text-muted-foreground hover:text-foreground hover:bg-elevated transition-all">
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-[140px] bg-card border-border" style={{ boxShadow: "var(--shadow-dropdown)" }}>
+                          <DropdownMenuItem className="gap-2 cursor-pointer text-success focus:text-success focus:bg-elevated" onClick={() => handleApprove(inv.id)}>
+                            <CheckCircle2 className="w-3.5 h-3.5" />אשר
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-elevated" onClick={handleDownload}>
+                            <FileDown className="w-3.5 h-3.5" />הורד PDF
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </motion.div>
+      )}
+
+      {/* ── Table View ── */}
+      {view === "list" && (
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -503,7 +582,7 @@ export default function ExpensesPage() {
                             <MoreVertical className="w-4 h-4" />
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="center" className="min-w-[140px] bg-card border-border" style={{ boxShadow: "var(--shadow-dropdown)" }} dir="rtl">
+                        <DropdownMenuContent align="center" className="min-w-[140px] bg-card border-border" style={{ boxShadow: "var(--shadow-dropdown)" }}>
                           <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-elevated">
                             <Eye className="w-3.5 h-3.5" />
                             צפה
@@ -568,6 +647,7 @@ export default function ExpensesPage() {
           )}
         </div>
       </motion.div>
+      )}
     </Layout>
   );
 }

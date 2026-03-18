@@ -165,6 +165,15 @@ router.post("/scan", (_req, res) => {
   res.json({ count: 0, error: "השתמש ב-Gmail OAuth." });
 });
 
+router.post("/support", (req, res) => {
+  const { subject, body, from_name, from_email } = req.body ?? {};
+  if (!from_name || !from_email || !body) {
+    return res.status(400).json({ error: "נא למלא את כל השדות" });
+  }
+  console.log("[SUPPORT MESSAGE]", { subject, from_name, from_email, body });
+  return res.json({ ok: true, message: "ההודעה התקבלה. ניצור קשר בקרוב." });
+});
+
 export default router;
 
 interface GmailPart {
