@@ -74,6 +74,19 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
     if (isOpen) { loadStatus(); setResult(null); setScanning(false); }
   }, [isOpen]);
 
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.data?.type === "GMAIL_CONNECTED") {
+        loadStatus();
+        toast({ title: "Gmail מחובר!", description: e.data.email });
+      } else if (e.data?.type === "GMAIL_ERROR") {
+        toast({ title: "שגיאה בחיבור Gmail", description: e.data.error, variant: "destructive" });
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
   const handleConnectGmail = async () => {
     if (!status?.credentialsConfigured) {
       toast({ title: "דרושה הגדרה", description: "יש לקבוע GOOGLE_CLIENT_ID ו-GOOGLE_CLIENT_SECRET", variant: "destructive" });
