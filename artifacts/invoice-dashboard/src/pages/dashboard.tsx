@@ -675,34 +675,54 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Action bar (shares grid columns with stat cards) ── */}
-      {/* Search + filters row — hidden on mobile (search is in the layout header bar) */}
-      <div className="hidden sm:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 items-center mb-3" dir="rtl">
-        <div className="hidden xl:block" />
-        <div className="hidden xl:block" />
+      {/* ── Desktop toolbar: month picker + actions ── */}
+      <div className="hidden sm:flex items-center justify-between gap-3 mb-1" dir="rtl">
 
-        {/* Search field */}
-        <div className="col-span-2 sm:col-span-1 xl:col-span-1">
-          <div className="relative">
-            <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-            <input
-              type="text"
-              placeholder="חיפוש ספק, מספר..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              dir="rtl"
-              className="search-bar h-10 pr-9 pl-3"
-            />
-          </div>
-        </div>
-
-        {/* Date range */}
-        <div className="col-span-2 lg:col-span-2 xl:col-span-3 flex items-center gap-2">
-          <button className="btn-secondary h-10 px-3 sm:px-4 whitespace-nowrap shrink-0" dir="rtl">
+        {/* Month picker */}
+        <div
+          className="flex items-center gap-1 h-10 rounded-[10px] px-2 border border-border bg-card"
+          style={{ minWidth: 200 }}
+        >
+          <button
+            onClick={prevMonth}
+            className="w-7 h-7 flex items-center justify-center rounded-[7px] hover:bg-elevated text-muted-foreground hover:text-foreground transition-colors active:scale-90"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <div className="flex items-center gap-2 flex-1 justify-center">
             <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
-            <span className="text-[13px]">{monthStart} - {monthEnd}</span>
+            <span className="text-[13px] font-semibold text-foreground whitespace-nowrap">
+              {monthStart} — {monthEnd}
+            </span>
+          </div>
+          <button
+            onClick={nextMonth}
+            disabled={selectedMonth.year === now.getFullYear() && selectedMonth.month === now.getMonth()}
+            className="w-7 h-7 flex items-center justify-center rounded-[7px] hover:bg-elevated text-muted-foreground hover:text-foreground transition-colors active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setUploadOpen(true)}
+            className="h-10 px-4 rounded-[10px] flex items-center gap-2 text-[13px] font-semibold text-white whitespace-nowrap active:scale-95 transition-all"
+            style={{ background: "linear-gradient(90deg, #4361ee, #2dd4bf)" }}
+          >
+            <Upload className="w-4 h-4" />
+            העלה חשבונית
+          </button>
+          <button
+            onClick={() => setGmailScanOpen(true)}
+            className="h-10 px-4 rounded-[10px] flex items-center gap-2 text-[13px] font-semibold whitespace-nowrap active:scale-95 transition-all border border-border bg-card text-foreground hover:bg-elevated"
+          >
+            <MailOpen className="w-4 h-4" />
+            סרוק מייל
+          </button>
+        </div>
+
       </div>
 
       {/* ── 6 Stat cards ── */}
