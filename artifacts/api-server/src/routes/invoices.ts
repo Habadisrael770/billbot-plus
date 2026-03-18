@@ -14,6 +14,7 @@ import {
 } from "../services/invoiceProcessingService.js";
 import { mergeVendorAlias } from "../services/vendorService.js";
 import { extractInvoiceFromFile } from "../services/aiExtractService.js";
+import { getGmailClient } from "../services/gmailOAuth.js";
 
 const router: IRouter = Router();
 
@@ -669,22 +670,24 @@ router.post("/send-accountant-email", async (req, res) => {
     const { toEmail, from, to } = req.body as { toEmail?: string; from?: string; to?: string };
     if (!toEmail?.trim()) { res.status(400).json({ error: "כתובת מייל חסרה" }); return; }
 
+    // Get Gmail client using stored OAuth tokens
+    let gmailClient: Awaited<ReturnType<typeof getGmailClient>>;
+    try {
+      gmailClient = await getGmailClient();
+    } catch {
+      res.status(503).json({ error: "Gmail לא מחובר. חבר את Gmail בהגדרות ← אינטגרציות לפני שליחת דוח במייל." });
+      return;
+    }
+
     const rows = await fetchExportRows(from, to);
     const HOST = process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:3000";
     const xlsxBuffer = buildXlsx(rows, HOST);
     const dateTag = new Date().toLocaleDateString("he-IL").replace(/\//g, "-");
 
-    // Use Gmail via googleapis (service account or OAuth token)
-    const { google } = await import("googleapis");
-    const auth = new google.auth.GoogleAuth({
-      scopes: ["https://www.googleapis.com/auth/gmail.send"],
-    });
-    const gmail = google.gmail({ version: "v1", auth });
-
     const base64xlsx = xlsxBuffer.toString("base64");
     const boundary = "BillBOT_boundary";
     const rawEmail = [
-      `From: me`,
+      `From: ${gmailClient.email}`,
       `To: ${toEmail.trim()}`,
       `Subject: =?UTF-8?B?${Buffer.from(`דוח חשבוניות BillBOT+ — ${dateTag}`).toString("base64")}?=`,
       `MIME-Version: 1.0`,
@@ -705,7 +708,7 @@ router.post("/send-accountant-email", async (req, res) => {
     ].join("\r\n");
 
     const encodedEmail = Buffer.from(rawEmail).toString("base64url");
-    await gmail.users.messages.send({ userId: "me", requestBody: { raw: encodedEmail } });
+    await gmailClient.client.users.messages.send({ userId: "me", requestBody: { raw: encodedEmail } });
 
     res.json({ success: true, message: `הדוח נשלח ל-${toEmail}` });
   } catch (err) {
@@ -787,10 +790,10 @@ router.post("/send-accountant", async (_req, res) => {
     const tgData = await tgRes.json() as { ok: boolean; description?: string };
     if (!tgData.ok) throw new Error(tgData.description ?? "Telegram API error");
 
-    res.json({ success: true, message: "הדוח נשלח בהצלחה" });
+    res.json({ ok: true, success: true, message: "הדוח נשלח בהצלחה" });
   } catch (err) {
     console.error("send-accountant error:", err);
-    res.status(500).json({ error: err instanceof Error ? err.message : "שגיאה בשליחה" });
+    res.status(500).json({ ok: false, error: err instanceof Error ? err.message : "שגיאה בשליחה" });
   }
 });
 
