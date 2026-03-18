@@ -26,8 +26,11 @@ import {
   FileSpreadsheet,
   CalendarDays,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ArrowLeft,
   Receipt,
+  MailOpen,
 } from "lucide-react";
 import { useInvoices, useInvoiceSummary, useInvoiceMutations } from "@/hooks/use-invoices";
 import { Layout } from "@/components/layout";
@@ -54,6 +57,8 @@ import { OptimizeWidget } from "@/components/optimize-widget";
 import { MergeAliasDialog } from "@/components/merge-alias-dialog";
 import { EmailScanModal } from "@/components/email-scan-modal";
 import { SendToAccountantModal } from "@/components/send-to-accountant-modal";
+import { GmailScanDialog } from "@/components/gmail-scan-dialog";
+import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
 
 const BASE_URL = import.meta.env.BASE_URL ?? "/";
 const API_BASE = BASE_URL.replace(/\/$/, "") + "/api";
@@ -537,6 +542,10 @@ export default function Dashboard() {
   const { data: summary } = useInvoiceSummary();
   const { approve, markNotDuplicate, mergeAlias, updateCategory, isPending } = useInvoiceMutations();
 
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [gmailScanOpen, setGmailScanOpen] = useState(false);
   const [filter, setFilter] = useState<FilterType>("all");
   const { search, setSearch } = useSearch();
   const [emailOpen, setEmailOpen] = useState(false);
@@ -548,9 +557,37 @@ export default function Dashboard() {
     rawVendorName: string | null;
   }>({ isOpen: false, invoiceId: null, rawVendorName: null });
 
-  const filteredInvoices = useMemo(() => {
+  const prevMonth = () => setSelectedMonth(({ year, month }) =>
+    month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 }
+  );
+  const nextMonth = () => setSelectedMonth(({ year, month }) => {
+    const nm = month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 };
+    const isAfterNow = nm.year > now.getFullYear() || (nm.year === now.getFullYear() && nm.month > now.getMonth());
+    return isAfterNow ? { year, month } : nm;
+  });
+
+  // Date-filtered invoices based on selected month
+  const dateFilteredInvoices = useMemo(() => {
     if (!invoices) return [];
-    let result = invoices as InvoiceRow[];
+    return (invoices as InvoiceRow[]).filter((inv) => {
+      if (!inv.invoiceDate) return false;
+      const d = new Date(inv.invoiceDate);
+      return d.getFullYear() === selectedMonth.year && d.getMonth() === selectedMonth.month;
+    });
+  }, [invoices, selectedMonth]);
+
+  // Summary computed from date-filtered invoices
+  const filteredSummary = useMemo(() => ({
+    total_documents: dateFilteredInvoices.length,
+    supplier_invoices: dateFilteredInvoices.filter((i) => i.documentType === "supplier_invoice" || i.documentType === "invoice").length,
+    total_amount: dateFilteredInvoices.reduce((s, i) => s + (Number(i.total) || 0), 0),
+    total_vat: dateFilteredInvoices.reduce((s, i) => s + (Number(i.vat) || 0), 0),
+    pending_review: dateFilteredInvoices.filter((i) => i.status === "pending_review").length,
+    suspected_duplicates: dateFilteredInvoices.filter((i) => i.duplicateStatus !== "unique").length,
+  }), [dateFilteredInvoices]);
+
+  const filteredInvoices = useMemo(() => {
+    let result = dateFilteredInvoices;
     if (filter === "pending") result = result.filter((i) => i.status === "pending_review");
     if (filter === "approved") result = result.filter((i) => i.status === "approved");
     if (filter === "duplicates") result = result.filter((i) => i.duplicateStatus !== "unique");
@@ -566,7 +603,7 @@ export default function Dashboard() {
       );
     }
     return result;
-  }, [invoices, filter, search]);
+  }, [dateFilteredInvoices, filter, search]);
 
   const openMerge = useCallback((inv: InvoiceRow) =>
     setMergeDialog({ isOpen: true, invoiceId: inv.id, rawVendorName: inv.rawVendorName ?? null }),
@@ -577,13 +614,10 @@ export default function Dashboard() {
     setEmailOpen(true);
   };
 
-  const now = new Date();
-  const monthStart = format(new Date(now.getFullYear(), now.getMonth(), 1), "d MMM yyyy");
-  const monthEnd = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), "d MMM yyyy");
-
-  // Current month label (Hebrew style)
-  const monthLabel = format(now, "MMMM yyyy");
-  const recentInvoices = useMemo(() => (invoices ?? []).slice(0, 3) as InvoiceRow[], [invoices]);
+  const monthStart = format(new Date(selectedMonth.year, selectedMonth.month, 1), "d MMM yyyy");
+  const monthEnd = format(new Date(selectedMonth.year, selectedMonth.month + 1, 0), "d MMM yyyy");
+  const monthLabel = format(new Date(selectedMonth.year, selectedMonth.month, 1), "MMMM yyyy");
+  const recentInvoices = useMemo(() => dateFilteredInvoices.slice(0, 3) as InvoiceRow[], [dateFilteredInvoices]);
 
   // Greeting by hour
   const hour = now.getHours();
@@ -600,13 +634,55 @@ export default function Dashboard() {
   return (
     <Layout>
       {/* ── Page heading ── */}
-      <div className="mb-5" dir="rtl">
+      <div className="mb-4" dir="rtl">
         <h1 className="text-[22px] sm:text-[26px] font-black text-foreground leading-tight tracking-tight">
           {userName ? `${greeting}, ${userName.split(" ")[0]} 👋` : "דשבורד"}
         </h1>
         <p className="text-[13px] text-muted-foreground mt-1">
           סקירה כללית עבור {monthLabel}
         </p>
+
+        {/* ── Mobile action row: month picker + upload + scan ── */}
+        <div className="sm:hidden flex items-center gap-2 mt-3">
+          {/* Month picker */}
+          <div className="flex items-center gap-1 flex-1 min-w-0 h-10 rounded-[10px] border border-border bg-card px-2">
+            <button
+              onClick={prevMonth}
+              className="w-7 h-7 flex items-center justify-center rounded-[7px] hover:bg-elevated transition-colors text-muted-foreground hover:text-foreground active:scale-90"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <span className="flex-1 text-center text-[13px] font-semibold text-foreground truncate">
+              {monthLabel}
+            </span>
+            <button
+              onClick={nextMonth}
+              className="w-7 h-7 flex items-center justify-center rounded-[7px] hover:bg-elevated transition-colors text-muted-foreground hover:text-foreground active:scale-90"
+              disabled={selectedMonth.year === now.getFullYear() && selectedMonth.month === now.getMonth()}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Upload invoice */}
+          <button
+            onClick={() => setUploadOpen(true)}
+            className="h-10 px-3 rounded-[10px] flex items-center gap-1.5 text-[12px] font-semibold text-white whitespace-nowrap shrink-0 active:scale-95 transition-all"
+            style={{ background: "linear-gradient(90deg, #4361ee, #2dd4bf)" }}
+          >
+            <Upload className="w-3.5 h-3.5" />
+            העלה
+          </button>
+
+          {/* Scan email */}
+          <button
+            onClick={() => setGmailScanOpen(true)}
+            className="h-10 px-3 rounded-[10px] flex items-center gap-1.5 text-[12px] font-semibold whitespace-nowrap shrink-0 active:scale-95 transition-all border border-border bg-card text-foreground hover:bg-elevated"
+          >
+            <MailOpen className="w-3.5 h-3.5" />
+            סרוק מייל
+          </button>
+        </div>
       </div>
 
       {/* ── Action bar (shares grid columns with stat cards) ── */}
@@ -643,45 +719,45 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         <StatCard
           title="סה״כ מסמכים"
-          value={summary?.total_documents ?? invoices?.length ?? 0}
+          value={filteredSummary.total_documents}
           icon={<Files className="w-5 h-5 sm:w-6 sm:h-6" />}
           delay={0}
         />
         <StatCard
           title="חשבוניות ספק"
-          value={summary?.supplier_invoices ?? 0}
+          value={filteredSummary.supplier_invoices}
           icon={<ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />}
           delay={0.05}
         />
         <StatCard
           title="סה״כ חשבוניות"
-          value={summary?.total_amount
-            ? `₪${Number(summary.total_amount).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`
+          value={filteredSummary.total_amount
+            ? `₪${filteredSummary.total_amount.toLocaleString("he-IL", { maximumFractionDigits: 0 })}`
             : "₪0"}
           icon={<Banknote className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />}
           delay={0.1}
         />
         <StatCard
           title="סה״כ מע״מ"
-          value={summary?.total_vat
-            ? `₪${Number(summary.total_vat).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`
+          value={filteredSummary.total_vat
+            ? `₪${filteredSummary.total_vat.toLocaleString("he-IL", { maximumFractionDigits: 0 })}`
             : "₪0"}
           icon={<Tag className="w-5 h-5 sm:w-6 sm:h-6 text-violet-400" />}
           delay={0.15}
         />
         <StatCard
           title="ממתינות לאישור"
-          value={summary?.pending_review ?? 0}
+          value={filteredSummary.pending_review}
           icon={<Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />}
           delay={0.2}
         />
         <StatCard
           title="חשודות בכפילות"
-          value={summary?.suspected_duplicates ?? 0}
+          value={filteredSummary.suspected_duplicates}
           icon={<Copy className="w-5 h-5 sm:w-6 sm:h-6 text-rose-400" />}
           trend={
-            summary && summary.total_documents > 0
-              ? `${((summary.suspected_duplicates / summary.total_documents) * 100).toFixed(1)}%`
+            filteredSummary.total_documents > 0
+              ? `${((filteredSummary.suspected_duplicates / filteredSummary.total_documents) * 100).toFixed(1)}%`
               : undefined
           }
           trendUp={false}
@@ -1031,6 +1107,16 @@ export default function Dashboard() {
         isOpen={accountantOpen}
         onClose={() => setAccountantOpen(false)}
         invoiceCount={invoices?.length ?? 0}
+      />
+
+      <UploadInvoiceModal
+        isOpen={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+      />
+
+      <GmailScanDialog
+        isOpen={gmailScanOpen}
+        onClose={() => setGmailScanOpen(false)}
       />
     </Layout>
   );
