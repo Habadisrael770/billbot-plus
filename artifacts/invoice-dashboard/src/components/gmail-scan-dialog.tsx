@@ -80,11 +80,19 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
       return;
     }
     setConnectingGmail(true);
+    // Open blank window synchronously (before any await) to avoid popup blocker
+    const authWindow = window.open("", "_blank", "width=520,height=620,left=200,top=100");
     try {
       const res = await fetch(`${API_BASE}/gmail-auth/url`);
       const { url } = await res.json();
-      if (url) window.location.href = url;
+      if (url && authWindow) {
+        authWindow.location.href = url;
+      } else if (!authWindow) {
+        // Fallback if popup was blocked
+        if (url) window.open(url, "_blank");
+      }
     } catch {
+      authWindow?.close();
       toast({ title: "שגיאה", description: "לא ניתן לפתוח חיבור Gmail", variant: "destructive" });
     } finally {
       setConnectingGmail(false);
