@@ -18,7 +18,7 @@ import {
   Moon,
   Gift,
   Upload,
-  CalendarDays,
+
   Camera,
   Crown,
   Menu,
@@ -653,18 +653,19 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
               {/* Desktop action buttons */}
               <button
-                className="hidden sm:flex items-center gap-1.5 h-9 px-3 rounded-[10px] border border-border bg-card text-muted-foreground text-[12px] hover:bg-elevated hover:text-foreground transition-colors whitespace-nowrap shrink-0"
-                title="יומן"
+                onClick={() => setGmailScanOpen(true)}
+                className="hidden md:flex items-center gap-1.5 h-9 px-3 rounded-[10px] border border-border bg-card text-muted-foreground text-[12px] hover:bg-elevated hover:text-foreground transition-colors whitespace-nowrap shrink-0"
+                title="סרוק מייל"
               >
-                <CalendarDays className="w-4 h-4 shrink-0" />
-                <span className="hidden md:inline">יומן</span>
+                <MailOpen className="w-4 h-4 shrink-0" />
+                <span>סרוק מייל</span>
               </button>
               <button
                 onClick={() => setUploadOpen(true)}
-                className="hidden sm:flex btn-primary h-9 px-4 py-0 text-[12px]"
+                className="hidden md:flex btn-primary h-9 px-4 py-0 text-[12px]"
               >
                 <Upload className="w-4 h-4" />
-                <span className="hidden sm:inline">העלה חשבונית</span>
+                <span>העלה חשבונית</span>
               </button>
 
               {/* Desktop theme + bell + logo */}
