@@ -10,6 +10,7 @@ const SCOPES = [
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/userinfo.profile",
 ];
+// NOTE: gmail.readonly is a restricted scope — requires test user OR verified app
 
 function getOAuth2Client() {
   const clientId     = process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_ID;
