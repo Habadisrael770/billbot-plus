@@ -105,6 +105,37 @@ router.get("/", async (_req, res) => {
 });
 
 /**
+ * GET /api/invoices/:id/file
+ * Streams the original invoice file (PDF / image).
+ */
+router.get("/:id/file", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [inv] = await db
+      .select({ filePath: invoicesTable.file_path })
+      .from(invoicesTable)
+      .where(eq(invoicesTable.id, id))
+      .limit(1);
+
+    if (!inv) return res.status(404).json({ error: "Invoice not found" });
+
+    const absPath = path.isAbsolute(inv.filePath)
+      ? inv.filePath
+      : path.resolve(process.cwd(), inv.filePath);
+
+    if (!fs.existsSync(absPath)) {
+      return res.status(404).json({ error: "File not found on disk" });
+    }
+
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    return res.sendFile(absPath);
+  } catch (err) {
+    console.error("Failed to serve invoice file:", err);
+    return res.status(500).json({ error: "Failed to serve file" });
+  }
+});
+
+/**
  * GET /api/invoices/summary
  * Returns aggregate stats for the dashboard summary cards.
  */

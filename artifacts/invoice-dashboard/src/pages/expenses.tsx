@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO, isValid } from "date-fns";
 import {
   Search,
@@ -18,6 +18,9 @@ import {
   X,
   TrendingUp,
   PieChart as PieIcon,
+  AlertTriangle,
+  FileText,
+  ExternalLink,
 } from "lucide-react";
 import {
   AreaChart,
@@ -115,7 +118,22 @@ export default function ExpensesPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("הכל");
+  const [categoryFilter, setCategoryFilter] = useState<string>("הכל");
+  const [sourceFilter, setSourceFilter] = useState<string>("הכל");
+  const [showFilters, setShowFilters] = useState(false);
   const [view, setView] = useState<"list" | "grid">("list");
+  const [previewInvoice, setPreviewInvoice] = useState<(typeof invoices)[0] | null>(null);
+
+  // ── derived filter options ──
+  const allCategories = useMemo(() => {
+    const s = new Set(invoices.map((i) => i.finalCategory ?? i.suggestedCategory ?? "לא מסווג"));
+    return ["הכל", ...Array.from(s).sort()];
+  }, [invoices]);
+
+  const allSources = useMemo(() => {
+    const s = new Set(invoices.map((i) => (i.sourceType ?? "upload").toLowerCase()));
+    return ["הכל", ...Array.from(s)];
+  }, [invoices]);
 
   // ── filter ──
   const filtered = useMemo(() => {
@@ -123,6 +141,13 @@ export default function ExpensesPage() {
     if (statusFilter === "אושר") r = r.filter((i) => i.status === "approved");
     else if (statusFilter === "ממתין") r = r.filter((i) => i.status === "pending_review");
     else if (statusFilter === "נדחה") r = r.filter((i) => i.status === "rejected");
+    else if (statusFilter === "כפול") r = r.filter((i) => i.duplicateStatus && i.duplicateStatus !== "unique");
+    if (categoryFilter !== "הכל") {
+      r = r.filter((i) => (i.finalCategory ?? i.suggestedCategory ?? "לא מסווג") === categoryFilter);
+    }
+    if (sourceFilter !== "הכל") {
+      r = r.filter((i) => (i.sourceType ?? "upload").toLowerCase() === sourceFilter);
+    }
     if (search.trim()) {
       const q = search.toLowerCase();
       r = r.filter(
@@ -133,7 +158,9 @@ export default function ExpensesPage() {
       );
     }
     return r;
-  }, [invoices, statusFilter, search]);
+  }, [invoices, statusFilter, categoryFilter, sourceFilter, search]);
+
+  const activeFiltersCount = (statusFilter !== "הכל" ? 1 : 0) + (categoryFilter !== "הכל" ? 1 : 0) + (sourceFilter !== "הכל" ? 1 : 0);
 
   // ── totals ──
   const totalAmt = filtered.reduce((s, i) => s + Number(i.total || 0), 0);
@@ -321,11 +348,11 @@ export default function ExpensesPage() {
                 <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[120px] bg-card border-border" style={{ boxShadow: "var(--shadow-dropdown)" }}>
-              {["הכל", "אושר", "ממתין", "נדחה"].map((s) => (
+            <DropdownMenuContent align="end" className="min-w-[130px] bg-card border-border" style={{ boxShadow: "var(--shadow-dropdown)" }}>
+              {["הכל", "אושר", "ממתין", "נדחה", "כפול"].map((s) => (
                 <DropdownMenuItem key={s} onClick={() => setStatusFilter(s)} className="focus:bg-elevated cursor-pointer">
                   {s === statusFilter && <Check className="w-3.5 h-3.5 ml-2 text-primary" />}
-                  {s}
+                  {s === "כפול" ? <span className="text-destructive font-semibold">{s}</span> : s}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -346,10 +373,22 @@ export default function ExpensesPage() {
 
           <div className="flex-1" />
 
-          {/* Filter icon button */}
-          <button className="btn-secondary h-9 px-3 gap-1.5">
+          {/* Filter icon button — toggles advanced filter panel */}
+          <button
+            onClick={() => setShowFilters((v) => !v)}
+            className={`h-9 px-3 gap-1.5 rounded-[10px] border flex items-center text-[13px] font-medium transition-colors ${
+              showFilters || activeFiltersCount > 0
+                ? "bg-primary/10 border-primary/40 text-primary"
+                : "btn-secondary"
+            }`}
+          >
             <Filter className="w-4 h-4" />
             סינון
+            {activeFiltersCount > 0 && (
+              <span className="h-5 min-w-5 px-1 rounded-full bg-primary text-white text-[10px] font-bold flex items-center justify-center">
+                {activeFiltersCount}
+              </span>
+            )}
           </button>
 
           {/* View toggle */}
@@ -372,6 +411,72 @@ export default function ExpensesPage() {
             </button>
           </div>
         </div>
+
+        {/* ── Advanced filter panel ── */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="pt-3 mt-3 border-t border-border flex flex-col gap-3">
+                {/* Category filter */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">קטגוריה</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {allCategories.map((cat) => (
+                      <button
+                        key={cat}
+                        onClick={() => setCategoryFilter(cat)}
+                        className={`h-7 px-3 rounded-full text-[12px] font-medium border transition-colors ${
+                          categoryFilter === cat
+                            ? "bg-primary text-white border-primary"
+                            : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {/* Source filter */}
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">מקור</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {allSources.map((src) => {
+                      const label = src === "הכל" ? "הכל" : (SOURCE_LABELS[src]?.label ?? src);
+                      return (
+                        <button
+                          key={src}
+                          onClick={() => setSourceFilter(src)}
+                          className={`h-7 px-3 rounded-full text-[12px] font-medium border transition-colors ${
+                            sourceFilter === src
+                              ? "bg-primary text-white border-primary"
+                              : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                {/* Reset */}
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={() => { setStatusFilter("הכל"); setCategoryFilter("הכל"); setSourceFilter("הכל"); }}
+                    className="self-start text-xs text-destructive hover:underline"
+                  >
+                    איפוס סינון
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       {/* ── Grid View ── */}
@@ -419,30 +524,44 @@ export default function ExpensesPage() {
                       <p className="font-bold text-foreground text-sm shrink-0" dir="ltr">{fmtAmount(inv.total)}</p>
                     </div>
 
-                    {/* Category + Source */}
+                    {/* Category + Source + Duplicate */}
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="badge-primary text-[10px]">{cat}</span>
                       <span className={`${srcInfo.cls} text-[10px]`}>{srcInfo.label}</span>
+                      {inv.duplicateStatus && inv.duplicateStatus !== "unique" && (
+                        <span className="badge-error text-[10px] flex items-center gap-0.5">
+                          <AlertTriangle className="w-2.5 h-2.5" />כפול
+                        </span>
+                      )}
                     </div>
 
                     {/* Footer */}
                     <div className="flex items-center justify-between pt-2 border-t border-border">
                       <span className={`${statusInfo.cls} text-[11px]`}>{statusInfo.label}</span>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="h-7 w-7 flex items-center justify-center rounded-[8px] border border-border text-muted-foreground hover:text-foreground hover:bg-elevated transition-all">
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="min-w-[140px] bg-card border-border" style={{ boxShadow: "var(--shadow-dropdown)" }}>
-                          <DropdownMenuItem className="gap-2 cursor-pointer text-success focus:text-success focus:bg-elevated" onClick={() => handleApprove(inv.id)}>
-                            <CheckCircle2 className="w-3.5 h-3.5" />אשר
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-elevated" onClick={handleDownload}>
-                            <FileDown className="w-3.5 h-3.5" />הורד PDF
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => setPreviewInvoice(inv)}
+                          className="h-7 px-2 flex items-center gap-1 rounded-[8px] border border-border text-muted-foreground hover:text-foreground hover:bg-elevated transition-all text-[11px]"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          צפה
+                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="h-7 w-7 flex items-center justify-center rounded-[8px] border border-border text-muted-foreground hover:text-foreground hover:bg-elevated transition-all">
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="min-w-[140px] bg-card border-border" style={{ boxShadow: "var(--shadow-dropdown)" }}>
+                            <DropdownMenuItem className="gap-2 cursor-pointer text-success focus:text-success focus:bg-elevated" onClick={() => handleApprove(inv.id)}>
+                              <CheckCircle2 className="w-3.5 h-3.5" />אשר
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-elevated" onClick={handleDownload}>
+                              <FileDown className="w-3.5 h-3.5" />הורד PDF
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </motion.div>
                 );
@@ -568,7 +687,14 @@ export default function ExpensesPage() {
 
                     {/* Status */}
                     <td className="px-4 py-3.5 text-center">
-                      <span className={statusInfo.cls}>{statusInfo.label}</span>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={statusInfo.cls}>{statusInfo.label}</span>
+                        {inv.duplicateStatus && inv.duplicateStatus !== "unique" && (
+                          <span className="badge-error text-[10px] flex items-center gap-0.5">
+                            <AlertTriangle className="w-2.5 h-2.5" />כפול
+                          </span>
+                        )}
+                      </div>
                     </td>
 
                     {/* Action menu */}
@@ -583,9 +709,9 @@ export default function ExpensesPage() {
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="center" className="min-w-[140px] bg-card border-border" style={{ boxShadow: "var(--shadow-dropdown)" }}>
-                          <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-elevated">
+                          <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-elevated" onClick={() => setPreviewInvoice(inv)}>
                             <Eye className="w-3.5 h-3.5" />
-                            צפה
+                            צפה בחשבונית
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="gap-2 cursor-pointer text-success focus:text-success focus:bg-elevated"
@@ -648,6 +774,132 @@ export default function ExpensesPage() {
         </div>
       </motion.div>
       )}
+
+      {/* ── Invoice Preview Modal ── */}
+      <AnimatePresence>
+        {previewInvoice && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
+            onClick={() => setPreviewInvoice(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.93, opacity: 0, y: 16 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.93, opacity: 0, y: 16 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="bg-card border border-border rounded-[18px] w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
+              style={{ boxShadow: "var(--shadow-dropdown)" }}
+              onClick={(e) => e.stopPropagation()}
+              dir="rtl"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-foreground text-sm">
+                      {previewInvoice.canonicalVendorName ?? previewInvoice.normalizedVendorName ?? previewInvoice.rawVendorName ?? "—"}
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                      {previewInvoice.invoiceNumber ? `מס׳ ${previewInvoice.invoiceNumber}` : "ללא מספר מסמך"}
+                      {previewInvoice.invoiceDate && ` · ${format(new Date(previewInvoice.invoiceDate), "dd/MM/yyyy")}`}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPreviewInvoice(null)}
+                  className="h-8 w-8 rounded-[8px] border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-elevated transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+
+                {/* ── Left: details ── */}
+                <div className="lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-l border-border p-5 overflow-y-auto">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">פרטי חשבונית</p>
+                  <div className="space-y-3">
+                    {[
+                      { label: "ספק", value: previewInvoice.canonicalVendorName ?? previewInvoice.normalizedVendorName ?? previewInvoice.rawVendorName },
+                      { label: "ח.פ. / ע.מ.", value: previewInvoice.taxId },
+                      { label: "מספר מסמך", value: previewInvoice.invoiceNumber },
+                      { label: "תאריך", value: previewInvoice.invoiceDate ? format(new Date(previewInvoice.invoiceDate), "dd/MM/yyyy") : null },
+                      { label: "קטגוריה", value: previewInvoice.finalCategory ?? previewInvoice.suggestedCategory },
+                      { label: "מקור", value: SOURCE_LABELS[(previewInvoice.sourceType ?? "upload").toLowerCase()]?.label ?? previewInvoice.sourceType },
+                      { label: "סוג מסמך", value: previewInvoice.documentType === "supplier_invoice" ? "חשבונית ספק" : previewInvoice.documentType },
+                    ].map(({ label, value }) => (
+                      <div key={label}>
+                        <p className="text-[10px] text-muted-foreground">{label}</p>
+                        <p className="text-[13px] text-foreground font-medium">{value ?? "—"}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-border space-y-3">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">סכומים</p>
+                    {[
+                      { label: "לפני מע״מ", value: fmtAmount(previewInvoice.subtotal) },
+                      { label: 'מע"מ', value: fmtAmount(previewInvoice.vat) },
+                      { label: "סה״כ לתשלום", value: fmtAmount(previewInvoice.total), bold: true },
+                    ].map(({ label, value, bold }) => (
+                      <div key={label} className="flex items-center justify-between">
+                        <span className="text-[12px] text-muted-foreground">{label}</span>
+                        <span className={`text-[13px] ${bold ? "font-bold text-foreground" : "text-foreground"}`} dir="ltr">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {previewInvoice.duplicateStatus && previewInvoice.duplicateStatus !== "unique" && (
+                    <div className="mt-4 p-3 rounded-[10px] bg-destructive/10 border border-destructive/25">
+                      <p className="text-[12px] text-destructive font-semibold flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5" />חשבונית כפולה
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-1">מסמך זה זוהה ככפול. אנא בדוק לפני אישור.</p>
+                    </div>
+                  )}
+
+                  {previewInvoice.extractionStatus !== "success" && (
+                    <div className="mt-3 p-3 rounded-[10px] bg-amber-500/10 border border-amber-500/25">
+                      <p className="text-[12px] text-amber-400 font-semibold">נתונים חסרים</p>
+                      <p className="text-[11px] text-muted-foreground mt-1">הנתונים לא חולצו אוטומטית. ניתן לצפות במסמך המקורי מימין.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Right: file preview ── */}
+                <div className="flex-1 bg-elevated flex flex-col min-h-[300px] lg:min-h-0">
+                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0">
+                    <span className="text-xs text-muted-foreground">מסמך מקורי</span>
+                    <a
+                      href={`${import.meta.env.BASE_URL?.replace(/\/$/, "")}/api/invoices/${previewInvoice.id}/file`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      פתח בכרטיסייה חדשה
+                    </a>
+                  </div>
+                  <iframe
+                    src={`${import.meta.env.BASE_URL?.replace(/\/$/, "")}/api/invoices/${previewInvoice.id}/file`}
+                    className="flex-1 w-full border-0"
+                    title="invoice-preview"
+                  />
+                </div>
+
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Layout>
   );
 }
