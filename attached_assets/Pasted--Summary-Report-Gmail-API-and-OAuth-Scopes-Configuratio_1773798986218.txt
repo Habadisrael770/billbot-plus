@@ -1,0 +1,39 @@
+## Summary Report: Gmail API and OAuth Scopes Configuration
+
+### **Step 1: Gmail API Status ✅ CONFIRMED**
+- **URL:** https://console.cloud.google.com/apis/library/gmail.googleapis.com?project=b1-multi-tenancy
+- **Status:** ✅ **ENABLED**
+- **Evidence:** The page displayed a blue **"MANAGE"** button (not "ENABLE"), and a green checkmark with "API Enabled" text, confirming the Gmail API is already enabled for the b1-multi-tenancy project.
+
+---
+
+### **Step 2: OAuth Consent Screen Scopes - PARTIAL/ISSUES ⚠️**
+
+I navigated to the Data Access (Scopes) page and attempted to add all four required scopes. Here's what I found:
+
+#### **Scopes Required:**
+1. ✅ **https://www.googleapis.com/auth/gmail.readonly** - FOUND (available in dropdown)
+2. ✅ **https://www.googleapis.com/auth/gmail.labels** - FOUND (available in dropdown)
+3. ✅ **https://www.googleapis.com/auth/userinfo.email** - FOUND (was briefly visible in the non-sensitive scopes section)
+4. ✅ **https://www.googleapis.com/auth/userinfo.profile** - FOUND (was briefly visible in the non-sensitive scopes section)
+
+#### **What Happened:**
+- I opened the "Add or remove scopes" dialog
+- I selected all four required scopes using the checkboxes
+- I clicked the "Update" button within the dialog
+- The dialog closed and showed 2 of the 4 scopes in the "Your non-sensitive scopes" table (userinfo.email and userinfo.profile)
+- I clicked the "Save" button at the bottom of the page
+- After refreshing the page, the scopes table shows "No rows to display" again
+
+#### **Possible Issues:**
+1. The Gmail scopes (gmail.readonly and gmail.labels) are categorized as "sensitive" or "restricted" scopes and may require additional OAuth consent screen setup before they can be fully configured
+2. There appear to be JavaScript errors in the Google Cloud Console (evident from console errors), which may be preventing proper saving
+3. The UI may have persistence/saving issues with the scopes configuration
+
+#### **Recommendation:**
+You may need to:
+- Verify in the OAuth consent screen setup if the sensitive scopes section has been properly configured
+- Check if additional app verification is required for sensitive scope access (gmail.readonly, gmail.labels)
+- Try the configuration again, or contact Google Cloud support if the issue persists
+
+All four scopes ARE available in the system and can be selected, but the save functionality appears to have issues with persistence.
