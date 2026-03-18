@@ -238,7 +238,7 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
               <button
                 onClick={handleConnectGmail}
                 disabled={connectingGmail}
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white transition-all active:scale-95"
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white transition-all active:scale-95 active:brightness-90"
                 style={{ background: "linear-gradient(90deg, #4361ee, #2dd4bf)" }}
               >
                 {connectingGmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
@@ -378,11 +378,12 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
           <button
             onClick={handleScan}
             disabled={!status?.connected || scanning}
-            className="w-full h-12 rounded-xl flex items-center justify-center gap-2.5 text-[14px] font-bold text-white transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full h-12 rounded-xl flex items-center justify-center gap-2.5 text-[14px] font-bold text-white transition-all active:scale-[0.98] active:brightness-90 disabled:cursor-not-allowed"
             style={{
-              background: status?.connected && !scanning
+              background: status?.connected
                 ? "linear-gradient(90deg, #4361ee, #2dd4bf)"
                 : "rgba(255,255,255,0.08)",
+              opacity: scanning ? 0.75 : !status?.connected ? 0.4 : 1,
             }}
           >
             {scanning ? (
