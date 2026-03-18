@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
+import { Layout } from "@/components/layout";
+import { useToast } from "@/hooks/use-toast";
 import {
   Mail,
   Send,
@@ -24,8 +26,49 @@ import {
   Pencil,
   Calendar,
 } from "lucide-react";
-import { Layout } from "@/components/layout";
-import { useToast } from "@/hooks/use-toast";
+
+/* ── Brand SVG Icons ─────────────────────────────────────────────────────── */
+function GmailIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 40h6V22.5L4 16v21c0 1.657 1.343 3 2 3z" fill="#4285F4" />
+      <path d="M36 40h6c.657 0 2-1.343 2-3V16l-8 6.5V40z" fill="#34A853" />
+      <path d="M36 10l-12 9L12 10 4 16l20 15L44 16l-8-6z" fill="#EA4335" />
+      <path d="M4 16v-3c0-1.657 1.343-3 3-3l17 13 17-13c1.657 0 3 1.343 3 3v3L24 31 4 16z" fill="#FBBC04" />
+    </svg>
+  );
+}
+
+function OutlookIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="8" width="26" height="32" rx="3" fill="#0078D4" />
+      <path d="M28 16l16 8-16 8V16z" fill="#50E6FF" opacity=".8" />
+      <path d="M28 16h14c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H28l-8-8 8-8z" fill="#28A8E8" />
+      <path d="M28 16v16l16-8-16-8z" fill="#0078D4" />
+      <ellipse cx="15" cy="24" rx="7" ry="9" fill="white" />
+      <ellipse cx="15" cy="24" rx="5" ry="7" fill="#0078D4" />
+    </svg>
+  );
+}
+
+function TelegramIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="24" cy="24" r="22" fill="#2AABEE" />
+      <path d="M10.5 23.5l24-10c1.1-.5 2.2.3 1.8 1.7l-4.1 19.3c-.3 1.3-1.1 1.6-2.2.9l-6-4.5-2.9 2.8c-.3.3-.6.4-1.2.4l.4-6.2 10.9-9.8c.5-.4 0-.7-.7-.3L14.5 27.5l-5.9-1.8c-1.3-.4-1.3-1.3.9-2.2z" fill="white" />
+    </svg>
+  );
+}
+
+function WhatsAppIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="24" cy="24" r="22" fill="#25D366" />
+      <path d="M24 10c-7.7 0-14 6.3-14 14 0 2.6.7 5 1.9 7.2L10 38l7.1-1.9C19.2 37.3 21.5 38 24 38c7.7 0 14-6.3 14-14S31.7 10 24 10zm7 19.3c-.3.8-1.6 1.5-2.2 1.6-.6.1-1.2.1-3.7-.8-3.2-1.1-5.3-4.3-5.5-4.5-.2-.2-1.5-2-1.5-3.8s1-2.8 1.3-3.1c.3-.4.7-.4.9-.4h.7c.2 0 .5 0 .7.6l1 2.4c.1.2.1.5 0 .7l-.4.6-.3.3c-.2.2-.4.4-.1.8.3.4 1.1 1.7 2.4 2.7 1.6 1.3 3 1.7 3.4 1.9.4.2.6.1.8-.1.3-.3.9-1.1 1.2-1.5.3-.4.5-.3.9-.2l2.3 1.1c.2.1.5.3.5.7.1.4.1 1.2-.2 2z" fill="white" />
+    </svg>
+  );
+}
 
 const BASE_URL = import.meta.env.BASE_URL ?? "/";
 const API_BASE = BASE_URL.replace(/\/$/, "") + "/api";
@@ -191,8 +234,8 @@ function GmailCard() {
 
   return (
     <SectionCard
-      icon={<Mail className="w-5 h-5 text-blue-500" />}
-      iconBg="bg-blue-500/10"
+      icon={<GmailIcon size={22} />}
+      iconBg="bg-red-500/10"
       title="Gmail"
       description="סריקת חשבוניות ממיילים נכנסים ב-Gmail"
       badge={
@@ -298,7 +341,7 @@ function TelegramCard() {
 
   return (
     <SectionCard
-      icon={<Send className="w-5 h-5 text-sky-500" />}
+      icon={<TelegramIcon size={22} />}
       iconBg="bg-sky-500/10"
       title="Telegram Bot"
       description="שליחת חשבוניות ישירות לבוט בטלגרם"
@@ -381,7 +424,7 @@ function WhatsAppCard() {
 
   return (
     <SectionCard
-      icon={<MessageCircle className="w-5 h-5 text-emerald-500" />}
+      icon={<WhatsAppIcon size={22} />}
       iconBg="bg-emerald-500/10"
       title="WhatsApp Business"
       description="קבלת חשבוניות דרך WhatsApp Business API"
@@ -700,8 +743,8 @@ function OutlookCard() {
 
   return (
     <SectionCard
-      icon={<Mail className="w-5 h-5 text-blue-700" />}
-      iconBg="bg-blue-700/10"
+      icon={<OutlookIcon size={22} />}
+      iconBg="bg-blue-600/10"
       title="Outlook / Microsoft 365"
       description="סריקת חשבוניות ממיילים ב-Outlook"
       badge={<StatusPill ok={connected} label={connected ? "מחובר" : "לא מחובר"} />}
@@ -1020,13 +1063,44 @@ export default function IntegrationsPage() {
           </p>
         </div>
 
-        <div className="grid gap-4">
-          <GmailCard />
-          <AccountantCard />
-          <TelegramCard />
-          <WhatsAppCard />
-          <OutlookCard />
-          <ExternalApisCard />
+        <div className="space-y-4">
+          {/* Email providers — side by side */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5" /> מייל
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <GmailCard />
+              <OutlookCard />
+            </div>
+          </div>
+
+          {/* Messaging — side by side */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <MessageCircle className="w-3.5 h-3.5" /> מסרים
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <TelegramCard />
+              <WhatsAppCard />
+            </div>
+          </div>
+
+          {/* Accountant — full width */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <UserCheck className="w-3.5 h-3.5" /> רואה חשבון
+            </p>
+            <AccountantCard />
+          </div>
+
+          {/* External APIs — full width */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5" /> חיבורי API
+            </p>
+            <ExternalApisCard />
+          </div>
         </div>
       </div>
     </Layout>

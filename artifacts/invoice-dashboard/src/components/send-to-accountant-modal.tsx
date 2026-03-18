@@ -2,9 +2,16 @@ import React, { useState, useEffect } from "react";
 import {
   X, FileSpreadsheet, Download, Send, Loader2, CheckCircle2,
   Mail, FileText, Archive, Calendar, Clock, ChevronDown, ChevronUp,
-  Zap, Bell,
+  Zap, Bell, UserCheck, ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const ACCOUNTANT_KEY = "bb_accountant_config";
+interface AccountantConfig { name: string; email: string; frequency: string; notes: string; }
+function loadAccountant(): AccountantConfig | null {
+  try { const s = localStorage.getItem(ACCOUNTANT_KEY); return s ? JSON.parse(s) as AccountantConfig : null; }
+  catch { return null; }
+}
 
 interface SendToAccountantModalProps {
   isOpen: boolean;
@@ -128,8 +135,13 @@ export function SendToAccountantModal({ isOpen, onClose, invoiceCount }: SendToA
   const [done, setDone] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [schedule, setSchedule] = useState<Schedule>(loadSchedule);
+  const [accountant] = useState<AccountantConfig | null>(() => loadAccountant());
 
-  useEffect(() => { if (!isOpen) { setDone(false); setLoading(false); } }, [isOpen]);
+  useEffect(() => {
+    if (!isOpen) { setDone(false); setLoading(false); return; }
+    const cfg = loadAccountant();
+    if (cfg?.email && !emailTo) setEmailTo(cfg.email);
+  }, [isOpen]);
 
   const handleClose = () => { setDone(false); onClose(); };
 
@@ -269,13 +281,33 @@ export function SendToAccountantModal({ isOpen, onClose, invoiceCount }: SendToA
                 </div>
 
                 {method === "email" && (
-                  <input
-                    type="email"
-                    value={emailTo}
-                    onChange={(e) => setEmailTo(e.target.value)}
-                    placeholder="כתובת מייל של רואה החשבון"
-                    className="mt-2 w-full h-9 px-3 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-violet-500/50"
-                  />
+                  <div className="mt-2 space-y-2">
+                    {accountant ? (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-violet-500/10 border border-violet-500/20">
+                        <UserCheck className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] text-violet-300 font-medium">{accountant.name}</p>
+                          <p className="text-[11px] text-violet-300/70 truncate" dir="ltr">{accountant.email}</p>
+                        </div>
+                        <a href="../integrations" className="text-[10px] text-violet-400/60 hover:text-violet-300 flex items-center gap-0.5 transition-colors">
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      </div>
+                    ) : (
+                      <a href="../integrations" className="flex items-center gap-1.5 text-[11px] text-white/40 hover:text-violet-300 transition-colors">
+                        <UserCheck className="w-3.5 h-3.5" />
+                        הגדר רואה חשבון באינטגרציות לשליחה מהירה
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    <input
+                      type="email"
+                      value={emailTo}
+                      onChange={(e) => setEmailTo(e.target.value)}
+                      placeholder="כתובת מייל של רואה החשבון"
+                      className="w-full h-9 px-3 rounded-xl border border-white/10 bg-white/5 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-violet-500/50"
+                    />
+                  </div>
                 )}
               </div>
 
