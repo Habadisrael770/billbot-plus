@@ -12,12 +12,12 @@ const SCOPES = [
 ];
 
 function getOAuth2Client() {
-  const clientId     = process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const clientId     = process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_ID;
+  const clientSecret = process.env.GMAIL_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET;
   const redirectUri  = getRedirectUri();
 
   if (!clientId || !clientSecret) {
-    throw new Error("GOOGLE_CLIENT_ID (or GOOGLE_ID) and GOOGLE_CLIENT_SECRET are required");
+    throw new Error("GMAIL_CLIENT_ID and GMAIL_CLIENT_SECRET are required");
   }
 
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
