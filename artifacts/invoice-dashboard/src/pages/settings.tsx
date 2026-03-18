@@ -47,6 +47,7 @@ import {
   ChevronRight,
   Bell,
   Phone,
+  XCircle,
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Layout } from "@/components/layout";
