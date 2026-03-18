@@ -1,0 +1,58 @@
+Perfect! Now I can see the complete scopes summary:
+
+- **Your non-sensitive scopes** - "No rows to display"
+- **Your sensitive scopes** - "No rows to display"
+- **Your restricted scopes** - "No rows to display"
+
+All three sections show "No rows to display", which means **NO SCOPES ARE CURRENTLY SAVED** in the OAuth consent screen for this project.
+
+<turn_answer_start>
+</turn_answer_start>
+
+## Comprehensive Report: OAuth 2.0 Client Configuration
+
+### **Client Information Found:**
+I found the OAuth 2.0 Client in the b1-multi-tenancy project. However, note that the Client ID starts with **295678230429-**, not 448366681526- as you mentioned. This is the only OAuth 2.0 client in the project.
+
+---
+
+### **1. Application Type ✅**
+**Web application**
+- The page header clearly states "Client ID for Web application" (NOT a Desktop app)
+
+---
+
+### **2. Authorized Redirect URIs Listed:**
+The client has **3 Authorized Redirect URIs** configured:
+
+1. `https://8309511f-f2fd-4914-8192-353a9e7d2745-00-38h8fz9.`
+2. `https://async-multi-tenancy.replit.app/invoices/auth/google/` (partially visible)
+3. `https://dc086eb1-7bde-429c-a879-eb80b41757d1-00-2j2cz2s8jqfl2.riker.replit.dev/api/gmail-auth/callback`
+
+---
+
+### **3. Is the Replit Callback URI Present? ✅ YES**
+**The URI is present in the list as URIs 3:**
+```
+https://dc086eb1-7bde-429c-a879-eb80b41757d1-00-2j2cz2s8jqfl2.riker.replit.dev/api/gmail-auth/callback
+```
+✅ **Confirmed match** - This is the exact URI you asked about.
+
+---
+
+### **4. OAuth Consent Screen Scopes Status ⚠️**
+**Currently Saved Scopes: NONE**
+
+All three scope categories show "No rows to display":
+- ❌ **Your non-sensitive scopes** - Empty
+- ❌ **Your sensitive scopes** - Empty  
+- ❌ **Your restricted scopes** - Empty
+
+**This means no OAuth scopes have been successfully saved** to the OAuth consent screen configuration, despite my attempts to add them in the previous step. The four scopes you requested (gmail.readonly, gmail.labels, userinfo.email, userinfo.profile) are not currently configured.
+
+---
+
+### **Summary:**
+- ✅ Application type is correct (Web application)
+- ✅ Redirect URI is properly configured
+- ⚠️ **Critical Issue:** No OAuth scopes are configured - this will prevent the OAuth flow from working properly
