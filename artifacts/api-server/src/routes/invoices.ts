@@ -108,8 +108,18 @@ router.get("/", async (_req, res) => {
  * GET /api/invoices/summary
  * Returns aggregate stats for the dashboard summary cards.
  */
-router.get("/summary", async (_req, res) => {
+router.get("/summary", async (req, res) => {
   try {
+    const yearParam  = Number(req.query.year)  || null;
+    const monthParam = Number(req.query.month) || null; // 1-based
+
+    let dateFilter = sql``;
+    if (yearParam && monthParam) {
+      const start = `${yearParam}-${String(monthParam).padStart(2, "0")}-01`;
+      const end   = `${yearParam}-${String(monthParam).padStart(2, "0")}-31`;
+      dateFilter  = sql` WHERE invoice_date BETWEEN ${start}::date AND ${end}::date`;
+    }
+
     const result = await db.execute(sql`
       SELECT
         COUNT(*)::int AS total_documents,
@@ -118,7 +128,7 @@ router.get("/summary", async (_req, res) => {
         COALESCE(SUM(vat::numeric), 0)::numeric AS total_vat,
         COUNT(*) FILTER (WHERE status = 'pending_review')::int AS pending_review,
         COUNT(*) FILTER (WHERE duplicate_status IN ('duplicate', 'probable_duplicate'))::int AS suspected_duplicates
-      FROM invoices
+      FROM invoices${dateFilter}
     `);
     res.json(result.rows[0] ?? {});
   } catch (err) {

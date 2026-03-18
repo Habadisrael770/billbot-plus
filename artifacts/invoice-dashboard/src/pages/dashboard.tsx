@@ -32,7 +32,7 @@ import {
   Receipt,
   MailOpen,
 } from "lucide-react";
-import { useInvoices, useInvoiceSummary, useInvoiceMutations } from "@/hooks/use-invoices";
+import { useInvoices, useInvoiceSummaryByMonth, useInvoiceMutations } from "@/hooks/use-invoices";
 import { Layout } from "@/components/layout";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -539,11 +539,11 @@ function InvoiceCard({
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { data: invoices, isLoading } = useInvoices();
-  const { data: summary } = useInvoiceSummary();
   const { approve, markNotDuplicate, mergeAlias, updateCategory, isPending } = useInvoiceMutations();
 
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
+  const { data: apiSummary } = useInvoiceSummaryByMonth(selectedMonth.year, selectedMonth.month);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [gmailScanOpen, setGmailScanOpen] = useState(false);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -575,16 +575,6 @@ export default function Dashboard() {
       return d.getFullYear() === selectedMonth.year && d.getMonth() === selectedMonth.month;
     });
   }, [invoices, selectedMonth]);
-
-  // Summary computed from date-filtered invoices
-  const filteredSummary = useMemo(() => ({
-    total_documents: dateFilteredInvoices.length,
-    supplier_invoices: dateFilteredInvoices.filter((i) => i.documentType === "supplier_invoice" || i.documentType === "invoice").length,
-    total_amount: dateFilteredInvoices.reduce((s, i) => s + (Number(i.total) || 0), 0),
-    total_vat: dateFilteredInvoices.reduce((s, i) => s + (Number(i.vat) || 0), 0),
-    pending_review: dateFilteredInvoices.filter((i) => i.status === "pending_review").length,
-    suspected_duplicates: dateFilteredInvoices.filter((i) => i.duplicateStatus !== "unique").length,
-  }), [dateFilteredInvoices]);
 
   const filteredInvoices = useMemo(() => {
     let result = dateFilteredInvoices;
@@ -719,45 +709,45 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         <StatCard
           title="סה״כ מסמכים"
-          value={filteredSummary.total_documents}
+          value={apiSummary?.total_documents ?? 0}
           icon={<Files className="w-5 h-5 sm:w-6 sm:h-6" />}
           delay={0}
         />
         <StatCard
           title="חשבוניות ספק"
-          value={filteredSummary.supplier_invoices}
+          value={apiSummary?.supplier_invoices ?? 0}
           icon={<ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />}
           delay={0.05}
         />
         <StatCard
           title="סה״כ חשבוניות"
-          value={filteredSummary.total_amount
-            ? `₪${filteredSummary.total_amount.toLocaleString("he-IL", { maximumFractionDigits: 0 })}`
+          value={apiSummary?.total_amount
+            ? `₪${Number(apiSummary.total_amount).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`
             : "₪0"}
           icon={<Banknote className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />}
           delay={0.1}
         />
         <StatCard
           title="סה״כ מע״מ"
-          value={filteredSummary.total_vat
-            ? `₪${filteredSummary.total_vat.toLocaleString("he-IL", { maximumFractionDigits: 0 })}`
+          value={apiSummary?.total_vat && Number(apiSummary.total_vat) > 0
+            ? `₪${Number(apiSummary.total_vat).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`
             : "₪0"}
           icon={<Tag className="w-5 h-5 sm:w-6 sm:h-6 text-violet-400" />}
           delay={0.15}
         />
         <StatCard
           title="ממתינות לאישור"
-          value={filteredSummary.pending_review}
+          value={apiSummary?.pending_review ?? 0}
           icon={<Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />}
           delay={0.2}
         />
         <StatCard
           title="חשודות בכפילות"
-          value={filteredSummary.suspected_duplicates}
+          value={apiSummary?.suspected_duplicates ?? 0}
           icon={<Copy className="w-5 h-5 sm:w-6 sm:h-6 text-rose-400" />}
           trend={
-            filteredSummary.total_documents > 0
-              ? `${((filteredSummary.suspected_duplicates / filteredSummary.total_documents) * 100).toFixed(1)}%`
+            apiSummary && Number(apiSummary.total_documents) > 0
+              ? `${((Number(apiSummary.suspected_duplicates) / Number(apiSummary.total_documents)) * 100).toFixed(1)}%`
               : undefined
           }
           trendUp={false}

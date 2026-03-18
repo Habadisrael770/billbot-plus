@@ -1,4 +1,4 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   useListInvoices,
   useGetInvoiceSummary,
@@ -11,12 +11,34 @@ import {
 } from "@workspace/api-client-react";
 import { useToast } from "./use-toast";
 
+const BASE_URL = import.meta.env.BASE_URL ?? "/";
+const API_BASE = BASE_URL.replace(/\/$/, "") + "/api";
+
 export function useInvoices() {
   return useListInvoices();
 }
 
 export function useInvoiceSummary() {
   return useGetInvoiceSummary();
+}
+
+export function useInvoiceSummaryByMonth(year: number, month: number) {
+  return useQuery({
+    queryKey: ["invoice-summary-month", year, month],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/invoices/summary?year=${year}&month=${month + 1}`);
+      if (!res.ok) throw new Error("Failed to fetch summary");
+      return res.json() as Promise<{
+        total_documents: number;
+        supplier_invoices: number;
+        total_amount: string | number;
+        total_vat: string | number;
+        pending_review: number;
+        suspected_duplicates: number;
+      }>;
+    },
+    staleTime: 30_000,
+  });
 }
 
 export function useInvoiceMutations() {
@@ -26,6 +48,7 @@ export function useInvoiceMutations() {
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetInvoiceSummaryQueryKey() });
+    queryClient.invalidateQueries({ queryKey: ["invoice-summary-month"] });
   };
 
   const approveMutation = useApproveInvoice({

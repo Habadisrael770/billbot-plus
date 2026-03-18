@@ -1,0 +1,108 @@
+<!-- הוספת ספריית האייקונים בראש הקובץ -->
+<script src="https://unpkg.com"></script>
+
+<!-- Header נקי לחלוטין (בלי כפתורי יומן או העלאה) -->
+<header class="desktop-header">
+  <div class="logo">הלוגו שלך</div>
+</header>
+
+<!-- סרגל הפעולות החדש (ליד היומן) -->
+<div class="toolbar-container">
+  
+  <div class="action-bar">
+    <!-- סרגל יומן (במקום החיפוש שבוטל) -->
+    <div class="calendar-wrapper">
+      <i data-lucide="calendar" class="icon-small"></i>
+      <input type="text" placeholder="בחר תאריך..." class="calendar-input">
+    </div>
+
+    <!-- כפתורי הפעולה החדשים -->
+    <div class="action-buttons-group">
+      <button class="btn-action btn-upload">
+        <i data-lucide="upload-cloud"></i>
+        <span>העלה חשבונית</span>
+      </button>
+      
+      <button class="btn-action btn-scan">
+        <i data-lucide="mail"></i>
+        <span>סרוק מייל</span>
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<style>
+  /* סידור ה-Layout המרכזי */
+  .action-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px; /* רווח נדיב בין היומן לכפתורים */
+    padding: 15px;
+    background: #f9f9f9;
+    border-bottom: 1px solid #eee;
+  }
+
+  /* עיצוב ה"סרגל" של היומן */
+  .calendar-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: white;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+  }
+
+  /* קבוצת הכפתורים */
+  .action-buttons-group {
+    display: flex;
+    gap: 12px;
+  }
+
+  /* עיצוב כפתור כללי */
+  .btn-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+    font-size: 14px;
+  }
+
+  /* צבעים ספציפיים */
+  .btn-upload {
+    background-color: #007bff;
+    color: white;
+  }
+  
+  .btn-scan {
+    background-color: #28a745;
+    color: white;
+  }
+
+  .btn-action:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+  }
+
+  /* גודל אייקונים */
+  i[data-lucide] {
+    width: 18px;
+    height: 18px;
+  }
+
+  /* הסתרת החיפוש וכפתורי ההדר הישנים */
+  .old-header-buttons, .search-bar-next-to-calendar {
+    display: none !important;
+  }
+</style>
+
+<script>
+  // הפעלת האייקונים
+  lucide.createIcons();
+</script>
