@@ -7,6 +7,7 @@ export interface VendorMatchResult {
   vendorId: string;
   canonicalName: string;
   matchMethod: "tax_id" | "normalized_alias" | "canonical" | "created";
+  isBlocked: boolean;
 }
 
 /**
@@ -34,12 +35,12 @@ export async function findOrCreateVendor(
 
     if (byTaxId.length > 0) {
       const vendor = byTaxId[0]!;
-      // Ensure we capture this alias even if name differs slightly
       await ensureAlias(vendor.id, rawVendorName, normalizedName);
       return {
         vendorId: vendor.id,
         canonicalName: vendor.canonical_name,
         matchMethod: "tax_id",
+        isBlocked: vendor.is_blocked ?? false,
       };
     }
   }
@@ -64,6 +65,7 @@ export async function findOrCreateVendor(
         vendorId: vendor[0]!.id,
         canonicalName: vendor[0]!.canonical_name,
         matchMethod: "normalized_alias",
+        isBlocked: vendor[0]!.is_blocked ?? false,
       };
     }
   }
@@ -80,6 +82,7 @@ export async function findOrCreateVendor(
       vendorId: canonicalMatch.id,
       canonicalName: canonicalMatch.canonical_name,
       matchMethod: "canonical",
+      isBlocked: canonicalMatch.is_blocked ?? false,
     };
   }
 
@@ -104,6 +107,7 @@ export async function findOrCreateVendor(
     vendorId: newVendor.id,
     canonicalName: newVendor.canonical_name,
     matchMethod: "created",
+    isBlocked: false,
   };
 }
 

@@ -98,8 +98,15 @@ export async function processInvoice(
       vendorId = vendorResult.vendorId;
       canonicalVendorName = vendorResult.canonicalName;
       vendorMatchMethod = vendorResult.matchMethod;
+
+      // Skip blocked vendors for email imports
+      if (vendorResult.isBlocked && sourceType === "email") {
+        console.log(`[processInvoice] Skipping blocked vendor: ${canonicalVendorName}`);
+        throw new Error(`VENDOR_BLOCKED:${canonicalVendorName}`);
+      }
     } catch (err) {
       console.error("Vendor detection failed:", err);
+      throw err;
     }
   }
 

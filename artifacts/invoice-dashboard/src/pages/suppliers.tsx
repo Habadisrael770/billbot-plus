@@ -15,9 +15,13 @@ import {
   X,
   Loader2,
   Check,
+  Ban,
+  ShieldOff,
+  ShieldCheck,
 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { useInvoices } from "@/hooks/use-invoices";
+import { useToast } from "@/hooks/use-toast";
 
 const BASE_URL = import.meta.env.BASE_URL ?? "/";
 const API_BASE = BASE_URL.replace(/\/$/, "") + "/api";
@@ -32,6 +36,7 @@ interface Vendor {
   id: string;
   canonicalName: string;
   taxId: string | null;
+  isBlocked: boolean;
   aliases: Alias[];
 }
 
@@ -93,7 +98,7 @@ function AddVendorModal({ onClose, onSuccess }: { onClose: () => void; onSuccess
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="לדוגמה: שוק הסיטונאים בע&quot;מ"
+              placeholder='לדוגמה: שוק הסיטונאים בע"מ'
               className="w-full h-10 px-3 rounded-xl border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               autoFocus
               onKeyDown={(e) => e.key === "Enter" && submit()}
@@ -217,18 +222,44 @@ function AddInvoiceModal({ onClose, onSuccess }: { onClose: () => void; onSucces
 }
 
 // ── Vendor Card ────────────────────────────────────────────────────────────
-function VendorCard({ vendor, invoiceCount, totalSpent }: { vendor: Vendor; invoiceCount: number; totalSpent: number }) {
+function VendorCard({ vendor, invoiceCount, totalSpent, onBlockToggle }: {
+  vendor: Vendor;
+  invoiceCount: number;
+  totalSpent: number;
+  onBlockToggle: (id: string, block: boolean) => Promise<void>;
+}) {
   const [open, setOpen] = useState(false);
+  const [blocking, setBlocking] = useState(false);
+  const [confirmBlock, setConfirmBlock] = useState(false);
   const initials = vendor.canonicalName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 
+  const handleBlockToggle = async () => {
+    if (!vendor.isBlocked && !confirmBlock) {
+      setConfirmBlock(true);
+      return;
+    }
+    setConfirmBlock(false);
+    setBlocking(true);
+    try {
+      await onBlockToggle(vendor.id, !vendor.isBlocked);
+    } finally {
+      setBlocking(false);
+    }
+  };
+
   return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden transition-shadow hover:shadow-md">
+    <div className={`bg-card border rounded-2xl overflow-hidden transition-shadow hover:shadow-md ${vendor.isBlocked ? "border-red-500/30 bg-red-500/3" : "border-border"}`}>
       <button onClick={() => setOpen((v) => !v)} className="w-full flex items-center gap-4 px-5 py-4 text-right">
-        <div className="shrink-0 w-11 h-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-          {initials || <Building2 className="w-5 h-5" />}
+        <div className={`shrink-0 w-11 h-11 rounded-xl flex items-center justify-center font-bold text-sm ${vendor.isBlocked ? "bg-red-500/10 text-red-500" : "bg-primary/10 text-primary"}`}>
+          {vendor.isBlocked ? <Ban className="w-5 h-5" /> : (initials || <Building2 className="w-5 h-5" />)}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-foreground text-sm truncate">{vendor.canonicalName}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className={`font-semibold text-sm truncate ${vendor.isBlocked ? "text-muted-foreground line-through" : "text-foreground"}`}>{vendor.canonicalName}</p>
+            {vendor.isBlocked && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-500/10 text-red-500 border border-red-500/20 shrink-0">חסום</span>
+            )}
+          </div>
           {vendor.taxId && (
             <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
               <Hash className="w-3 h-3" /> ח.פ. {vendor.taxId}
@@ -256,6 +287,7 @@ function VendorCard({ vendor, invoiceCount, totalSpent }: { vendor: Vendor; invo
             <span className="flex items-center gap-1.5 text-muted-foreground"><Receipt className="w-4 h-4" />{invoiceCount} חשבוניות</span>
             {totalSpent > 0 && <span className="font-medium text-foreground" dir="ltr">{fmtAmount(totalSpent)} סה"כ</span>}
           </div>
+
           {vendor.aliases.length > 0 ? (
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
@@ -270,6 +302,65 @@ function VendorCard({ vendor, invoiceCount, totalSpent }: { vendor: Vendor; invo
           ) : (
             <p className="text-xs text-muted-foreground">אין שמות חלופיים רשומים</p>
           )}
+
+          {/* Block info banner when blocked */}
+          {vendor.isBlocked && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-red-500/8 border border-red-500/20">
+              <Ban className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-red-600 dark:text-red-400">
+                ספק זה חסום — חשבוניות ממנו לא ייובאו אוטומטית ממייל בעתיד.
+              </p>
+            </div>
+          )}
+
+          {/* Confirm block dialog */}
+          {confirmBlock && !vendor.isBlocked && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-500/8 border border-amber-500/20">
+              <AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="flex-1 space-y-2">
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  האם לחסום את <strong>{vendor.canonicalName}</strong>? חשבוניות ממנו לא ייובאו מהמייל בעתיד.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleBlockToggle}
+                    disabled={blocking}
+                    className="flex items-center gap-1 h-7 px-3 rounded-lg bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition-colors disabled:opacity-60"
+                  >
+                    {blocking ? <Loader2 className="w-3 h-3 animate-spin" /> : <Ban className="w-3 h-3" />}
+                    חסום
+                  </button>
+                  <button
+                    onClick={() => setConfirmBlock(false)}
+                    className="h-7 px-3 rounded-lg border border-border text-xs text-muted-foreground hover:bg-muted transition-colors"
+                  >
+                    ביטול
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Block / Unblock button */}
+          {!confirmBlock && (
+            <button
+              onClick={handleBlockToggle}
+              disabled={blocking}
+              className={`flex items-center gap-1.5 h-8 px-3 rounded-xl border text-xs font-medium transition-colors disabled:opacity-60 ${
+                vendor.isBlocked
+                  ? "border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                  : "border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+              }`}
+            >
+              {blocking
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : vendor.isBlocked
+                  ? <ShieldCheck className="w-3.5 h-3.5" />
+                  : <ShieldOff className="w-3.5 h-3.5" />
+              }
+              {vendor.isBlocked ? "בטל חסימה" : "חסום ספק"}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -278,11 +369,13 @@ function VendorCard({ vendor, invoiceCount, totalSpent }: { vendor: Vendor; invo
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function SuppliersPage() {
+  const { toast } = useToast();
   const qc = useQueryClient();
   const { data: vendors = [], isLoading, isError, refetch } = useVendors();
   const { data: invoices = [] } = useInvoices();
   const [showAddVendor, setShowAddVendor] = useState(false);
   const [showAddInvoice, setShowAddInvoice] = useState(false);
+  const [showBlocked, setShowBlocked] = useState(false);
 
   const vendorStats = useMemo(() => {
     const map: Record<string, { count: number; total: number }> = {};
@@ -296,14 +389,28 @@ export default function SuppliersPage() {
     return map;
   }, [invoices]);
 
-  const totalVendors = vendors.length;
-  const activeVendors = vendors.filter((v) => (vendorStats[v.id]?.count ?? 0) > 0).length;
+  const activeVendors = vendors.filter((v) => !v.isBlocked && (vendorStats[v.id]?.count ?? 0) > 0).length;
+  const blockedCount = vendors.filter((v) => v.isBlocked).length;
   const totalSpendAll = Object.values(vendorStats).reduce((s, v) => s + v.total, 0);
 
+  const visibleVendors = showBlocked ? vendors : vendors.filter((v) => !v.isBlocked);
+
+  const handleBlockToggle = async (id: string, block: boolean) => {
+    try {
+      const action = block ? "block" : "unblock";
+      const res = await fetch(`${API_BASE}/vendors/${id}/${action}`, { method: "PATCH" });
+      if (!res.ok) throw new Error();
+      await qc.invalidateQueries({ queryKey: ["vendors"] });
+      toast({ title: block ? "ספק נחסם" : "חסימה בוטלה", description: block ? "החשבוניות לא ייובאו מהמייל בעתיד" : "הספק יאוחזר שוב ממייל" });
+    } catch {
+      toast({ title: "שגיאה בשינוי חסימה", variant: "destructive" });
+    }
+  };
+
   const handleExport = () => {
-    const rows = [["שם ספק", "ח.פ.", "חשבוניות", "סה\"כ הוצאות"]];
+    const rows = [["שם ספק", "ח.פ.", "חשבוניות", "סה\"כ הוצאות", "חסום"]];
     for (const v of vendors) {
-      rows.push([v.canonicalName, v.taxId ?? "", String(vendorStats[v.id]?.count ?? 0), String(vendorStats[v.id]?.total ?? 0)]);
+      rows.push([v.canonicalName, v.taxId ?? "", String(vendorStats[v.id]?.count ?? 0), String(vendorStats[v.id]?.total ?? 0), v.isBlocked ? "כן" : "לא"]);
     }
     const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
@@ -323,7 +430,6 @@ export default function SuppliersPage() {
             <p className="text-sm text-muted-foreground mt-1">כל הספקים שזוהו אוטומטית מחשבוניות שהועלו</p>
           </div>
 
-          {/* 4 action buttons — 2 per row */}
           <div className="grid grid-cols-2 gap-2 sm:shrink-0">
             <button
               onClick={() => setShowAddVendor(true)}
@@ -359,7 +465,7 @@ export default function SuppliersPage() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: "סה\"כ ספקים", value: totalVendors, icon: Building2, color: "text-primary" },
+            { label: "סה\"כ ספקים", value: vendors.length, icon: Building2, color: "text-primary" },
             { label: "ספקים פעילים", value: activeVendors, icon: Receipt, color: "text-emerald-500" },
             { label: "סה\"כ הוצאות", value: fmtAmount(totalSpendAll), icon: Tag, color: "text-amber-500", ltr: true },
           ].map((stat) => (
@@ -368,10 +474,25 @@ export default function SuppliersPage() {
                 <stat.icon className={`w-4 h-4 ${stat.color}`} />
                 <span className="text-xs text-muted-foreground">{stat.label}</span>
               </div>
-              <p className={`text-xl font-bold text-foreground`} dir={stat.ltr ? "ltr" : undefined}>{stat.value}</p>
+              <p className="text-xl font-bold text-foreground" dir={stat.ltr ? "ltr" : undefined}>{stat.value}</p>
             </div>
           ))}
         </div>
+
+        {/* Blocked filter toggle */}
+        {blockedCount > 0 && (
+          <button
+            onClick={() => setShowBlocked((v) => !v)}
+            className={`flex items-center gap-2 h-8 px-3 rounded-xl border text-xs font-medium transition-colors ${
+              showBlocked
+                ? "border-red-500/40 bg-red-500/10 text-red-600 dark:text-red-400"
+                : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            <Ban className="w-3.5 h-3.5" />
+            {showBlocked ? `הסתר ספקים חסומים (${blockedCount})` : `הצג ספקים חסומים (${blockedCount})`}
+          </button>
+        )}
 
         {/* Vendor list */}
         {isLoading ? (
@@ -396,10 +517,19 @@ export default function SuppliersPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {vendors.map((vendor) => (
-              <VendorCard key={vendor.id} vendor={vendor} invoiceCount={vendorStats[vendor.id]?.count ?? 0} totalSpent={vendorStats[vendor.id]?.total ?? 0} />
+            {visibleVendors.map((vendor) => (
+              <VendorCard
+                key={vendor.id}
+                vendor={vendor}
+                invoiceCount={vendorStats[vendor.id]?.count ?? 0}
+                totalSpent={vendorStats[vendor.id]?.total ?? 0}
+                onBlockToggle={handleBlockToggle}
+              />
             ))}
-            <p className="text-center text-xs text-muted-foreground pt-2">מציג {vendors.length} ספקים</p>
+            <p className="text-center text-xs text-muted-foreground pt-2">
+              מציג {visibleVendors.length} ספקים
+              {!showBlocked && blockedCount > 0 && ` · ${blockedCount} חסומים מוסתרים`}
+            </p>
           </div>
         )}
       </div>

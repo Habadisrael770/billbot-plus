@@ -140,7 +140,12 @@ router.post("/gmail/scan", async (req, res) => {
           processed++;
         }
       } catch (err) {
-        errors.push(String(err));
+        const msg = String(err);
+        if (msg.includes("VENDOR_BLOCKED:")) {
+          skipped++;
+        } else {
+          errors.push(msg);
+        }
       }
     }
 

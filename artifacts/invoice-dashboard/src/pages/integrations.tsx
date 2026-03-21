@@ -25,6 +25,9 @@ import {
   Download,
   Pencil,
   Calendar,
+  Check,
+  Lock,
+  ExternalLink,
 } from "lucide-react";
 
 /* ── Brand SVG Icons ─────────────────────────────────────────────────────── */
@@ -72,6 +75,28 @@ function WhatsAppIcon({ size = 20 }: { size?: number }) {
 
 const BASE_URL = import.meta.env.BASE_URL ?? "/";
 const API_BASE = BASE_URL.replace(/\/$/, "") + "/api";
+
+/* ── Plan tiers ─────────────────────────────────────────────────────────── */
+const PLAN_KEY = "bb_plan";
+type PlanId = "basic" | "pro" | "business";
+const PLANS: { id: PlanId; name: string; emailLimit: number; price: string; color: string; badge?: string }[] = [
+  { id: "basic",    name: "בסיס",    emailLimit: 1,  price: "חינם",  color: "from-slate-500 to-slate-600" },
+  { id: "pro",      name: "פרו",     emailLimit: 3,  price: "₪79/חו", color: "from-violet-500 to-blue-500", badge: "מומלץ" },
+  { id: "business", name: "ביזנס",  emailLimit: 10, price: "₪199/חו", color: "from-amber-500 to-orange-500" },
+];
+function loadPlan(): PlanId {
+  try { return (localStorage.getItem(PLAN_KEY) as PlanId) ?? "basic"; } catch { return "basic"; }
+}
+
+/* ── Outlook accounts store ─────────────────────────────────────────────── */
+const OUTLOOK_KEY = "bb_outlook_accounts";
+interface OutlookAccount { id: string; email: string; connected: boolean; addedAt: string; }
+function loadOutlookAccounts(): OutlookAccount[] {
+  try { const s = localStorage.getItem(OUTLOOK_KEY); return s ? JSON.parse(s) as OutlookAccount[] : []; } catch { return []; }
+}
+function saveOutlookAccounts(list: OutlookAccount[]) {
+  localStorage.setItem(OUTLOOK_KEY, JSON.stringify(list));
+}
 
 interface GmailOAuthStatus {
   connected: boolean;
@@ -125,6 +150,70 @@ function StatusPill({ ok, label }: { ok: boolean; label: string }) {
       {ok ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
       {label}
     </span>
+  );
+}
+
+/* ── Plan Selector Card ──────────────────────────────────────────────────── */
+function PlanCard() {
+  const [plan, setPlan] = useState<PlanId>(() => loadPlan());
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  const activePlan = PLANS.find((p) => p.id === plan) ?? PLANS[0];
+
+  const choosePlan = (id: PlanId) => {
+    setSaving(true);
+    localStorage.setItem(PLAN_KEY, id);
+    setPlan(id);
+    setTimeout(() => {
+      setSaving(false);
+      toast({ title: `עברת לתכנית ${PLANS.find((p) => p.id === id)?.name}`, description: id === "basic" ? "" : "תוכל לחבר יותר חשבונות מייל" });
+    }, 400);
+  };
+
+  return (
+    <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      <div className="flex items-start gap-4 p-5">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 bg-violet-500/10">
+          <Zap className="w-5 h-5 text-violet-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-foreground">תכנית מנוי</h3>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full text-white bg-gradient-to-r ${activePlan.color}`}>
+              {activePlan.name}
+            </span>
+            {saving && <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />}
+          </div>
+          <p className="text-sm text-muted-foreground mt-0.5">עד {activePlan.emailLimit} חשבונות מייל · {activePlan.price}</p>
+        </div>
+      </div>
+      <div className="border-t border-border px-5 py-4 bg-muted/20">
+        <div className="grid grid-cols-3 gap-2">
+          {PLANS.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => choosePlan(p.id)}
+              className={`relative flex flex-col items-center gap-1 p-3 rounded-xl border text-center transition-all ${
+                plan === p.id
+                  ? "border-primary/50 bg-primary/8"
+                  : "border-border hover:border-primary/20 hover:bg-muted/50"
+              }`}
+            >
+              {p.badge && (
+                <span className="absolute -top-2 right-1/2 translate-x-1/2 text-[9px] font-bold px-2 py-0.5 rounded-full text-white bg-gradient-to-r from-violet-500 to-blue-500 whitespace-nowrap">
+                  {p.badge}
+                </span>
+              )}
+              <span className={`text-xs font-bold bg-gradient-to-r ${p.color} bg-clip-text text-transparent`}>{p.name}</span>
+              <span className="text-[10px] text-muted-foreground">{p.emailLimit === 1 ? "מייל 1" : `עד ${p.emailLimit} מיילים`}</span>
+              <span className="text-[10px] font-semibold text-foreground">{p.price}</span>
+              {plan === p.id && <Check className="w-3 h-3 text-primary mt-0.5" />}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -684,8 +773,21 @@ function ExternalApisCard() {
 }
 
 /* ── Outlook ─────────────────────────────────────────────────────────────── */
+function usePlanLimit(): number {
+  const [limit, setLimit] = useState(() => PLANS.find((p) => p.id === loadPlan())?.emailLimit ?? 1);
+  useEffect(() => {
+    const handler = () => setLimit(PLANS.find((p) => p.id === loadPlan())?.emailLimit ?? 1);
+    window.addEventListener("storage", handler);
+    const poll = setInterval(handler, 500);
+    return () => { window.removeEventListener("storage", handler); clearInterval(poll); };
+  }, []);
+  return limit;
+}
+
 function OutlookCard() {
   const { toast } = useToast();
+  const emailLimit = usePlanLimit();
+  const isLocked = emailLimit < 2;
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -740,6 +842,31 @@ function OutlookCard() {
       setScanning(false);
     }
   };
+
+  if (isLocked) {
+    return (
+      <SectionCard
+        icon={<OutlookIcon size={22} />}
+        iconBg="bg-blue-600/10"
+        title="Outlook / Microsoft 365"
+        description="סריקת חשבוניות ממיילים ב-Outlook"
+        badge={<span className="flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"><Lock className="w-3 h-3" /> פרו+</span>}
+      >
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            חיבור Outlook דורש תכנית <strong>פרו</strong> או <strong>ביזנס</strong> (עד 3 / 10 חשבונות מייל).
+          </p>
+          <button
+            onClick={() => { window.scrollTo({ top: 0, behavior: "smooth" }); }}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-amber-500/30 text-xs text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors"
+          >
+            <Zap className="w-3.5 h-3.5" />
+            שדרג תכנית
+          </button>
+        </div>
+      </SectionCard>
+    );
+  }
 
   return (
     <SectionCard
@@ -1064,10 +1191,13 @@ export default function IntegrationsPage() {
         </div>
 
         <div className="space-y-4">
+          {/* Plan selector — full width */}
+          <PlanCard />
+
           {/* Email providers — side by side */}
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5" /> מייל
+              <Mail className="w-3.5 h-3.5" /> חשבונות מייל
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <GmailCard />
