@@ -13,6 +13,12 @@ import {
 
 const router: IRouter = Router();
 
+function getAppBaseUrl(req: Parameters<typeof router.get>[1] extends (req: infer R, ...args: any[]) => any ? R : never): string {
+  const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(",")[0];
+  if (domain) return `https://${domain}`;
+  return `${req.protocol}://${req.get("host")}`;
+}
+
 // ── Redirect URL ───────────────────────────────────────────────────────────
 router.get("/url", (_req, res) => {
   try {
@@ -32,30 +38,186 @@ router.get("/callback", async (req, res) => {
   }
   try {
     const email = await handleGmailCallback(code);
-    res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Gmail Connected</title></head><body style="font-family:sans-serif;text-align:center;padding:40px;background:#060c1e;color:#fff">
-      <div style="font-size:48px">✅</div>
-      <h2 style="color:#2dd4bf">Gmail מחובר!</h2>
-      <p style="color:#ffffff80">${email}</p>
-      <p style="color:#ffffff50;font-size:13px">החלון ייסגר אוטומטית...</p>
-      <script>
-        if (window.opener) {
-          window.opener.postMessage({ type: 'GMAIL_CONNECTED', email: ${JSON.stringify(email)} }, '*');
-        }
-        setTimeout(() => window.close(), 1500);
-      </script>
-    </body></html>`);
+    const appBase = getAppBaseUrl(req);
+    const emailEncoded = encodeURIComponent(email ?? "");
+    const fallbackUrl = `${appBase}/?gmail=connected&email=${emailEncoded}`;
+
+    res.send(`<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gmail מחובר</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #060c1e;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+    }
+    .card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 40px 32px;
+      max-width: 340px;
+      width: 100%;
+    }
+    .icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #059669, #10b981);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 32px;
+    }
+    h2 { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .email { font-size: 13px; color: rgba(255,255,255,0.55); margin-bottom: 20px; direction: ltr; }
+    .bar-wrap {
+      height: 4px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #059669, #10b981);
+      border-radius: 2px;
+      transition: width 1.4s ease;
+    }
+    .hint { font-size: 12px; color: rgba(255,255,255,0.3); }
+    .btn {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 24px;
+      background: linear-gradient(90deg, #059669, #10b981);
+      color: #fff;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">✓</div>
+    <h2>!Gmail מחובר</h2>
+    <p class="email">${email}</p>
+    <div class="bar-wrap"><div class="bar" id="bar"></div></div>
+    <p class="hint" id="hint">חוזרים לאפליקציה...</p>
+    <a href="${fallbackUrl}" class="btn" id="btn" style="display:none">חזרה לאפליקציה</a>
+  </div>
+
+  <script>
+    var FALLBACK = ${JSON.stringify(fallbackUrl)};
+    var EMAIL    = ${JSON.stringify(email)};
+
+    // Kick off progress bar animation
+    requestAnimationFrame(function() {
+      document.getElementById('bar').style.width = '100%';
+    });
+
+    if (window.opener) {
+      // Popup flow — notify parent and close
+      try {
+        window.opener.postMessage({ type: 'GMAIL_CONNECTED', email: EMAIL }, '*');
+      } catch(e) {}
+      setTimeout(function() { window.close(); }, 1600);
+    } else {
+      // Main-window flow (mobile / popup-blocked) — redirect back to app
+      setTimeout(function() {
+        window.location.replace(FALLBACK);
+      }, 1800);
+
+      // Safety: show manual button after 5s in case JS redirect is slow
+      setTimeout(function() {
+        document.getElementById('btn').style.display = 'inline-block';
+        document.getElementById('hint').textContent = 'אם הדף לא מתחלף, לחץ על הכפתור';
+      }, 5000);
+    }
+  </script>
+</body>
+</html>`);
   } catch (err) {
-    res.send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Gmail Error</title></head><body style="font-family:sans-serif;text-align:center;padding:40px;background:#060c1e;color:#fff">
-      <div style="font-size:48px">❌</div>
-      <h2 style="color:#f87171">שגיאה בחיבור Gmail</h2>
-      <p style="color:#ffffff80">${String(err)}</p>
-      <script>
-        if (window.opener) {
-          window.opener.postMessage({ type: 'GMAIL_ERROR', error: ${JSON.stringify(String(err))} }, '*');
-        }
-        setTimeout(() => window.close(), 3000);
-      </script>
-    </body></html>`);
+    const appBase = getAppBaseUrl(req);
+    const errMsg = encodeURIComponent(String(err));
+    const fallbackUrl = `${appBase}/?gmail=error&msg=${errMsg}`;
+
+    res.send(`<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>שגיאת Gmail</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #060c1e;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+    }
+    .card {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 40px 32px;
+      max-width: 340px;
+      width: 100%;
+    }
+    .icon {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: linear-gradient(135deg, #dc2626, #ef4444);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px; font-size: 32px;
+    }
+    h2 { font-size: 20px; font-weight: 700; color: #f87171; margin-bottom: 8px; }
+    .msg { font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 20px; word-break: break-all; }
+    .btn {
+      display: inline-block; padding: 10px 24px;
+      background: rgba(255,255,255,0.1); color: #fff;
+      border-radius: 12px; font-size: 14px; font-weight: 600;
+      text-decoration: none; border: 1px solid rgba(255,255,255,0.15);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">✕</div>
+    <h2>שגיאה בחיבור Gmail</h2>
+    <p class="msg">${String(err)}</p>
+    <a href="${fallbackUrl}" class="btn">חזרה לאפליקציה</a>
+  </div>
+  <script>
+    var FALLBACK = ${JSON.stringify(fallbackUrl)};
+    if (window.opener) {
+      try { window.opener.postMessage({ type: 'GMAIL_ERROR', error: ${JSON.stringify(String(err))} }, '*'); } catch(e) {}
+      setTimeout(function() { window.close(); }, 3000);
+    } else {
+      setTimeout(function() { window.location.replace(FALLBACK); }, 3000);
+    }
+  </script>
+</body>
+</html>`);
   }
 });
 

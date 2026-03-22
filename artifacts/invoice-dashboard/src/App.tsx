@@ -36,12 +36,18 @@ function GmailRedirectHandler() {
     const gmailParam = params.get("gmail");
     const email = params.get("email");
     if (gmailParam === "connected") {
+      // Persist the connected Gmail token in localStorage so the app knows it's linked
+      if (email) {
+        try {
+          localStorage.setItem("bb_gmail_token", JSON.stringify({ email, connectedAt: Date.now() }));
+        } catch {}
+      }
       toast({
-        title: "Gmail חובר בהצלחה!",
+        title: "!Gmail חובר בהצלחה",
         description: email ? `מחובר כ: ${email}` : "החשבון חובר. עכשיו ניתן לסרוק חשבוניות.",
       });
       window.history.replaceState({}, "", window.location.pathname);
-      navigate("/settings");
+      navigate("/");
     } else if (gmailParam === "error") {
       const msg = params.get("msg") ?? "שגיאה בחיבור Gmail";
       toast({ title: "שגיאת Gmail", description: msg, variant: "destructive" });
