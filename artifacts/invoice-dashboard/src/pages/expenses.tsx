@@ -117,7 +117,11 @@ export default function ExpensesPage() {
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("הכל");
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    const saved = sessionStorage.getItem("bb_expense_filter");
+    if (saved) { sessionStorage.removeItem("bb_expense_filter"); return saved; }
+    return "הכל";
+  });
   const [categoryFilter, setCategoryFilter] = useState<string>("הכל");
   const [sourceFilter, setSourceFilter] = useState<string>("הכל");
   const [showFilters, setShowFilters] = useState(false);

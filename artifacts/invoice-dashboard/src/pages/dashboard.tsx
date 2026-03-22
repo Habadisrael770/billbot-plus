@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useSearch } from "@/context/search-context";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
@@ -660,8 +660,14 @@ function YearPickerDialog({
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
+  const [, navigate] = useLocation();
   const { data: invoices, isLoading } = useInvoices();
   const { approve, markNotDuplicate, mergeAlias, updateCategory, isPending } = useInvoiceMutations();
+
+  const goToExpenses = (filter = "הכל") => {
+    sessionStorage.setItem("bb_expense_filter", filter);
+    navigate("/expenses");
+  };
 
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
@@ -875,12 +881,14 @@ export default function Dashboard() {
           value={apiSummary?.total_documents ?? 0}
           icon={<Files className="w-5 h-5 sm:w-6 sm:h-6" />}
           delay={0}
+          onClick={() => goToExpenses("הכל")}
         />
         <StatCard
           title="חשבוניות ספק"
           value={apiSummary?.supplier_invoices ?? 0}
           icon={<ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />}
           delay={0.05}
+          onClick={() => goToExpenses("הכל")}
         />
         <StatCard
           title="סה״כ חשבוניות"
@@ -889,6 +897,7 @@ export default function Dashboard() {
             : "₪0"}
           icon={<Banknote className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />}
           delay={0.1}
+          onClick={() => goToExpenses("הכל")}
         />
         <StatCard
           title="סה״כ מע״מ"
@@ -897,12 +906,14 @@ export default function Dashboard() {
             : "₪0"}
           icon={<Tag className="w-5 h-5 sm:w-6 sm:h-6 text-violet-400" />}
           delay={0.15}
+          onClick={() => goToExpenses("הכל")}
         />
         <StatCard
           title="ממתינות לאישור"
           value={apiSummary?.pending_review ?? 0}
           icon={<Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />}
           delay={0.2}
+          onClick={() => goToExpenses("ממתין")}
         />
         <StatCard
           title="חשודות בכפילות"
@@ -915,6 +926,7 @@ export default function Dashboard() {
           }
           trendUp={false}
           delay={0.25}
+          onClick={() => goToExpenses("כפול")}
         />
       </div>
 
