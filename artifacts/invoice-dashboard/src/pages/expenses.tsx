@@ -15,12 +15,19 @@ import {
   LayoutList,
   LayoutGrid,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   X,
   TrendingUp,
   PieChart as PieIcon,
   AlertTriangle,
   FileText,
   ExternalLink,
+  Printer,
+  RotateCcw,
+  ZoomIn,
+  ZoomOut,
+  Pencil,
 } from "lucide-react";
 import {
   AreaChart,
@@ -127,6 +134,33 @@ export default function ExpensesPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [view, setView] = useState<"list" | "grid">("list");
   const [previewInvoice, setPreviewInvoice] = useState<(typeof invoices)[0] | null>(null);
+  const [previewIdx, setPreviewIdx] = useState(0);
+  const [zoom, setZoom] = useState(0.8);
+  const [rotation, setRotation] = useState(0);
+
+  const openPreview = (inv: (typeof invoices)[0], idx: number) => {
+    setPreviewInvoice(inv);
+    setPreviewIdx(idx);
+    setZoom(0.8);
+    setRotation(0);
+  };
+  const closePreview = () => setPreviewInvoice(null);
+  const goPrev = () => {
+    if (previewIdx > 0) {
+      const i = previewIdx - 1;
+      setPreviewInvoice(filtered[i]!);
+      setPreviewIdx(i);
+      setRotation(0);
+    }
+  };
+  const goNext = () => {
+    if (previewIdx < filtered.length - 1) {
+      const i = previewIdx + 1;
+      setPreviewInvoice(filtered[i]!);
+      setPreviewIdx(i);
+      setRotation(0);
+    }
+  };
 
   // ── derived filter options ──
   const allCategories = useMemo(() => {
@@ -544,7 +578,7 @@ export default function ExpensesPage() {
                       <span className={`${statusInfo.cls} text-[11px]`}>{statusInfo.label}</span>
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => setPreviewInvoice(inv)}
+                          onClick={() => openPreview(inv, idx)}
                           className="h-7 px-2 flex items-center gap-1 rounded-[8px] border border-border text-muted-foreground hover:text-foreground hover:bg-elevated transition-all text-[11px]"
                         >
                           <Eye className="w-3.5 h-3.5" />
@@ -713,7 +747,7 @@ export default function ExpensesPage() {
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="center" className="min-w-[140px] bg-card border-border" style={{ boxShadow: "var(--shadow-dropdown)" }}>
-                          <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-elevated" onClick={() => setPreviewInvoice(inv)}>
+                          <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-elevated" onClick={() => openPreview(inv, idx)}>
                             <Eye className="w-3.5 h-3.5" />
                             צפה בחשבונית
                           </DropdownMenuItem>
@@ -781,128 +815,153 @@ export default function ExpensesPage() {
 
       {/* ── Invoice Preview Modal ── */}
       <AnimatePresence>
-        {previewInvoice && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ background: "rgba(0,0,0,0.6)", backdropFilter: "blur(4px)" }}
-            onClick={() => setPreviewInvoice(null)}
-          >
+        {previewInvoice && (() => {
+          const fileUrl = `${import.meta.env.BASE_URL?.replace(/\/$/, "")}/api/invoices/${previewInvoice.id}/file`;
+          const vendorName = previewInvoice.canonicalVendorName ?? previewInvoice.normalizedVendorName ?? previewInvoice.rawVendorName ?? "—";
+          const dateStr = previewInvoice.invoiceDate ? format(new Date(previewInvoice.invoiceDate), "dd.MM.yyyy") : "";
+          return (
             <motion.div
-              initial={{ scale: 0.93, opacity: 0, y: 16 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.93, opacity: 0, y: 16 }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="bg-card border border-border rounded-[18px] w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
-              style={{ boxShadow: "var(--shadow-dropdown)" }}
-              onClick={(e) => e.stopPropagation()}
-              dir="rtl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+              style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)" }}
+              onClick={closePreview}
             >
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
-                    <FileText className="w-4 h-4" />
+              <motion.div
+                initial={{ y: 60, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 60, opacity: 0 }}
+                transition={{ type: "spring", stiffness: 320, damping: 28 }}
+                className="bg-card w-full sm:max-w-md max-h-[96vh] sm:max-h-[92vh] rounded-t-[24px] sm:rounded-[20px] flex flex-col overflow-hidden"
+                style={{ boxShadow: "0 -8px 40px rgba(0,0,0,0.4)" }}
+                onClick={(e) => e.stopPropagation()}
+                dir="rtl"
+              >
+                {/* ── Header ── */}
+                <div className="flex items-center justify-between px-4 py-3.5 border-b border-border shrink-0">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-[14px] font-bold text-foreground truncate">{vendorName}</h2>
+                    {dateStr && <p className="text-[12px] text-muted-foreground">{dateStr}</p>}
                   </div>
-                  <div>
-                    <h2 className="font-semibold text-foreground text-sm">
-                      {previewInvoice.canonicalVendorName ?? previewInvoice.normalizedVendorName ?? previewInvoice.rawVendorName ?? "—"}
-                    </h2>
-                    <p className="text-xs text-muted-foreground">
-                      {previewInvoice.invoiceNumber ? `מס׳ ${previewInvoice.invoiceNumber}` : "ללא מספר מסמך"}
-                      {previewInvoice.invoiceDate && ` · ${format(new Date(previewInvoice.invoiceDate), "dd/MM/yyyy")}`}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setPreviewInvoice(null)}
-                  className="h-8 w-8 rounded-[8px] border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-elevated transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Body */}
-              <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
-
-                {/* ── Left: details ── */}
-                <div className="lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-l border-border p-5 overflow-y-auto">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">פרטי חשבונית</p>
-                  <div className="space-y-3">
-                    {[
-                      { label: "ספק", value: previewInvoice.canonicalVendorName ?? previewInvoice.normalizedVendorName ?? previewInvoice.rawVendorName },
-                      { label: "ח.פ. / ע.מ.", value: previewInvoice.taxId },
-                      { label: "מספר מסמך", value: previewInvoice.invoiceNumber },
-                      { label: "תאריך", value: previewInvoice.invoiceDate ? format(new Date(previewInvoice.invoiceDate), "dd/MM/yyyy") : null },
-                      { label: "קטגוריה", value: previewInvoice.finalCategory ?? previewInvoice.suggestedCategory },
-                      { label: "מקור", value: SOURCE_LABELS[(previewInvoice.sourceType ?? "upload").toLowerCase()]?.label ?? previewInvoice.sourceType },
-                      { label: "סוג מסמך", value: previewInvoice.documentType === "supplier_invoice" ? "חשבונית ספק" : previewInvoice.documentType },
-                    ].map(({ label, value }) => (
-                      <div key={label}>
-                        <p className="text-[10px] text-muted-foreground">{label}</p>
-                        <p className="text-[13px] text-foreground font-medium">{value ?? "—"}</p>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-border space-y-3">
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">סכומים</p>
-                    {[
-                      { label: "לפני מע״מ", value: fmtAmount(previewInvoice.subtotal) },
-                      { label: 'מע"מ', value: fmtAmount(previewInvoice.vat) },
-                      { label: "סה״כ לתשלום", value: fmtAmount(previewInvoice.total), bold: true },
-                    ].map(({ label, value, bold }) => (
-                      <div key={label} className="flex items-center justify-between">
-                        <span className="text-[12px] text-muted-foreground">{label}</span>
-                        <span className={`text-[13px] ${bold ? "font-bold text-foreground" : "text-foreground"}`} dir="ltr">{value}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  {previewInvoice.duplicateStatus && previewInvoice.duplicateStatus !== "unique" && (
-                    <div className="mt-4 p-3 rounded-[10px] bg-destructive/10 border border-destructive/25">
-                      <p className="text-[12px] text-destructive font-semibold flex items-center gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5" />חשבונית כפולה
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-1">מסמך זה זוהה ככפול. אנא בדוק לפני אישור.</p>
-                    </div>
-                  )}
-
-                  {previewInvoice.extractionStatus !== "success" && (
-                    <div className="mt-3 p-3 rounded-[10px] bg-amber-500/10 border border-amber-500/25">
-                      <p className="text-[12px] text-amber-400 font-semibold">נתונים חסרים</p>
-                      <p className="text-[11px] text-muted-foreground mt-1">הנתונים לא חולצו אוטומטית. ניתן לצפות במסמך המקורי מימין.</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* ── Right: file preview ── */}
-                <div className="flex-1 bg-elevated flex flex-col min-h-[300px] lg:min-h-0">
-                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-border shrink-0">
-                    <span className="text-xs text-muted-foreground">מסמך מקורי</span>
-                    <a
-                      href={`${import.meta.env.BASE_URL?.replace(/\/$/, "")}/api/invoices/${previewInvoice.id}/file`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-primary hover:underline"
+                  <div className="flex items-center gap-3 shrink-0 mr-3">
+                    <span className="text-[12px] text-muted-foreground whitespace-nowrap">
+                      ({previewIdx + 1} מתוך {filtered.length})
+                    </span>
+                    <button
+                      onClick={closePreview}
+                      className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-elevated transition-colors"
                     >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      פתח בכרטיסייה חדשה
-                    </a>
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
+                </div>
+
+                {/* ── Navigation ── */}
+                <div className="flex items-center gap-3 px-4 py-2 border-b border-border shrink-0">
+                  <button
+                    onClick={goPrev}
+                    disabled={previewIdx === 0}
+                    className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl border border-border text-[13px] font-medium text-foreground hover:bg-elevated disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                    קודם
+                  </button>
+                  <button
+                    onClick={goNext}
+                    disabled={previewIdx === filtered.length - 1}
+                    className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl border border-border text-[13px] font-medium text-foreground hover:bg-elevated disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95"
+                  >
+                    הבא
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* ── Warnings ── */}
+                {(previewInvoice.duplicateStatus && previewInvoice.duplicateStatus !== "unique") && (
+                  <div className="mx-4 mt-2 px-3 py-2 rounded-xl bg-destructive/10 border border-destructive/25 flex items-center gap-2 shrink-0">
+                    <AlertTriangle className="w-3.5 h-3.5 text-destructive shrink-0" />
+                    <p className="text-[12px] text-destructive font-medium">חשבונית כפולה — בדוק לפני אישור</p>
+                  </div>
+                )}
+
+                {/* ── File viewer ── */}
+                <div className="flex-1 overflow-auto bg-black/10" style={{ minHeight: 0 }}>
                   <iframe
-                    src={`${import.meta.env.BASE_URL?.replace(/\/$/, "")}/api/invoices/${previewInvoice.id}/file`}
-                    className="flex-1 w-full border-0"
+                    key={previewInvoice.id}
+                    src={fileUrl}
                     title="invoice-preview"
+                    style={{
+                      width: `${100 / zoom}%`,
+                      height: `${100 / zoom}%`,
+                      minHeight: `${500 / zoom}px`,
+                      border: "none",
+                      display: "block",
+                      transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                      transformOrigin: "top right",
+                    }}
                   />
                 </div>
 
-              </div>
+                {/* ── Footer ── */}
+                <div className="border-t border-border px-4 py-3 shrink-0 flex items-center justify-between gap-3">
+                  {/* Zoom controls */}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setRotation(r => r + 90)}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-elevated transition-all active:scale-90"
+                      title="סובב"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setZoom(z => Math.max(0.3, parseFloat((z - 0.1).toFixed(1))))}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-elevated transition-all active:scale-90"
+                    >
+                      <ZoomOut className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-[12px] font-semibold text-foreground tabular-nums w-9 text-center">
+                      {Math.round(zoom * 100)}%
+                    </span>
+                    <button
+                      onClick={() => setZoom(z => Math.min(2, parseFloat((z + 0.1).toFixed(1))))}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-elevated transition-all active:scale-90"
+                    >
+                      <ZoomIn className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => window.open(fileUrl, "_blank")}
+                      className="flex items-center gap-1.5 h-9 px-3 rounded-xl border border-border text-[12px] font-medium text-foreground hover:bg-elevated transition-all active:scale-95"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      הדפס
+                    </button>
+                    <a
+                      href={fileUrl}
+                      download
+                      className="flex items-center gap-1.5 h-9 px-3 rounded-xl border border-border text-[12px] font-medium text-foreground hover:bg-elevated transition-all active:scale-95"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      הורד
+                    </a>
+                    <button
+                      onClick={() => handleApprove(previewInvoice.id)}
+                      className="flex items-center gap-1.5 h-9 px-3 rounded-xl text-[12px] font-semibold text-white transition-all active:scale-95"
+                      style={{ background: "linear-gradient(90deg,#059669,#10b981)" }}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      אשר
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
+          );
+        })()}
       </AnimatePresence>
     </Layout>
   );
