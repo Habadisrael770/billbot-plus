@@ -25,12 +25,15 @@ import {
   MailPlus,
   FileSpreadsheet,
   CalendarDays,
+  CalendarRange,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ArrowLeft,
   Receipt,
   MailOpen,
+  Lock,
+  Zap,
 } from "lucide-react";
 import { useInvoices, useInvoiceSummaryByMonth, useInvoiceMutations } from "@/hooks/use-invoices";
 import { Layout } from "@/components/layout";
@@ -536,6 +539,125 @@ function InvoiceCard({
   );
 }
 
+// ── Plan-based year access ────────────────────────────────────────────────────
+const MIN_YEAR = 2023;
+function useAvailableYears(): { years: number[]; yearsBack: number } {
+  const [plan, setPlan] = React.useState<string>(() =>
+    typeof window !== "undefined" ? (localStorage.getItem("bb_plan") ?? "basic") : "basic"
+  );
+  React.useEffect(() => {
+    const onStorage = () => setPlan(localStorage.getItem("bb_plan") ?? "basic");
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+  const currentYear = new Date().getFullYear();
+  const yearsBack = plan === "business" ? currentYear - MIN_YEAR : plan === "pro" ? 2 : 1;
+  const years: number[] = [];
+  for (let y = currentYear; y >= Math.max(MIN_YEAR, currentYear - yearsBack); y--) {
+    years.push(y);
+  }
+  return { years, yearsBack };
+}
+
+// ── Year Picker Dialog ────────────────────────────────────────────────────────
+function YearPickerDialog({
+  open,
+  onClose,
+  selectedYear,
+  onSelect,
+}: {
+  open: boolean;
+  onClose: () => void;
+  selectedYear: number;
+  onSelect: (year: number) => void;
+}) {
+  const { years } = useAvailableYears();
+  const plan = typeof window !== "undefined" ? (localStorage.getItem("bb_plan") ?? "basic") : "basic";
+  const lockedYears: number[] = [];
+  const currentYear = new Date().getFullYear();
+  if (plan === "basic") {
+    for (let y = currentYear - 2; y >= MIN_YEAR; y--) lockedYears.push(y);
+  } else if (plan === "pro") {
+    for (let y = currentYear - 3; y >= MIN_YEAR; y--) lockedYears.push(y);
+  }
+  const allYears = [...years, ...lockedYears];
+
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div
+        className="relative z-10 w-[310px] rounded-2xl border border-border bg-card shadow-2xl p-5"
+        dir="rtl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex flex-col items-center gap-2 mb-5">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center"
+            style={{ background: "linear-gradient(135deg, #4361ee22, #2dd4bf22)" }}>
+            <CalendarRange className="w-6 h-6 text-blue-500" />
+          </div>
+          <h2 className="text-base font-bold text-foreground">בחר שנה</h2>
+          <p className="text-[12px] text-muted-foreground text-center">לסינון הוצאות לפי שנה</p>
+        </div>
+
+        {/* Year options */}
+        <div className="flex flex-col gap-2 mb-5">
+          {allYears.map((year) => {
+            const isLocked = lockedYears.includes(year);
+            const isActive = year === selectedYear;
+            return (
+              <button
+                key={year}
+                disabled={isLocked}
+                onClick={() => { if (!isLocked) { onSelect(year); onClose(); } }}
+                className={[
+                  "flex items-center justify-between rounded-xl px-4 py-3 border transition-all",
+                  isActive && !isLocked
+                    ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold"
+                    : isLocked
+                    ? "border-border bg-muted/30 text-muted-foreground cursor-not-allowed opacity-60"
+                    : "border-border hover:border-blue-400 hover:bg-elevated text-foreground cursor-pointer",
+                ].join(" ")}
+              >
+                <span className="text-[14px] font-medium">{year}</span>
+                {isLocked ? (
+                  <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                    <Lock className="w-2.5 h-2.5" />
+                    {plan === "basic" ? "פרו+" : "ביזנס+"}
+                  </span>
+                ) : isActive ? (
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Upgrade prompt if locked years exist */}
+        {lockedYears.length > 0 && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 mb-4">
+            <Zap className="w-4 h-4 text-amber-500 shrink-0" />
+            <p className="text-[11px] text-amber-600 dark:text-amber-400">
+              {plan === "basic" ? "שדרג לפרו לגישה ל-3 שנים" : "שדרג לביזנס לגישה לכל השנים"}
+            </p>
+          </div>
+        )}
+
+        <button
+          onClick={onClose}
+          className="w-full h-9 rounded-xl border border-border text-[13px] text-muted-foreground hover:bg-elevated transition-colors"
+        >
+          סגור
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const { data: invoices, isLoading } = useInvoices();
@@ -551,6 +673,7 @@ export default function Dashboard() {
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailMode, setEmailMode] = useState<"scan" | "attach">("scan");
   const [accountantOpen, setAccountantOpen] = useState(false);
+  const [yearDialogOpen, setYearDialogOpen] = useState(false);
   const [mergeDialog, setMergeDialog] = useState<{
     isOpen: boolean;
     invoiceId: string | null;
@@ -654,6 +777,15 @@ export default function Dashboard() {
             </button>
           </div>
 
+          {/* Year picker button (mobile) */}
+          <button
+            onClick={() => setYearDialogOpen(true)}
+            className="h-10 px-3 rounded-[10px] flex items-center gap-1.5 border border-border bg-card text-[12px] font-semibold text-foreground hover:bg-elevated active:scale-95 transition-all shrink-0"
+          >
+            <CalendarRange className="w-3.5 h-3.5 text-blue-500" />
+            {selectedMonth.year}
+          </button>
+
           {/* Upload invoice */}
           <button
             onClick={() => setUploadOpen(true)}
@@ -678,29 +810,40 @@ export default function Dashboard() {
       {/* ── Desktop toolbar: month picker + actions ── */}
       <div className="hidden sm:flex items-center justify-between gap-3 mb-1" dir="rtl">
 
-        {/* Month picker */}
-        <div
-          className="flex items-center gap-1 h-10 rounded-[10px] px-2 border border-border bg-card"
-          style={{ minWidth: 200 }}
-        >
-          <button
-            onClick={prevMonth}
-            className="w-7 h-7 flex items-center justify-center rounded-[7px] hover:bg-elevated text-muted-foreground hover:text-foreground transition-colors active:scale-90"
+        {/* Month picker + Year button */}
+        <div className="flex items-center gap-2">
+          <div
+            className="flex items-center gap-1 h-10 rounded-[10px] px-2 border border-border bg-card"
+            style={{ minWidth: 200 }}
           >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-          <div className="flex items-center gap-2 flex-1 justify-center">
-            <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
-            <span className="text-[13px] font-semibold text-foreground whitespace-nowrap">
-              {monthStart} — {monthEnd}
-            </span>
+            <button
+              onClick={prevMonth}
+              className="w-7 h-7 flex items-center justify-center rounded-[7px] hover:bg-elevated text-muted-foreground hover:text-foreground transition-colors active:scale-90"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <div className="flex items-center gap-2 flex-1 justify-center">
+              <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-[13px] font-semibold text-foreground whitespace-nowrap">
+                {monthStart} — {monthEnd}
+              </span>
+            </div>
+            <button
+              onClick={nextMonth}
+              disabled={selectedMonth.year === now.getFullYear() && selectedMonth.month === now.getMonth()}
+              className="w-7 h-7 flex items-center justify-center rounded-[7px] hover:bg-elevated text-muted-foreground hover:text-foreground transition-colors active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
           </div>
+
+          {/* Year picker button (desktop) */}
           <button
-            onClick={nextMonth}
-            disabled={selectedMonth.year === now.getFullYear() && selectedMonth.month === now.getMonth()}
-            className="w-7 h-7 flex items-center justify-center rounded-[7px] hover:bg-elevated text-muted-foreground hover:text-foreground transition-colors active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
+            onClick={() => setYearDialogOpen(true)}
+            className="h-10 px-3 rounded-[10px] flex items-center gap-2 border border-border bg-card text-[13px] font-semibold text-foreground hover:bg-elevated hover:border-blue-400 active:scale-95 transition-all whitespace-nowrap"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <CalendarRange className="w-4 h-4 text-blue-500" />
+            {selectedMonth.year}
           </button>
         </div>
 
@@ -1093,6 +1236,20 @@ export default function Dashboard() {
           </table>
         </div>
       </motion.div>
+
+      {/* ── Year Picker Dialog ── */}
+      <YearPickerDialog
+        open={yearDialogOpen}
+        onClose={() => setYearDialogOpen(false)}
+        selectedYear={selectedMonth.year}
+        onSelect={(year) => {
+          setSelectedMonth(({ month }) => {
+            const isCurrentYear = year === now.getFullYear();
+            const clampedMonth = isCurrentYear && month > now.getMonth() ? now.getMonth() : month;
+            return { year, month: clampedMonth };
+          });
+        }}
+      />
 
       {/* ── Dialogs ── */}
       <MergeAliasDialog
