@@ -705,6 +705,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
           {/* ── Mobile search bar — full width below header ── */}
           <div className="md:hidden px-4 py-2.5 border-b border-border bg-card shrink-0">
+            <div className="search-shimmer">
             <div className="relative">
               {/* Search icon — right */}
               <Search className="absolute right-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-muted-foreground pointer-events-none" />
@@ -746,6 +747,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   <ScanLine className="w-[15px] h-[15px]" style={{ color: "#2dd4bf" }} />
                 </button>
               </div>
+            </div>
             </div>
           </div>
 

@@ -646,6 +646,93 @@ html.light { color-scheme: light; }
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   NEON SEARCH BORDER  (dark mode only)
+   Technique: oversized conic-gradient square rotates inside an
+   overflow:hidden container, creating a spinning neon border effect.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+@keyframes search-border-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg);   }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.search-shimmer {
+  position: relative;
+  border-radius: 12px;
+  padding: 1.5px;
+  overflow: hidden;
+  /* Smooth glow transitions */
+  box-shadow: 0 0 0px transparent;
+  transition: box-shadow 0.35s ease;
+}
+
+/* Spinning gradient & its blurred twin — dark only */
+.dark .search-shimmer::before,
+.dark .search-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* Must be large enough to cover the diagonal when rotated */
+  width: 220%;
+  aspect-ratio: 1 / 1;
+  background: conic-gradient(
+    from 0deg,
+    #4285F4 0%,
+    #9b72cb 33%,
+    #d96570 66%,
+    #4285F4 100%
+  );
+  animation: search-border-spin 3s linear infinite;
+  border-radius: 4px;
+}
+
+/* Blurred glow layer sits behind the sharp gradient */
+.dark .search-shimmer::after {
+  filter: blur(10px);
+  opacity: 0.45;
+}
+
+/* Inner content lifts above both pseudo-elements */
+.search-shimmer > div {
+  position: relative;
+  z-index: 1;
+}
+
+/* Let the gradient border show — hide original input border in dark */
+.dark .search-shimmer .mobile-search-input {
+  border-color: transparent !important;
+  background: hsl(var(--elevated)) !important;
+}
+
+/* ── Hover: faster spin + stronger glow ── */
+.dark .search-shimmer:hover::before,
+.dark .search-shimmer:hover::after {
+  animation-duration: 1.6s;
+}
+.dark .search-shimmer:hover {
+  box-shadow:
+    0 0 14px rgba(66, 133, 244, 0.28),
+    0 0 32px rgba(155, 114, 203, 0.18);
+}
+
+/* ── Focus: max intensity ── */
+.dark .search-shimmer:focus-within::before,
+.dark .search-shimmer:focus-within::after {
+  animation-duration: 1.1s;
+}
+.dark .search-shimmer:focus-within::after {
+  opacity: 0.75;
+  filter: blur(14px);
+}
+.dark .search-shimmer:focus-within {
+  box-shadow:
+    0 0 18px rgba(66, 133, 244, 0.45),
+    0 0 40px rgba(217, 101, 112, 0.25),
+    0 0 60px rgba(155, 114, 203, 0.15);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    SCROLLBAR
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 ::-webkit-scrollbar       { width: 6px; }
