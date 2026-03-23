@@ -125,17 +125,20 @@ function MobileSidebar({
   const lm = theme === "light"; // light-mode shorthand
   const [bellTooltip, setBellTooltip] = useState(false);
   const hubUserData = (() => {
+    const u = readBbUser();
     try {
       const raw = localStorage.getItem("bb_user");
-      if (!raw) return { name: "משתמש", email: "", phone: "", company: "" };
-      const p = JSON.parse(raw);
+      const p = raw ? JSON.parse(raw) : {};
       return {
-        name:    p.name    ?? p.email  ?? "משתמש",
-        email:   p.email   ?? "",
+        name:    p.name    ?? u.name,
+        email:   p.email   ?? u.email,
         phone:   p.phone   ?? "",
         company: p.company ?? p.businessName ?? "",
+        initials: u.initials,
       };
-    } catch { return { name: "משתמש", email: "", phone: "", company: "" }; }
+    } catch {
+      return { name: u.name, email: u.email, phone: "", company: "", initials: u.initials };
+    }
   })();
   const hubUser = hubUserData.name;
 
@@ -472,19 +475,66 @@ function MobileSidebar({
   );
 }
 
+// ── Shared user-data reader ──────────────────────────────────────────────
+function readBbUser(): { name: string; email: string; initials: string } {
+  try {
+    const raw = localStorage.getItem("bb_user");
+    if (!raw) return { name: "משתמש", email: "", initials: "מ" };
+
+    let email = raw;
+    let name  = raw;
+
+    // Try to parse as JSON (new format: { email, name?, ... })
+    try {
+      const p = JSON.parse(raw);
+      email = p.email ?? raw;
+      name  = p.name  ?? p.email ?? raw;
+    } catch {
+      // Legacy: plain email string stored directly
+    }
+
+    // Derive initials
+    const trimmed = name.trim();
+    let initials: string;
+    if (trimmed.includes("@")) {
+      initials = trimmed.substring(0, 2).toUpperCase();
+    } else {
+      const parts = trimmed.split(/\s+/);
+      initials = parts.length >= 2
+        ? (parts[0][0]! + parts[1][0]!).toUpperCase()
+        : trimmed.substring(0, 2).toUpperCase();
+    }
+
+    return { name, email, initials };
+  } catch {
+    return { name: "משתמש", email: "", initials: "מ" };
+  }
+}
+
 function PersonalAreaDropdown() {
+  const [, navigate] = useLocation();
+  const user = readBbUser();
+
+  const handleLogout = () => {
+    localStorage.removeItem("bb_user");
+    navigate("/");
+    window.location.reload();
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="flex items-center gap-2 rounded-[10px] px-2 py-1.5 hover:bg-elevated transition-colors focus:outline-none group">
           <Avatar className="w-8 h-8">
             <AvatarFallback className="bg-primary text-white text-sm font-bold">
-              JA
+              {user.initials}
             </AvatarFallback>
           </Avatar>
-          <span className="hidden sm:flex flex-col items-start text-right">
-            <span className="text-[13px] font-semibold text-foreground leading-none">Jean Azoulay</span>
-            <span className="text-[11px] text-muted-foreground leading-none mt-0.5">b1.asakim770@gmail.com</span>
+          <span className="hidden sm:flex flex-col items-start text-right max-w-[130px]">
+            <span className="text-[13px] font-semibold text-foreground leading-none truncate w-full">{user.name}</span>
+            {user.email && user.email !== user.name && (
+              <span className="text-[11px] text-muted-foreground leading-none mt-0.5 truncate w-full">{user.email}</span>
+            )}
           </span>
           <ChevronDown className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors hidden sm:block" />
         </button>
@@ -494,12 +544,14 @@ function PersonalAreaDropdown() {
         <div className="px-3 py-3 mb-1 rounded-[10px] bg-elevated">
           <div className="flex items-center gap-3">
             <Avatar className="w-10 h-10">
-              <AvatarFallback className="bg-primary text-white font-bold">JA</AvatarFallback>
+              <AvatarFallback className="bg-primary text-white font-bold">{user.initials}</AvatarFallback>
             </Avatar>
-            <div>
-              <p className="text-[13px] font-semibold text-foreground">Jean Azoulay</p>
-              <p className="text-[11px] text-muted-foreground">b1.asakim770@gmail.com</p>
-              <span className="badge badge-primary mt-1 inline-block">Admin</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-foreground truncate">{user.name}</p>
+              {user.email && (
+                <p className="text-[11px] text-muted-foreground truncate" dir="ltr">{user.email}</p>
+              )}
+              <span className="badge badge-primary mt-1 inline-block">משתמש</span>
             </div>
           </div>
         </div>
@@ -520,7 +572,10 @@ function PersonalAreaDropdown() {
           <span className="badge badge-warning mr-auto">3</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="bg-border my-1" />
-        <DropdownMenuItem className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] cursor-pointer text-[13px] text-destructive hover:bg-destructive/10 transition-colors">
+        <DropdownMenuItem
+          onClick={handleLogout}
+          className="flex items-center gap-2.5 px-3 py-2.5 rounded-[10px] cursor-pointer text-[13px] text-destructive hover:bg-destructive/10 transition-colors"
+        >
           <LogOut className="w-4 h-4" /> יציאה
         </DropdownMenuItem>
       </DropdownMenuContent>

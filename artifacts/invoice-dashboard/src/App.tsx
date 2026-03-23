@@ -74,11 +74,11 @@ function AppRouter() {
     return (
       <LoginPage
         onLogin={(email) => {
-          localStorage.setItem("bb_user", email || "user");
+          localStorage.setItem("bb_user", JSON.stringify({ email: email || "user" }));
           setLoggedIn(true);
         }}
         onSkip={() => {
-          localStorage.setItem("bb_user", "guest");
+          localStorage.setItem("bb_user", JSON.stringify({ email: "guest" }));
           setLoggedIn(true);
         }}
       />
