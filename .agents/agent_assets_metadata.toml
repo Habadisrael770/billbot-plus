@@ -6,3 +6,9 @@ id = "o_q50zM5_FFP5EJIrA6ST"
 uri = "file://attached_assets/generated_images/cyan_neon_car_interior.png"
 type = "image"
 title = "Cyan Neon Car Interior — Cinematic Night"
+
+[[outputs]]
+id = "ECXUzmYOVowS_NNd6XWIo"
+uri = "file://BillBOT_Design_System.md"
+type = "text"
+title = "BillBOT+ Design System — מסמך מלא"
