@@ -147,8 +147,9 @@ router.get("/summary", async (req, res) => {
 
     let dateFilter = sql``;
     if (yearParam && monthParam) {
+      const lastDay = new Date(yearParam, monthParam, 0).getDate(); // correct last day for any month
       const start = `${yearParam}-${String(monthParam).padStart(2, "0")}-01`;
-      const end   = `${yearParam}-${String(monthParam).padStart(2, "0")}-31`;
+      const end   = `${yearParam}-${String(monthParam).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
       dateFilter  = sql` WHERE invoice_date BETWEEN ${start}::date AND ${end}::date`;
     }
 

@@ -93,9 +93,19 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
     setProgress(0);
     let current = 0;
     timerRef.current = setInterval(() => {
-      current += Math.random() * 1.4 + 0.3;
-      if (current >= 94) { current = 94; clearTimer(); }
-      setProgress(Math.round(current));
+      if (current < 70) {
+        // Fast phase: 0 → 70%
+        current += Math.random() * 1.6 + 0.4;
+      } else if (current < 90) {
+        // Medium phase: 70 → 90%
+        current += Math.random() * 0.6 + 0.15;
+      } else if (current < 97) {
+        // Slow creep: 90 → 97% (never fully stops — just very slow)
+        current += Math.random() * 0.08 + 0.02;
+      }
+      // Hard cap at 97 so there's always a visible jump to 100 on completion
+      if (current > 97) current = 97;
+      setProgress(Math.round(current * 10) / 10);
     }, 300);
   };
 
