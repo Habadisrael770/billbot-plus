@@ -11,6 +11,7 @@ import categoriesRouter from "./categories.js";
 import entitiesRouter from "./entities.js";
 import businessProfileRouter from "./businessProfile.js";
 import gmailAuthRouter from "./gmail-auth.js";
+import { publicRouter, internalApiKeysRouter } from "./public-api.js";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,7 @@ router.use("/categories", categoriesRouter);
 router.use("/entities", entitiesRouter);
 router.use("/business-profile", businessProfileRouter);
 router.use("/gmail-auth", gmailAuthRouter);
+router.use("/public", publicRouter);
+router.use("/internal/api-keys", internalApiKeysRouter);
 
 export default router;
