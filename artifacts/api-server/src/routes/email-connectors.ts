@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import path from "path";
 import fs from "fs";
-import { getGmailClient, getGmailStatus } from "../services/gmailOAuth.js";
+import { getAllGmailClients, getGmailStatus } from "../services/gmailOAuth.js";
 import { processInvoice } from "../services/invoiceProcessingService.js";
 
 const router: IRouter = Router();
@@ -26,7 +26,7 @@ router.get("/gmail/status", async (_req, res) => {
 
 router.post("/gmail/scan", async (req, res) => {
   try {
-    const { client: gmail } = await getGmailClient();
+    const allClients = await getAllGmailClients();
 
     let afterDate: Date;
     let yearsBack = Math.min(Math.max(Number(req.body?.yearsBack) || 4, 1), 4);
@@ -47,115 +47,114 @@ router.post("/gmail/scan", async (req, res) => {
       `has:attachment (filename:jpg OR filename:png) חשבונית after:${afterStr}`,
     ];
 
-    const messageIds = new Set<string>();
-    const MAX_PER_QUERY = 100;
-
-    for (const q of SEARCH_QUERIES) {
-      let pageToken: string | undefined;
-      do {
-        const listRes = await gmail.users.messages.list({
-          userId: "me",
-          q,
-          maxResults: MAX_PER_QUERY,
-          pageToken,
-        });
-        for (const msg of listRes.data.messages ?? []) {
-          if (msg.id) messageIds.add(msg.id);
-        }
-        pageToken = listRes.data.nextPageToken ?? undefined;
-      } while (pageToken && messageIds.size < 500);
-    }
-
+    let totalFound = 0;
     let processed = 0;
     let skipped = 0;
     const errors: string[] = [];
 
-    for (const msgId of messageIds) {
-      try {
-        const msg = await gmail.users.messages.get({
-          userId: "me",
-          id: msgId,
-          format: "full",
-        });
+    // Scan ALL connected accounts
+    for (const { client: gmail, email: accountEmail } of allClients) {
+      const messageIds = new Set<string>();
+      const MAX_PER_QUERY = 100;
 
-        const parts = msg.data.payload?.parts ?? [];
-        const allParts = flattenParts(parts);
-
-        const attachmentParts = allParts.filter((p) => {
-          const fn = p.filename ?? "";
-          const mime = p.mimeType ?? "";
-          return (
-            p.body?.attachmentId &&
-            (mime === "application/pdf" ||
-              mime === "image/jpeg" ||
-              mime === "image/jpg" ||
-              mime === "image/png" ||
-              fn.endsWith(".pdf") ||
-              fn.endsWith(".jpg") ||
-              fn.endsWith(".jpeg") ||
-              fn.endsWith(".png"))
-          );
-        });
-
-        if (attachmentParts.length === 0) {
-          skipped++;
-          continue;
-        }
-
-        const emailDate = msg.data.internalDate
-          ? new Date(Number(msg.data.internalDate))
-          : new Date();
-
-        for (const part of attachmentParts) {
-          const attachId = part.body!.attachmentId!;
-          const attachRes = await gmail.users.messages.attachments.get({
+      for (const q of SEARCH_QUERIES) {
+        let pageToken: string | undefined;
+        do {
+          const listRes = await gmail.users.messages.list({
             userId: "me",
-            messageId: msgId,
-            id: attachId,
+            q,
+            maxResults: MAX_PER_QUERY,
+            pageToken,
+          });
+          for (const msg of listRes.data.messages ?? []) {
+            if (msg.id) messageIds.add(msg.id);
+          }
+          pageToken = listRes.data.nextPageToken ?? undefined;
+        } while (pageToken && messageIds.size < 500);
+      }
+
+      totalFound += messageIds.size;
+
+      for (const msgId of messageIds) {
+        try {
+          const msg = await gmail.users.messages.get({
+            userId: "me",
+            id: msgId,
+            format: "full",
           });
 
-          const data = attachRes.data.data;
-          if (!data) continue;
+          const parts = msg.data.payload?.parts ?? [];
+          const allParts = flattenParts(parts);
 
-          const buffer = Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
-          const mime = part.mimeType ?? "application/pdf";
-          const extMap: Record<string, string> = {
-            "application/pdf": ".pdf",
-            "image/jpeg": ".jpg",
-            "image/jpg": ".jpg",
-            "image/png": ".png",
-          };
-          const ext = extMap[mime] || path.extname(part.filename ?? ".pdf");
-
-          const monthDir = getMonthUploadsDir();
-          const filename = `gmail-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-          const filePath = path.join(monthDir, filename);
-          fs.writeFileSync(filePath, buffer);
-
-          await processInvoice({
-            filePath,
-            extracted: { date: emailDate.toISOString().split("T")[0] },
-            sourceType: "email",
+          const attachmentParts = allParts.filter((p) => {
+            const fn = p.filename ?? "";
+            const mime = p.mimeType ?? "";
+            return (
+              p.body?.attachmentId &&
+              (mime === "application/pdf" ||
+                mime === "image/jpeg" ||
+                mime === "image/jpg" ||
+                mime === "image/png" ||
+                fn.endsWith(".pdf") ||
+                fn.endsWith(".jpg") ||
+                fn.endsWith(".jpeg") ||
+                fn.endsWith(".png"))
+            );
           });
-          processed++;
-        }
-      } catch (err) {
-        const msg = String(err);
-        if (msg.includes("VENDOR_BLOCKED:")) {
-          skipped++;
-        } else {
-          errors.push(msg);
+
+          if (attachmentParts.length === 0) { skipped++; continue; }
+
+          const emailDate = msg.data.internalDate
+            ? new Date(Number(msg.data.internalDate))
+            : new Date();
+
+          for (const part of attachmentParts) {
+            const attachId = part.body!.attachmentId!;
+            const attachRes = await gmail.users.messages.attachments.get({
+              userId: "me",
+              messageId: msgId,
+              id: attachId,
+            });
+            const data = attachRes.data.data;
+            if (!data) continue;
+
+            const buffer = Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+            const mime = part.mimeType ?? "application/pdf";
+            const extMap: Record<string, string> = {
+              "application/pdf": ".pdf",
+              "image/jpeg": ".jpg",
+              "image/jpg": ".jpg",
+              "image/png": ".png",
+            };
+            const ext = extMap[mime] || path.extname(part.filename ?? ".pdf");
+            const monthDir = getMonthUploadsDir();
+            const filename = `gmail-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+            const filePath = path.join(monthDir, filename);
+            fs.writeFileSync(filePath, buffer);
+
+            await processInvoice({
+              filePath,
+              extracted: { date: emailDate.toISOString().split("T")[0] },
+              sourceType: "email",
+            });
+            processed++;
+          }
+        } catch (err) {
+          const msg = String(err);
+          if (msg.includes("VENDOR_BLOCKED:")) skipped++;
+          else errors.push(`[${accountEmail}] ${msg}`);
         }
       }
-    }
+    } // end accounts loop
 
     res.json({
       ok: true,
-      found: messageIds.size,
+      found: totalFound,
       processed,
       skipped,
       errors: errors.slice(0, 5),
       yearsScanned: yearsBack,
+      accounts_scanned: allClients.length,
     });
   } catch (err) {
     res.status(500).json({ ok: false, error: String(err) });

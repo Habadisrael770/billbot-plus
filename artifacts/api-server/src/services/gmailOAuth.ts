@@ -82,12 +82,21 @@ export async function handleGmailCallback(code: string): Promise<string> {
   return email;
 }
 
-// ── Get a fresh Gmail client using stored tokens ───────────────────────────
+// ── Get a single Gmail client (first stored token) ────────────────────────
 export async function getGmailClient() {
   const rows = await db.select().from(gmailTokens).limit(1);
   if (rows.length === 0) throw new Error("Gmail not connected");
+  return buildGmailClientFromRow(rows[0]);
+}
 
-  const row = rows[0];
+// ── Get ALL Gmail clients (one per connected account) ─────────────────────
+export async function getAllGmailClients() {
+  const rows = await db.select().from(gmailTokens);
+  if (rows.length === 0) throw new Error("Gmail not connected");
+  return rows.map(buildGmailClientFromRow);
+}
+
+function buildGmailClientFromRow(row: typeof gmailTokens.$inferSelect) {
   const oAuth2Client = getOAuth2Client();
   oAuth2Client.setCredentials({
     access_token:  row.accessToken,
@@ -114,15 +123,21 @@ export async function getGmailClient() {
 }
 
 // ── Check connection status ────────────────────────────────────────────────
-export async function getGmailStatus(): Promise<{ connected: boolean; email: string | null; credentialsConfigured: boolean; redirectUri: string }> {
+export async function getGmailStatus(): Promise<{
+  connected: boolean;
+  email: string | null;
+  emails: string[];
+  credentialsConfigured: boolean;
+  redirectUri: string;
+}> {
   const credentialsConfigured = !!((process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_ID) && process.env.GOOGLE_CLIENT_SECRET);
   const redirectUri = getRedirectUri();
   try {
-    const { client, email } = await getGmailClient();
-    const profile = await client.users.getProfile({ userId: "me" });
-    return { connected: true, email: profile.data.emailAddress ?? email, credentialsConfigured, redirectUri };
+    const clients = await getAllGmailClients();
+    const emails = clients.map(c => c.email);
+    return { connected: true, email: emails[0], emails, credentialsConfigured, redirectUri };
   } catch {
-    return { connected: false, email: null, credentialsConfigured, redirectUri };
+    return { connected: false, email: null, emails: [], credentialsConfigured, redirectUri };
   }
 }
 

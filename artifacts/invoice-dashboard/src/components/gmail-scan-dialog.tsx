@@ -18,6 +18,7 @@ const API_BASE = BASE_URL.replace(/\/$/, "") + "/api";
 interface GmailStatus {
   connected: boolean;
   email: string | null;
+  emails: string[];
   credentialsConfigured: boolean;
   redirectUri?: string;
 }
@@ -94,17 +95,13 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
     let current = 0;
     timerRef.current = setInterval(() => {
       if (current < 70) {
-        // Fast phase: 0 → 70%
-        current += Math.random() * 1.6 + 0.4;
-      } else if (current < 90) {
-        // Medium phase: 70 → 90%
-        current += Math.random() * 0.6 + 0.15;
-      } else if (current < 97) {
-        // Slow creep: 90 → 97% (never fully stops — just very slow)
-        current += Math.random() * 0.08 + 0.02;
+        current += Math.random() * 1.6 + 0.4;        // Fast: 0→70%
+      } else if (current < 88) {
+        current += Math.random() * 0.5 + 0.12;       // Medium: 70→88%
+      } else if (current < 99.5) {
+        current += Math.random() * 0.03 + 0.005;     // Very slow creep: 88→99.5%
       }
-      // Hard cap at 97 so there's always a visible jump to 100 on completion
-      if (current > 97) current = 97;
+      if (current > 99.5) current = 99.5;            // Never reaches 100 until API responds
       setProgress(Math.round(current * 10) / 10);
     }, 300);
   };
@@ -146,23 +143,28 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
     return () => window.removeEventListener("message", handleMessage);
   }, []);
 
+  const isMobile = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
   const handleConnectGmail = async () => {
     if (!status?.credentialsConfigured) {
       toast({ title: "דרושה הגדרה", description: "יש לקבוע GOOGLE_CLIENT_ID ו-GOOGLE_CLIENT_SECRET", variant: "destructive" });
       return;
     }
     setConnectingGmail(true);
-    const authWindow = window.open("", "_blank", "width=520,height=620,left=200,top=100");
     try {
       const res = await fetch(`${API_BASE}/gmail-auth/url`);
       const { url } = await res.json();
-      if (url && authWindow) {
-        authWindow.location.href = url;
-      } else if (!authWindow && url) {
-        window.open(url, "_blank");
+      if (!url) throw new Error("no url");
+
+      if (isMobile()) {
+        // Mobile: full-page redirect (popups are blocked on mobile)
+        window.location.href = url;
+      } else {
+        // Desktop: popup flow
+        const authWindow = window.open(url, "_blank", "width=520,height=620,left=200,top=100");
+        if (!authWindow) window.open(url, "_blank"); // fallback if popup blocked
       }
     } catch {
-      authWindow?.close();
       toast({ title: "שגיאה", description: "לא ניתן לפתוח חיבור Gmail", variant: "destructive" });
     } finally {
       setConnectingGmail(false);
@@ -617,40 +619,45 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
                 {/* Accounts divider */}
                 <div className="flex items-center gap-2">
                   <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.07)" }} />
-                  <span className="text-[11px] text-white/30">חשבונות</span>
+                  <span className="text-[11px] text-white/30">חשבונות מחוברים</span>
                   <div className="h-px flex-1" style={{ background: "rgba(255,255,255,0.07)" }} />
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {status?.connected && status.email && (
+                <div className="flex flex-col gap-2">
+                  {/* List all connected emails */}
+                  {status?.connected && (status.emails ?? (status.email ? [status.email] : [])).map((em, idx) => (
                     <div
-                      className="flex-1 flex items-center gap-2 px-3 py-2 rounded-xl"
-                      style={{ background: "rgba(45,212,191,0.08)", border: "1px solid rgba(45,212,191,0.2)" }}
+                      key={em}
+                      className="flex items-center gap-2 px-3 py-2 rounded-xl"
+                      style={{ background: "rgba(45,212,191,0.07)", border: "1px solid rgba(45,212,191,0.18)" }}
                     >
                       <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#4361ee] to-[#2dd4bf] flex items-center justify-center shrink-0">
-                        <span className="text-[10px] font-bold text-white">
-                          {status.email[0].toUpperCase()}
-                        </span>
+                        <span className="text-[10px] font-bold text-white">{em[0].toUpperCase()}</span>
                       </div>
-                      <span className="text-[12px] text-white/70 truncate">{status.email}</span>
+                      <span className="text-[12px] text-white/70 truncate flex-1">{em}</span>
+                      {idx === 0 && (
+                        <span className="text-[10px] text-teal-400/70 shrink-0">ראשי</span>
+                      )}
                     </div>
-                  )}
+                  ))}
+
+                  {/* Add account button */}
                   <div className="relative group">
                     <button
                       disabled={!paid}
                       onClick={() => paid && handleConnectGmail()}
-                      className={`flex items-center gap-1.5 h-10 px-3 rounded-xl text-[12px] font-medium transition-all ${
+                      className={`w-full flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl text-[12px] font-medium transition-all ${
                         paid
-                          ? "text-white hover:bg-white/10 border border-white/15"
-                          : "text-white/30 border border-white/8 cursor-not-allowed"
+                          ? "text-white/70 hover:text-white hover:bg-white/10 border border-white/12 border-dashed"
+                          : "text-white/25 border border-dashed border-white/8 cursor-not-allowed"
                       }`}
                     >
-                      {paid ? <MailPlus className="w-4 h-4" /> : <Lock className="w-3.5 h-3.5" />}
-                      הוסף חשבון
+                      {paid ? <MailPlus className="w-3.5 h-3.5" /> : <Lock className="w-3 h-3" />}
+                      הוסף חשבון Gmail נוסף
                     </button>
                     {!paid && (
-                      <div className="absolute bottom-full right-0 mb-2 w-48 px-3 py-2 rounded-lg text-[11px] text-white bg-[#1a1f3a] border border-white/10 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
-                        זמין בתוכנית Starter ומעלה
+                      <div className="absolute bottom-full right-0 mb-2 w-52 px-3 py-2 rounded-lg text-[11px] text-white bg-[#1a1f3a] border border-white/10 shadow-xl opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
+                        הוספת חשבונות נוספים זמינה בתוכנית Starter ומעלה
                       </div>
                     )}
                   </div>
