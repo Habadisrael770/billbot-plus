@@ -28,3 +28,12 @@ timeoutMs = 20000
 
 [nix]
 channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+BILLBOT_PUBLIC_BASE_URL = "https://dc086eb1-7bde-429c-a879-eb80b41757d1-00-2j2cz2s8jqfl2.riker.replit.dev"
+BILLBOT_PUBLIC_API_KEY = "bbp_99ff9a5afc5726ba6c31b3bd4c5cffadfae79b192944c2beed0a8a92457a406d"
+BILLBOT_GMAIL_SCAN_ENDPOINT = "https://dc086eb1-7bde-429c-a879-eb80b41757d1-00-2j2cz2s8jqfl2.riker.replit.dev/api/public/gmail-scan"
+BILLBOT_INVOICES_ENDPOINT = "https://dc086eb1-7bde-429c-a879-eb80b41757d1-00-2j2cz2s8jqfl2.riker.replit.dev/api/public/invoices"
+BILLBOT_SUMMARY_ENDPOINT = "https://dc086eb1-7bde-429c-a879-eb80b41757d1-00-2j2cz2s8jqfl2.riker.replit.dev/api/public/summary"
