@@ -28,7 +28,9 @@ import {
   Check,
   Lock,
   ExternalLink,
+  BarChart3,
 } from "lucide-react";
+import { Invoice4UReport } from "@/components/invoice4u-report";
 
 /* ── Brand SVG Icons ─────────────────────────────────────────────────────── */
 function GmailIcon({ size = 20 }: { size?: number }) {
@@ -1178,6 +1180,79 @@ function AccountantCard() {
   );
 }
 
+/* ── Invoice4U ───────────────────────────────────────────────────────────── */
+function Invoice4UCard() {
+  const [status,  setStatus]  = useState<{ connected: boolean; branches?: { ID:number; Name:string }[]; error?: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [open,    setOpen]    = useState(false);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/invoice4u/status`)
+      .then(r => r.json())
+      .then(d => setStatus(d))
+      .catch(() => setStatus({ connected: false, error: "שגיאת רשת" }))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <SectionCard
+      icon={
+        <svg width="22" height="22" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="40" height="40" rx="10" fill="#1A56DB" />
+          <path d="M8 28L16 12l8 12 4-6 4 8" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      }
+      iconBg="bg-blue-600/10"
+      title="Invoice4U"
+      description="ייבוא דוחות הכנסות והוצאות חודשיים מחשבונית 4U"
+      badge={
+        loading ? (
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        ) : status?.connected ? (
+          <span className="flex items-center gap-1 text-xs font-medium text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">
+            <CheckCircle2 className="w-3 h-3" /> מחובר
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-xs font-medium text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5">
+            <XCircle className="w-3 h-3" /> לא מוגדר
+          </span>
+        )
+      }
+    >
+      {!loading && status?.connected ? (
+        <div className="space-y-3">
+          {status.branches && status.branches.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {status.branches.map(b => (
+                <span key={b.ID} className="text-xs bg-muted border border-border rounded-lg px-2 py-0.5 text-muted-foreground">{b.Name}</span>
+              ))}
+            </div>
+          )}
+          <button
+            onClick={() => setOpen(o => !o)}
+            className="flex items-center gap-1.5 h-8 px-4 rounded-xl bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors"
+          >
+            <BarChart3 className="w-3.5 h-3.5" />
+            {open ? "סגור דוח" : "הצג דוח הכנסות/הוצאות"}
+          </button>
+
+          {open && (
+            <div className="mt-2 rounded-2xl border border-border bg-background p-4">
+              <Invoice4UReport />
+            </div>
+          )}
+        </div>
+      ) : !loading ? (
+        <p className="text-xs text-muted-foreground">
+          {status?.error
+            ? `שגיאה: ${status.error}`
+            : "הוסף את מפתח ה-API של Invoice4U כ-Secret בשם INVOICE4U"}
+        </p>
+      ) : null}
+    </SectionCard>
+  );
+}
+
 /* ── Page ────────────────────────────────────────────────────────────────── */
 export default function IntegrationsPage() {
   return (
@@ -1222,6 +1297,14 @@ export default function IntegrationsPage() {
               <UserCheck className="w-3.5 h-3.5" /> רואה חשבון
             </p>
             <AccountantCard />
+          </div>
+
+          {/* Invoice4U — full width */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
+              <BarChart3 className="w-3.5 h-3.5" /> מערכות חשבונאות
+            </p>
+            <Invoice4UCard />
           </div>
 
           {/* External APIs — full width */}

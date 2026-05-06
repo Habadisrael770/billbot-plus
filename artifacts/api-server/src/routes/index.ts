@@ -12,6 +12,7 @@ import entitiesRouter from "./entities.js";
 import businessProfileRouter from "./businessProfile.js";
 import gmailAuthRouter from "./gmail-auth.js";
 import { publicRouter, internalApiKeysRouter } from "./public-api.js";
+import invoice4uRouter from "./invoice4u.js";
 
 const router: IRouter = Router();
 
@@ -29,5 +30,6 @@ router.use("/business-profile", businessProfileRouter);
 router.use("/gmail-auth", gmailAuthRouter);
 router.use("/public", publicRouter);
 router.use("/internal/api-keys", internalApiKeysRouter);
+router.use("/invoice4u", invoice4uRouter);
 
 export default router;
