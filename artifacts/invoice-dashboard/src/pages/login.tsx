@@ -90,8 +90,16 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
       );
 
       if (!popup) {
-        // Popup was blocked — fall back to redirect
-        window.location.href = data.url;
+        // Popup blocked — break OUT of the Replit iframe using _top
+        // (window.location.href would navigate the iframe itself → Google 403)
+        const a = document.createElement("a");
+        a.href = data.url;
+        a.target = "_top";
+        a.rel = "noopener";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setLoadingGoogle(false);
       } else {
         // Poll: if user closes popup without completing, reset loading state
         const timer = setInterval(() => {

@@ -113,6 +113,20 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
 
   const isMobile = () => /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 
+  const openUrlSafely = (url: string, name: string) => {
+    // Try popup first; if blocked break out of iframe via _top link click
+    const w = 520, h = 640;
+    const left = Math.max(0, (window.screen.width  - w) / 2);
+    const top  = Math.max(0, (window.screen.height - h) / 2);
+    const popup = window.open(url, name, `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`);
+    if (!popup) {
+      const a = document.createElement("a");
+      a.href = url; a.target = "_top"; a.rel = "noopener";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }
+    return popup;
+  };
+
   const handleConnectGmail = async () => {
     if (!status?.credentialsConfigured) {
       toast({ title: "דרושה הגדרה", description: "יש לקבוע GOOGLE_CLIENT_ID ו-GOOGLE_CLIENT_SECRET", variant: "destructive" });
@@ -123,15 +137,7 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
       const res = await fetch(`${API_BASE}/gmail-auth/url`);
       const { url } = await res.json();
       if (!url) throw new Error("no url");
-
-      if (isMobile()) {
-        // Mobile: full-page redirect (popups are blocked on mobile)
-        window.location.href = url;
-      } else {
-        // Desktop: popup flow
-        const authWindow = window.open(url, "_blank", "width=520,height=620,left=200,top=100");
-        if (!authWindow) window.open(url, "_blank"); // fallback if popup blocked
-      }
+      openUrlSafely(url, "gmail-connect");
     } catch {
       toast({ title: "שגיאה", description: "לא ניתן לפתוח חיבור Gmail", variant: "destructive" });
     } finally {

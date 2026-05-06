@@ -277,11 +277,24 @@ function GmailCard() {
 
   useEffect(() => { fetchStatus(); }, [fetchStatus]);
 
+  const openUrlSafely = (url: string) => {
+    // Try popup; if blocked navigate top frame to escape Replit iframe (avoids 403)
+    const w = 520, h = 640;
+    const left = Math.max(0, (window.screen.width  - w) / 2);
+    const top  = Math.max(0, (window.screen.height - h) / 2);
+    const popup = window.open(url, "gmail-oauth", `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`);
+    if (!popup) {
+      const a = document.createElement("a");
+      a.href = url; a.target = "_top"; a.rel = "noopener";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    }
+  };
+
   const connect = async () => {
     try {
       const res = await fetch(`${API_BASE}/gmail-auth/url`);
       const data = await res.json() as { url?: string; error?: string };
-      if (data.url) window.location.href = data.url;
+      if (data.url) openUrlSafely(data.url);
       else toast({ title: "שגיאה", description: data.error, variant: "destructive" });
     } catch {
       toast({ title: "שגיאת רשת", variant: "destructive" });

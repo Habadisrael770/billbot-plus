@@ -168,11 +168,31 @@ export async function getGmailClient() {
   return buildGmailClientFromRow(rows[0]!);
 }
 
-// ── Get ALL Gmail clients (one per connected account) ─────────────────────
+// ── Get ALL Gmail clients (DB tokens + Replit integration as fallback) ────
 export async function getAllGmailClients() {
   const rows = await db.select().from(gmailTokens);
-  if (rows.length === 0) throw new Error("Gmail not connected");
-  return rows.map(buildGmailClientFromRow);
+  const clients = rows.map(buildGmailClientFromRow);
+  const dbEmails = new Set(rows.map(r => r.email));
+
+  // Try Replit google-mail integration as additional/fallback source
+  // (already verified by Google — no restricted-scope issues)
+  try {
+    const { getUncachableGmailClient, isGmailConnected } = await import("./gmailClient.js");
+    if (await isGmailConnected()) {
+      const replitClient = await getUncachableGmailClient();
+      // Get email from profile (lightweight call)
+      const profile = await replitClient.users.getProfile({ userId: "me" });
+      const replitEmail = profile.data.emailAddress ?? "replit-integration";
+      if (!dbEmails.has(replitEmail)) {
+        clients.push({ client: replitClient, email: replitEmail });
+      }
+    }
+  } catch {
+    // Replit integration not available — that's fine
+  }
+
+  if (clients.length === 0) throw new Error("Gmail not connected");
+  return clients;
 }
 
 function buildGmailClientFromRow(row: typeof gmailTokens.$inferSelect) {
