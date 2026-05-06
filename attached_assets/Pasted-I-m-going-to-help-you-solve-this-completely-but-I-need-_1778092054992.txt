@@ -1,0 +1,41 @@
+I'm going to help you solve this completely — but I need to understand your exact situation first before giving you specific recommendations.
+
+Let me ask clarifying questions:
+
+### **About Your Users**
+1. Are your beta users **Israeli small business owners** who already have Gmail/Google accounts? (Yes, I assume)
+2. Do they understand technical steps like generating Gmail App Passwords?
+3. Are you targeting **individual users** or **organizations with Google Workspace**?
+
+### **About Your Business Model**
+4. Are you planning to charge for invoice scanning in the future?
+5. Will you be **reselling** or **redistributing** any extracted invoice data (to accountants, tax software, etc.)?
+6. Is the main value: "Extract invoice data from emails" or "Automate bookkeeping with extracted data"?
+
+### **About Your Infrastructure**
+7. Do you have your **own email server** or domain that could receive forwarded emails? (e.g., billbot.co.il)
+8. Are you willing to add a **Chrome extension** as a second path for users who prefer it?
+9. What's your timeline? **Need users in: days? weeks? months?**
+
+### **About Verification**
+10. Do you have a **professional website** with company info and branding? (Beyond just the Replit app)
+11. Can you create a **polished demo video** showing the app working end-to-end?
+12. Do you have a **privacy lawyer** who can review the privacy policy, or are you self-writing it?
+
+---
+
+**While you answer these, let me also prepare:**
+
+I can immediately draft:
+- A **Google-compliant Privacy Policy** (English + Hebrew)
+- The **exact console descriptions** Google wants to see
+- A **step-by-step verification submission checklist**
+- A **comparison of Option C (email forwarding)** vs Gmail OAuth
+
+But your answers will determine whether I recommend:
+- **Path A**: Push forward with Gmail OAuth verification (tell you exactly what to submit)
+- **Path B**: Go with IMAP App Password fallback only (skip OAuth entirely)
+- **Path C**: Use email forwarding as your primary path (no OAuth headache)
+- **Path D**: Hybrid (IMAP + email forwarding + optional OAuth later)
+
+Let me know your answers and I'll give you the most specific, actionable plan.
