@@ -6,7 +6,16 @@ import { gmailTokens } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { upsertGoogleUser } from "./userService.js";
 
-const SCOPES = [
+// ── Scope lists ───────────────────────────────────────────────────────────
+// LOGIN scopes — basic, non-restricted → any Google account works, no verification needed
+const LOGIN_SCOPES = [
+  "openid",
+  "https://www.googleapis.com/auth/userinfo.email",
+  "https://www.googleapis.com/auth/userinfo.profile",
+];
+
+// GMAIL scopes — restricted, requires app verification or test users
+const GMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/gmail.send",
   "https://www.googleapis.com/auth/userinfo.email",
@@ -32,14 +41,52 @@ export function getRedirectUri(): string {
   return "http://localhost:8080/api/gmail-auth/callback";
 }
 
-// ── Generate the OAuth URL to redirect user to ─────────────────────────────
+// ── Google Login URL (basic scopes — no restriction, any Google account) ───
+export function getGoogleLoginUrl(): string {
+  const oAuth2Client = getOAuth2Client();
+  return oAuth2Client.generateAuthUrl({
+    access_type: "online",
+    scope: LOGIN_SCOPES,
+    prompt: "select_account",
+    state: "login",             // tells callback this is login, not gmail-scan
+  });
+}
+
+// ── Handle Google Login callback (basic scopes only) ───────────────────────
+export async function handleGoogleLoginCallback(code: string): Promise<string> {
+  const oAuth2Client = getOAuth2Client();
+  const { tokens }   = await oAuth2Client.getToken(code);
+
+  if (!tokens.access_token) {
+    throw new Error("לא התקבל access token מ-Google");
+  }
+
+  oAuth2Client.setCredentials(tokens);
+  const oauth2 = google.oauth2({ version: "v2", auth: oAuth2Client });
+  const { data } = await oauth2.userinfo.get();
+  const email = data.email;
+
+  if (!email) {
+    throw new Error("לא ניתן לקבל את כתובת האימייל מ-Google");
+  }
+
+  // Create/update user in users table
+  await upsertGoogleUser({
+    email,
+    name:      data.name    ?? null,
+    avatarUrl: data.picture ?? null,
+    googleId:  data.id      ?? null,
+  });
+
+  return email;
+}
+
+// ── Gmail Scan URL (restricted scopes — requires verified app / test user) ──
 export function getGmailAuthUrl(): string {
   const oAuth2Client = getOAuth2Client();
   return oAuth2Client.generateAuthUrl({
     access_type: "offline",
-    scope: SCOPES,
-    // prompt=consent forces Google to always re-issue a refresh_token
-    // select_account lets user pick which account to use
+    scope: GMAIL_SCOPES,
     prompt: "select_account consent",
   });
 }

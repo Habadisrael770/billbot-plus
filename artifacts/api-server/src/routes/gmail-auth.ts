@@ -6,7 +6,9 @@
 import { Router, type IRouter } from "express";
 import {
   getGmailAuthUrl,
+  getGoogleLoginUrl,
   handleGmailCallback,
+  handleGoogleLoginCallback,
   getGmailStatus,
   disconnectGmail,
 } from "../services/gmailOAuth.js";
@@ -19,7 +21,17 @@ function getAppBaseUrl(req: Parameters<typeof router.get>[1] extends (req: infer
   return `${req.protocol}://${req.get("host")}`;
 }
 
-// ── Redirect URL ───────────────────────────────────────────────────────────
+// ── Google Login URL (basic scopes — works for any Google account, no 403) ──
+router.get("/login-url", (_req, res) => {
+  try {
+    const url = getGoogleLoginUrl();
+    res.json({ url });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+// ── Gmail Scan URL (restricted scopes — for connecting inbox scanning) ─────
 router.get("/url", (_req, res) => {
   try {
     const url = getGmailAuthUrl();
@@ -99,13 +111,18 @@ router.get("/callback", async (req, res) => {
     return;
   }
 
-  const code = req.query["code"] as string | undefined;
+  const code  = req.query["code"]  as string | undefined;
+  const state = req.query["state"] as string | undefined;
   if (!code) {
     res.status(400).send("חסר קוד אימות מ-Google");
     return;
   }
+  // Route to correct handler based on state param
+  const isLoginFlow = state === "login";
   try {
-    const email = await handleGmailCallback(code);
+    const email = isLoginFlow
+      ? await handleGoogleLoginCallback(code)
+      : await handleGmailCallback(code);
     const appBase = getAppBaseUrl(req);
     const emailEncoded = encodeURIComponent(email ?? "");
     const fallbackUrl = `${appBase}/?gmail=connected&email=${emailEncoded}`;

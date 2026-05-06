@@ -57,7 +57,8 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
     setLoadingGoogle(true);
     resetErrors();
     try {
-      const res  = await fetch(`${API_BASE}/gmail-auth/url`);
+      // Use login-url (basic scopes only) to avoid 403 from restricted Gmail scopes
+      const res  = await fetch(`${API_BASE}/gmail-auth/login-url`);
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) {
         window.location.href = data.url;
