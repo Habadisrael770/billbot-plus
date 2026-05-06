@@ -38,7 +38,9 @@ export function getGmailAuthUrl(): string {
   return oAuth2Client.generateAuthUrl({
     access_type: "offline",
     scope: SCOPES,
-    prompt: "consent",
+    // select_account forces Google to always show the account picker first,
+    // so the user can explicitly choose a test-user account before consent
+    prompt: "select_account consent",
   });
 }
 
