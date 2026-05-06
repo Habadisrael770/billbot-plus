@@ -22,8 +22,8 @@ router.get("/status", async (_req, res) => {
 router.get("/report", async (req, res) => {
   try {
     const year = Number(req.query["year"]) || new Date().getFullYear();
-    const rows = await getMonthlyReport(year);
-    res.json({ year, rows });
+    const result = await getMonthlyReport(year);
+    res.json({ year, ...result });
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
   }
@@ -33,8 +33,8 @@ router.get("/report", async (req, res) => {
 router.get("/export", async (req, res) => {
   try {
     const year = Number(req.query["year"]) || new Date().getFullYear();
-    const rows = await getMonthlyReport(year);
-    const csv  = exportToCsv(rows);
+    const { rows } = await getMonthlyReport(year);
+    const csv = exportToCsv(rows);
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="invoice4u-report-${year}.csv"`);
     res.send(csv);
@@ -62,12 +62,12 @@ router.get("/documents", async (req, res) => {
       dateTo   = `31/12/${year}`;
     }
 
-    const docs = await getDocuments({ dateFrom, dateTo, pageSize: 500 });
+    const { documents } = await getDocuments({ dateFrom, dateTo, pageSize: 500 });
 
     const INCOME_TYPES  = new Set([1, 2, 3, 6]);
     const EXPENSE_TYPES = new Set([8, 9]);
 
-    const filtered = docs.filter(d => {
+    const filtered = documents.filter(d => {
       if (type === "income")  return INCOME_TYPES.has(d.DocType);
       if (type === "expense") return EXPENSE_TYPES.has(d.DocType);
       return true;

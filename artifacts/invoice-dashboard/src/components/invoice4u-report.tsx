@@ -3,6 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Download, RefreshCw, TrendingUp, TrendingDown, Minus,
   ChevronDown, ChevronUp, FileSpreadsheet, BarChart3, List,
+  AlertCircle,
 } from "lucide-react";
 
 const BASE_URL = import.meta.env.BASE_URL ?? "/";
@@ -18,18 +19,24 @@ interface MonthRow {
   expenseCount: number;
 }
 
+interface ReportData {
+  rows: MonthRow[];
+  hasDocuments: boolean;
+  totalIncome: number;
+  totalExpense: number;
+}
+
 const fmt = (n: number) =>
   new Intl.NumberFormat("he-IL", { style: "currency", currency: "ILS", minimumFractionDigits: 0 }).format(n);
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 5 }, (_, i) => CURRENT_YEAR - i);
 
-export function Invoice4UReport({ onClose }: { onClose?: () => void }) {
+export function Invoice4UReport() {
   const { toast } = useToast();
   const [year,     setYear]     = useState(CURRENT_YEAR);
-  const [rows,     setRows]     = useState<MonthRow[]>([]);
+  const [data,     setData]     = useState<ReportData | null>(null);
   const [loading,  setLoading]  = useState(false);
-  const [loaded,   setLoaded]   = useState(false);
   const [view,     setView]     = useState<"chart" | "table">("chart");
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -37,10 +44,9 @@ export function Invoice4UReport({ onClose }: { onClose?: () => void }) {
     setLoading(true);
     try {
       const res = await fetch(`${API_BASE}/invoice4u/report?year=${y}`);
-      const data = await res.json() as { year: number; rows: MonthRow[]; error?: string };
-      if (data.error) throw new Error(data.error);
-      setRows(data.rows);
-      setLoaded(true);
+      const json = await res.json() as ReportData & { error?: string };
+      if (json.error) throw new Error(json.error);
+      setData(json);
     } catch (e) {
       toast({ title: "שגיאה", description: (e as Error).message, variant: "destructive" });
     } finally {
@@ -50,7 +56,7 @@ export function Invoice4UReport({ onClose }: { onClose?: () => void }) {
 
   const handleYearChange = (y: number) => {
     setYear(y);
-    if (loaded) fetchReport(y);
+    if (data) fetchReport(y);
   };
 
   const downloadCsv = async () => {
@@ -69,11 +75,12 @@ export function Invoice4UReport({ onClose }: { onClose?: () => void }) {
     }
   };
 
-  const totalIncome  = rows.reduce((s, r) => s + r.income,  0);
-  const totalExpense = rows.reduce((s, r) => s + r.expense, 0);
+  const rows         = data?.rows ?? [];
+  const totalIncome  = data?.totalIncome  ?? 0;
+  const totalExpense = data?.totalExpense ?? 0;
   const totalNet     = totalIncome - totalExpense;
-
-  const maxVal = Math.max(...rows.map(r => Math.max(r.income, r.expense)), 1);
+  const hasDocuments = data?.hasDocuments ?? false;
+  const maxVal       = Math.max(...rows.map(r => Math.max(r.income, r.expense)), 1);
 
   return (
     <div className="flex flex-col gap-5">
@@ -94,10 +101,10 @@ export function Invoice4UReport({ onClose }: { onClose?: () => void }) {
           className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
-          {loaded ? "רענן" : "טען דוח"}
+          {data ? "רענן" : "טען דוח"}
         </button>
 
-        {loaded && (
+        {data && (
           <>
             <button
               onClick={downloadCsv}
@@ -125,13 +132,15 @@ export function Invoice4UReport({ onClose }: { onClose?: () => void }) {
         )}
       </div>
 
-      {!loaded && !loading && (
+      {/* Empty state — not yet loaded */}
+      {!data && !loading && (
         <div className="flex flex-col items-center justify-center py-16 text-center gap-3 text-muted-foreground">
           <FileSpreadsheet className="w-12 h-12 opacity-20" />
           <p className="text-sm">לחץ "טען דוח" לשליפת נתוני הכנסות והוצאות מ-Invoice4U</p>
         </div>
       )}
 
+      {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-16 gap-3 text-muted-foreground">
           <RefreshCw className="w-5 h-5 animate-spin" />
@@ -139,9 +148,23 @@ export function Invoice4UReport({ onClose }: { onClose?: () => void }) {
         </div>
       )}
 
-      {loaded && !loading && (
+      {/* Loaded */}
+      {data && !loading && (
         <>
-          {/* Summary cards */}
+          {/* No documents notice */}
+          {!hasDocuments && (
+            <div className="flex items-start gap-3 p-4 rounded-2xl border border-amber-500/30 bg-amber-500/5">
+              <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-500">לא נמצאו מסמכים בשנת {year}</p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  החשבון ב-Invoice4U ריק מחשבוניות/קבלות לשנה זו. ברגע שתיצור מסמכים במערכת — הם יופיעו כאן אוטומטית.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Summary cards — always show when loaded */}
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4 text-center">
               <div className="flex items-center justify-center gap-1 text-emerald-500 mb-1">
@@ -166,45 +189,46 @@ export function Invoice4UReport({ onClose }: { onClose?: () => void }) {
             </div>
           </div>
 
-          {rows.every(r => r.income === 0 && r.expense === 0) ? (
-            <div className="text-center py-8 text-muted-foreground text-sm">
-              לא נמצאו מסמכים בשנת {year} — ייתכן שהחשבון ריק או שה-API key שייך לסביבת בדיקה
-            </div>
-          ) : view === "chart" ? (
-            /* Bar chart */
+          {/* Chart / Table */}
+          {view === "chart" ? (
             <div className="bg-card border border-border rounded-2xl p-5 overflow-x-auto">
               <p className="text-xs font-semibold text-muted-foreground mb-4">הכנסות vs הוצאות לפי חודש — {year}</p>
-              <div className="flex items-end gap-2 h-48 min-w-[600px]">
-                {rows.map(row => {
-                  const incH  = (row.income  / maxVal) * 180;
-                  const expH  = (row.expense / maxVal) * 180;
-                  const label = row.monthLabel.split(" ")[0];
-                  return (
-                    <div key={row.month} className="flex flex-col items-center gap-1 flex-1 min-w-[40px]">
-                      <div className="flex items-end gap-0.5 w-full justify-center" style={{ height: 180 }}>
-                        <div
-                          className="bg-emerald-500/80 rounded-t-sm w-4 transition-all"
-                          style={{ height: Math.max(incH, row.income > 0 ? 2 : 0) }}
-                          title={`הכנסות: ${fmt(row.income)}`}
-                        />
-                        <div
-                          className="bg-red-500/70 rounded-t-sm w-4 transition-all"
-                          style={{ height: Math.max(expH, row.expense > 0 ? 2 : 0) }}
-                          title={`הוצאות: ${fmt(row.expense)}`}
-                        />
+              {hasDocuments ? (
+                <div className="flex items-end gap-2 h-48 min-w-[600px]">
+                  {rows.map(row => {
+                    const incH  = (row.income  / maxVal) * 180;
+                    const expH  = (row.expense / maxVal) * 180;
+                    const label = row.monthLabel.split(" ")[0];
+                    return (
+                      <div key={row.month} className="flex flex-col items-center gap-1 flex-1 min-w-[40px]">
+                        <div className="flex items-end gap-0.5 w-full justify-center" style={{ height: 180 }}>
+                          <div
+                            className="bg-emerald-500/80 rounded-t-sm w-4 transition-all"
+                            style={{ height: Math.max(incH, row.income > 0 ? 2 : 0) }}
+                            title={`הכנסות: ${fmt(row.income)}`}
+                          />
+                          <div
+                            className="bg-red-500/70 rounded-t-sm w-4 transition-all"
+                            style={{ height: Math.max(expH, row.expense > 0 ? 2 : 0) }}
+                            title={`הוצאות: ${fmt(row.expense)}`}
+                          />
+                        </div>
+                        <span className="text-[9px] text-muted-foreground text-center leading-tight">{label}</span>
                       </div>
-                      <span className="text-[9px] text-muted-foreground text-center leading-tight">{label}</span>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="h-48 flex items-center justify-center text-muted-foreground/40 text-sm">
+                  אין נתונים להצגה
+                </div>
+              )}
               <div className="flex items-center gap-4 mt-3 justify-center">
                 <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-emerald-500/80" /><span className="text-xs text-muted-foreground">הכנסות</span></div>
                 <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm bg-red-500/70" /><span className="text-xs text-muted-foreground">הוצאות</span></div>
               </div>
             </div>
           ) : (
-            /* Table view */
             <div className="bg-card border border-border rounded-2xl overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
@@ -251,9 +275,9 @@ export function Invoice4UReport({ onClose }: { onClose?: () => void }) {
                         {isExpanded && (row.income > 0 || row.expense > 0) && (
                           <tr key={`${row.month}-exp`} className="bg-muted/10">
                             <td colSpan={6} className="p-4">
-                              <p className="text-xs text-muted-foreground mb-2">פירוט מסמכים — {row.monthLabel}</p>
+                              <p className="text-xs text-muted-foreground mb-2">פירוט — {row.monthLabel}</p>
                               <div className="space-y-1">
-                                {[1, 2, 3, 6].includes(1) && row.income > 0 && (
+                                {row.income > 0 && (
                                   <div className="flex items-center gap-2 text-xs">
                                     <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                                     <span className="text-emerald-500 font-medium">הכנסות:</span>
@@ -282,7 +306,7 @@ export function Invoice4UReport({ onClose }: { onClose?: () => void }) {
                     <td className="py-3 px-4 text-red-500 font-mono">{fmt(totalExpense)}</td>
                     <td className={`py-3 px-4 font-mono ${totalNet >= 0 ? "text-emerald-500" : "text-red-500"}`}>{fmt(totalNet)}</td>
                     <td className="py-3 px-4 text-xs text-muted-foreground">
-                      {rows.reduce((s,r)=>s+r.incomeCount+r.expenseCount,0)} מסמכים
+                      {rows.reduce((s, r) => s + r.incomeCount + r.expenseCount, 0)} מסמכים
                     </td>
                     <td />
                   </tr>

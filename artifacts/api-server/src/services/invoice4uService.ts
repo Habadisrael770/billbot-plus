@@ -1,13 +1,37 @@
 // Invoice4U API integration service
 // API base: https://api.invoice4u.co.il/Services/ApiService.svc/
-// Auth: token param = GUID API key from INVOICE4U env secret
+// Auth flow: API key (INVOICE4U secret) → VerifyLoginApiKey → User Token → GetDocuments
 
 const API_BASE = "https://api.invoice4u.co.il/Services/ApiService.svc";
 
-function getToken(): string {
+function getApiKey(): string {
   const t = process.env.INVOICE4U;
   if (!t) throw new Error("INVOICE4U secret not configured");
   return t;
+}
+
+// ─── Token cache ──────────────────────────────────────────────────────────────
+// VerifyLoginApiKey returns a user session token needed for GetDocuments.
+// We cache it for 30 minutes to avoid calling it on every request.
+let _userToken: string | null = null;
+let _tokenExpiry = 0;
+
+async function getUserToken(): Promise<string> {
+  if (_userToken && Date.now() < _tokenExpiry) return _userToken;
+
+  const apiKey = getApiKey();
+  const res = await fetch(`${API_BASE}/VerifyLoginApiKey`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json; charset=utf-8" },
+    body: JSON.stringify({ apiKey }),
+  });
+  if (!res.ok) throw new Error(`VerifyLoginApiKey HTTP ${res.status}`);
+  const json = await res.json() as { d: string | null };
+  if (!json.d) throw new Error("VerifyLoginApiKey returned no token");
+
+  _userToken = json.d;
+  _tokenExpiry = Date.now() + 28 * 60 * 1000; // 28 min
+  return _userToken;
 }
 
 async function post<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
@@ -22,30 +46,19 @@ async function post<T>(endpoint: string, body: Record<string, unknown>): Promise
   return json.d;
 }
 
-async function get<T>(endpoint: string, params: Record<string, string | number>): Promise<T> {
-  const qs = new URLSearchParams(
-    Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)]))
-  ).toString();
-  const res = await fetch(`${API_BASE}/${endpoint}?${qs}`);
-  if (!res.ok) throw new Error(`Invoice4U ${endpoint} HTTP ${res.status}`);
-  const json = await res.json() as { d: T; ExceptionType?: string; Message?: string };
-  if (json.ExceptionType) throw new Error(`Invoice4U error: ${json.Message}`);
-  return json.d;
-}
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface I4UDocument {
   ID: number;
   DocumentNumber: number;
-  DocType: number;         // 1=חשבונית מס, 2=חשבונית מס/קבלה, 3=קבלה, 4=הצעת מחיר, 5=תעודת משלוח, 6=חשבון עסקה, 7=הזמנת רכש, 8=חשבונית קנייה, 9=זיכוי ספק, 10=זיכוי לקוח
+  DocType: number;
   DocTypeName: string;
-  DocumentDate: string;    // /Date(ms)/ format
+  DocumentDate: string;   // /Date(ms)/ format
   ClientName: string;
   Total: number;
   Vat: number;
   BeforeVat: number;
-  Status: number;          // 1=open, 2=closed
+  Status: number;
   StatusName: string;
   BranchId: number;
   PaymentTypeName?: string;
@@ -71,7 +84,7 @@ export interface MonthlyReportRow {
   documents: I4UDocument[];
 }
 
-// Document types: income = 1,2,3,6 | expense = 8,9
+// Doc types: income = 1,2,3,6 | expense = 8,9
 const INCOME_TYPES  = new Set([1, 2, 3, 6]);
 const EXPENSE_TYPES = new Set([8, 9]);
 
@@ -81,10 +94,8 @@ const MONTH_NAMES_HE = [
 ];
 
 function parseI4UDate(raw: string): Date | null {
-  // WCF date: /Date(1234567890000)/  or  /Date(1234567890000+0200)/
   const m = raw.match(/\/Date\((\d+)/);
   if (m) return new Date(parseInt(m[1], 10));
-  // Fallback: try direct parse
   const d = new Date(raw);
   return isNaN(d.getTime()) ? null : d;
 }
@@ -92,7 +103,8 @@ function parseI4UDate(raw: string): Date | null {
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function getBranches(): Promise<I4UBranch[]> {
-  const data = await post<I4UBranch[] | null>("GetBranches", { token: getToken() });
+  // GetBranches works with the API key directly
+  const data = await post<I4UBranch[] | null>("GetBranches", { token: getApiKey() });
   return data ?? [];
 }
 
@@ -103,7 +115,10 @@ export async function getDocuments(opts: {
   branchId?: number;
   pageNumber?: number;
   pageSize?: number;
-}): Promise<I4UDocument[]> {
+}): Promise<{ documents: I4UDocument[]; empty: boolean }> {
+  // GetDocuments requires a User Token (not API key)
+  const userToken = await getUserToken();
+
   const dr: Record<string, unknown> = {
     PageNumber: opts.pageNumber ?? 1,
     PageSize:   opts.pageSize   ?? 200,
@@ -113,24 +128,41 @@ export async function getDocuments(opts: {
   if (opts.docTypeId) dr.DocTypeID = opts.docTypeId;
   if (opts.branchId)  dr.BranchId  = opts.branchId;
 
-  const data = await post<{ Response: I4UDocument[] | null; Errors: unknown[] } | null>(
+  const data = await post<{ Response: I4UDocument[] | null; Errors: { Error: string }[] } | null>(
     "GetDocuments",
-    { dr, token: getToken() }
+    { dr, token: userToken }
   );
 
-  if (!data) return [];
-  if (Array.isArray(data)) return data as I4UDocument[];
+  if (!data) return { documents: [], empty: true };
 
-  // WCF CommonCollection wrapper
-  const wrapper = data as { Response?: I4UDocument[] | null };
-  return wrapper.Response ?? [];
+  // Check for auth error — if so, invalidate cached token and retry once
+  const wrapper = data as { Response?: I4UDocument[] | null; Errors?: { Error: string }[] };
+  const hasAuthError = wrapper.Errors?.some(e => e.Error === "UnauthorizedUser");
+  if (hasAuthError) {
+    _userToken = null; // invalidate cache
+    const freshToken = await getUserToken();
+    const retry = await post<{ Response: I4UDocument[] | null } | null>(
+      "GetDocuments",
+      { dr, token: freshToken }
+    );
+    if (!retry) return { documents: [], empty: true };
+    return { documents: (retry as { Response?: I4UDocument[] | null }).Response ?? [], empty: false };
+  }
+
+  const docs = wrapper.Response ?? [];
+  return { documents: docs, empty: docs.length === 0 };
 }
 
-export async function getMonthlyReport(year: number): Promise<MonthlyReportRow[]> {
+export async function getMonthlyReport(year: number): Promise<{
+  rows: MonthlyReportRow[];
+  hasDocuments: boolean;
+  totalIncome: number;
+  totalExpense: number;
+}> {
   const dateFrom = `01/01/${year}`;
   const dateTo   = `31/12/${year}`;
 
-  const docs = await getDocuments({ dateFrom, dateTo, pageSize: 500 });
+  const { documents: docs, empty } = await getDocuments({ dateFrom, dateTo, pageSize: 500 });
 
   // Build month buckets
   const byMonth = new Map<string, I4UDocument[]>();
@@ -147,6 +179,8 @@ export async function getMonthlyReport(year: number): Promise<MonthlyReportRow[]
   }
 
   const rows: MonthlyReportRow[] = [];
+  let totalIncome = 0, totalExpense = 0;
+
   for (const [month, mdocs] of byMonth.entries()) {
     const [y, m] = month.split("-").map(Number);
     let income = 0, expense = 0, incomeCount = 0, expenseCount = 0;
@@ -154,27 +188,30 @@ export async function getMonthlyReport(year: number): Promise<MonthlyReportRow[]
     for (const d of mdocs) {
       const total = Number(d.Total) || 0;
       if (INCOME_TYPES.has(d.DocType)) {
-        income += total;
-        incomeCount++;
+        income += total; incomeCount++;
+        totalIncome += total;
       } else if (EXPENSE_TYPES.has(d.DocType)) {
-        expense += total;
-        expenseCount++;
+        expense += total; expenseCount++;
+        totalExpense += total;
       }
     }
 
     rows.push({
       month,
       monthLabel: `${MONTH_NAMES_HE[m - 1]} ${y}`,
-      income,
-      expense,
+      income, expense,
       net: income - expense,
-      incomeCount,
-      expenseCount,
+      incomeCount, expenseCount,
       documents: mdocs,
     });
   }
 
-  return rows;
+  return {
+    rows,
+    hasDocuments: !empty && docs.length > 0,
+    totalIncome,
+    totalExpense,
+  };
 }
 
 export function exportToCsv(rows: MonthlyReportRow[]): string {
