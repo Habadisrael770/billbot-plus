@@ -2,10 +2,11 @@ import { Router, type IRouter } from "express";
 import path from "path";
 import fs from "fs";
 import { processInvoice } from "../services/invoiceProcessingService.js";
+import { db } from "@workspace/db";
+import { usersTable, categoriesTable, invoicesTable } from "@workspace/db/schema";
+import { eq, ilike } from "drizzle-orm";
 
 const router: IRouter = Router();
-
-// ── helpers ──────────────────────────────────────────────────────────────────
 
 function getMonthUploadsDir(): string {
   const now = new Date();
@@ -23,12 +24,49 @@ function getMetaCreds() {
   return { phoneNumberId, accessToken, verifyToken };
 }
 
+function normalizeIncoming(from: string): string {
+  return from.replace(/\D/g, "");
+}
+
+/** Find user by their registered WhatsApp phone */
+async function findUserByPhone(from: string) {
+  const normalized = normalizeIncoming(from);
+  try {
+    const [user] = await db.select({ id: usersTable.id, email: usersTable.email, name: usersTable.name })
+      .from(usersTable)
+      .where(eq(usersTable.whatsappPhone, normalized))
+      .limit(1);
+    return user ?? null;
+  } catch { return null; }
+}
+
+/** Find category by keyword in name */
+async function findCategoryByKeyword(keyword: string): Promise<string | null> {
+  try {
+    const rows = await db.select({ name: categoriesTable.name })
+      .from(categoriesTable)
+      .where(ilike(categoriesTable.name, `%${keyword}%`))
+      .limit(1);
+    return rows[0]?.name ?? null;
+  } catch { return null; }
+}
+
+/** Fetch all category names for the "menu" message */
+async function getCategoryList(): Promise<string[]> {
+  try {
+    const rows = await db.select({ name: categoriesTable.name })
+      .from(categoriesTable)
+      .orderBy(categoriesTable.sort_order)
+      .limit(15);
+    return rows.map(r => r.name);
+  } catch { return []; }
+}
+
 /** Download media file via Meta Graph API */
 async function downloadMetaMedia(
   mediaId: string,
   accessToken: string
 ): Promise<{ filePath: string; mimeType: string }> {
-  // Step 1: Get media URL
   const metaRes = await fetch(
     `https://graph.facebook.com/v19.0/${mediaId}`,
     { headers: { Authorization: `Bearer ${accessToken}` } }
@@ -36,7 +74,6 @@ async function downloadMetaMedia(
   if (!metaRes.ok) throw new Error(`Meta media lookup failed: ${metaRes.status}`);
   const { url, mime_type } = (await metaRes.json()) as { url: string; mime_type: string };
 
-  // Step 2: Download actual file
   const fileRes = await fetch(url, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
@@ -49,7 +86,6 @@ async function downloadMetaMedia(
     "application/pdf": ".pdf",
   };
   const ext = extMap[mime_type] || ".jpg";
-
   const buffer = Buffer.from(await fileRes.arrayBuffer());
   const monthDir = getMonthUploadsDir();
   const filename = `wa-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
@@ -80,7 +116,7 @@ async function sendReply(
   });
 }
 
-// ── Webhook verification (GET) — Meta challenge handshake ─────────────────────
+// ── Webhook verification (GET) ────────────────────────────────────────────────
 router.get("/webhook", (req, res) => {
   const { verifyToken } = getMetaCreds();
   const mode = req.query["hub.mode"];
@@ -97,7 +133,6 @@ router.get("/webhook", (req, res) => {
 
 // ── Incoming message webhook (POST) ──────────────────────────────────────────
 router.post("/webhook", async (req, res) => {
-  // Acknowledge immediately — Meta requires fast 200 response
   res.sendStatus(200);
 
   const { phoneNumberId, accessToken } = getMetaCreds();
@@ -115,8 +150,8 @@ router.post("/webhook", async (req, res) => {
               from: string;
               type: string;
               text?: { body: string };
-              image?: { id: string; mime_type: string };
-              document?: { id: string; mime_type: string };
+              image?: { id: string; mime_type: string; caption?: string };
+              document?: { id: string; mime_type: string; caption?: string; filename?: string };
             }>;
           };
         }>;
@@ -129,28 +164,56 @@ router.post("/webhook", async (req, res) => {
     const msg = messages[0];
     const from = msg.from;
 
-    // Text-only message
+    // ── Look up registered user ──────────────────────────────────────────────
+    const user = await findUserByPhone(from);
+
+    // ── Text-only message ────────────────────────────────────────────────────
     if (msg.type === "text") {
-      const text = msg.text?.body?.toLowerCase() ?? "";
-      if (text.includes("שלום") || text.includes("hello") || text.includes("hi")) {
-        await sendReply(
-          phoneNumberId,
-          accessToken,
-          from,
-          "👋 שלום! שלח לי תמונה של חשבונית ואני אשמור אותה אוטומטית ב-BillBOT+ 📸"
+      const text = (msg.text?.body ?? "").trim();
+      const lower = text.toLowerCase();
+
+      if (!user) {
+        // Unregistered sender — explain how to register
+        await sendReply(phoneNumberId, accessToken, from,
+          `👋 שלום!\n\nכדי לשלוח חשבוניות דרך WhatsApp, עליך לרשום את המספר הזה ב-BillBOT+:\n\n📱 היכנס לאפליקציה → הגדרות → WhatsApp → הכנס מספר זה\n\nלאחר הרישום תוכל לשלוח תמונות וקבצי PDF של חשבוניות ישירות לכאן! 🧾`
         );
-      } else {
-        await sendReply(
-          phoneNumberId,
-          accessToken,
-          from,
-          "📸 שלח תמונה של חשבונית (JPG/PNG) או קובץ PDF ואני אטפל בה."
-        );
+        return;
       }
+
+      // Help / menu
+      if (lower.includes("עזרה") || lower.includes("help") || lower === "?") {
+        const cats = await getCategoryList();
+        const catList = cats.slice(0, 10).map((c, i) => `  ${i + 1}. ${c}`).join("\n");
+        await sendReply(phoneNumberId, accessToken, from,
+          `🤖 BillBOT+ — רשימת פקודות:\n\n📸 *שלח תמונה/PDF* — ניתוח חשבונית אוטומטי\n📋 *קטגוריה + תמונה* — שייך לקטגוריה ספציפית\n   לדוגמה: "דלק 📸" יסווג לדלק ונסיעות\n\n🗂 קטגוריות זמינות:\n${catList}\n\nשלח "?" לתפריט זה`
+        );
+        return;
+      }
+
+      // Category list request
+      if (lower.includes("קטגוריות") || lower.includes("categories")) {
+        const cats = await getCategoryList();
+        await sendReply(phoneNumberId, accessToken, from,
+          `🗂 קטגוריות זמינות:\n\n${cats.map((c, i) => `${i + 1}. ${c}`).join("\n")}\n\nשלח תמונה עם שם הקטגוריה כדי לשייך אותה ישירות`
+        );
+        return;
+      }
+
+      // General greeting
+      if (lower.includes("שלום") || lower.includes("hello") || lower.includes("hi")) {
+        await sendReply(phoneNumberId, accessToken, from,
+          `👋 שלום ${user.name ?? ""}! \n\nשלח תמונה של חשבונית ואני אשמור אותה אוטומטית ✅\n\nניתן גם לכתוב שם קטגוריה לפני התמונה, למשל:\n"דלק [תמונה]" או "מכולת [PDF]"\n\nשלח "?" לרשימת פקודות`
+        );
+        return;
+      }
+
+      await sendReply(phoneNumberId, accessToken, from,
+        `📸 שלח תמונה של חשבונית (JPG/PNG) או קובץ PDF.\nניתן לכתוב שם קטגוריה לפני הקובץ כדי לשייך אותה אוטומטית.`
+      );
       return;
     }
 
-    // Media message (image or document)
+    // ── Media message ────────────────────────────────────────────────────────
     const mediaObj = msg.type === "image" ? msg.image : msg.document;
     if (!mediaObj) return;
 
@@ -160,7 +223,25 @@ router.post("/webhook", async (req, res) => {
       return;
     }
 
+    if (!user) {
+      await sendReply(phoneNumberId, accessToken, from,
+        `❌ המספר שלך לא רשום במערכת.\n\nכדי להשתמש ב-BillBOT+ דרך WhatsApp:\n📱 היכנס לאפליקציה → הגדרות → WhatsApp → הכנס מספר זה`
+      );
+      return;
+    }
+
+    // Extract category hint from caption
+    const caption = (msg.image?.caption ?? msg.document?.caption ?? "").trim();
+    let categoryHint: string | null = null;
+
     const { filePath } = await downloadMetaMedia(mediaObj.id, accessToken);
+
+    // Try to match category from caption text
+    if (caption) {
+      const matched = await findCategoryByKeyword(caption);
+      if (matched) categoryHint = matched;
+      else categoryHint = caption; // Keep raw caption as hint even if no exact match
+    }
 
     const result = await processInvoice({
       filePath,
@@ -168,17 +249,21 @@ router.post("/webhook", async (req, res) => {
       sourceType: "camera",
     });
 
-    const vendor = result.canonicalVendorName || "לא זוהה";
-    const dupWarn =
-      result.duplicateStatus === "duplicate"
-        ? "\n⚠️ שים לב: ייתכן כפילות עם חשבונית קיימת!"
-        : "";
+    // Override final_category if user specified one via caption
+    if (categoryHint) {
+      await db.update(invoicesTable)
+        .set({ final_category: categoryHint, suggested_category: categoryHint, updated_at: new Date() })
+        .where(eq(invoicesTable.id, result.invoiceId));
+    }
 
-    await sendReply(
-      phoneNumberId,
-      accessToken,
-      from,
-      `✅ החשבונית נשמרה!\n\n🏢 ספק: ${vendor}\n🆔 מזהה: ${result.invoiceId.slice(0, 8)}${dupWarn}`
+    const vendor   = result.canonicalVendorName || "לא זוהה";
+    const category = categoryHint || result.suggestedCategory || "לא סווג";
+    const dupWarn = result.duplicateStatus === "duplicate"
+      ? "\n\n⚠️ *שים לב:* ייתכן כפילות עם חשבונית קיימת!"
+      : "";
+
+    await sendReply(phoneNumberId, accessToken, from,
+      `✅ *החשבונית נשמרה!*\n\n🏢 ספק: ${vendor}\n🗂 קטגוריה: ${category}\n🆔 מזהה: ${result.invoiceId.slice(0, 8)}${dupWarn}\n\n💡 שלח "?" לעזרה ורשימת קטגוריות`
     );
   } catch (err) {
     console.error("WhatsApp webhook error:", err);

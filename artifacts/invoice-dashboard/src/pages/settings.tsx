@@ -298,6 +298,12 @@ export default function Settings() {
   const [isFetchingTg, setIsFetchingTg] = useState(false);
   const { toast } = useToast();
 
+  // ── WhatsApp personal phone registration ──────────────────────────────────
+  const [waMyPhone, setWaMyPhone] = useState<string | null>(null);
+  const [waPhoneInput, setWaPhoneInput] = useState("");
+  const [waSavingPhone, setWaSavingPhone] = useState(false);
+  const [waDeletingPhone, setWaDeletingPhone] = useState(false);
+
   const fetchGmailStatus = useCallback(async () => {
     setIsLoadingGmail(true);
     try {
@@ -368,6 +374,66 @@ export default function Settings() {
     }
   }, []);
 
+  // ── Load WhatsApp personal phone on mount ─────────────────────────────────
+  const loadWaPhone = useCallback(async () => {
+    try {
+      const raw = localStorage.getItem("bb_user");
+      const email = raw ? (JSON.parse(raw).email ?? "") : "";
+      if (!email) return;
+      const res = await fetch(`${API_BASE}/auth/whatsapp-phone?email=${encodeURIComponent(email)}`);
+      const data = await res.json() as { phone: string | null };
+      setWaMyPhone(data.phone ?? null);
+      if (data.phone) setWaPhoneInput(formatPhoneDisplay(data.phone));
+    } catch { /* ignore */ }
+  }, []);
+
+  function formatPhoneDisplay(phone: string): string {
+    // e.g. 972501234567 → 050-123-4567 (local) or +972 50-123-4567
+    if (phone.startsWith("972") && phone.length === 12) {
+      return `0${phone.slice(3, 5)}-${phone.slice(5, 8)}-${phone.slice(8)}`;
+    }
+    return phone;
+  }
+
+  const saveWaPhone = async () => {
+    const raw = localStorage.getItem("bb_user");
+    const email = raw ? (JSON.parse(raw).email ?? "") : "";
+    if (!email) { toast({ title: "שגיאה", description: "לא נמצא משתמש מחובר", variant: "destructive" }); return; }
+    if (!waPhoneInput.trim()) { toast({ title: "שגיאה", description: "הכנס מספר טלפון", variant: "destructive" }); return; }
+    setWaSavingPhone(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/whatsapp-phone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, phone: waPhoneInput.trim() }),
+      });
+      const data = await res.json() as { ok?: boolean; phone?: string; error?: string };
+      if (!res.ok || data.error) throw new Error(data.error ?? "שגיאה");
+      setWaMyPhone(data.phone ?? null);
+      toast({ title: "✅ מספר נשמר!", description: "WhatsApp שלך מחובר למערכת" });
+    } catch (err: unknown) {
+      toast({ title: "שגיאה", description: String(err instanceof Error ? err.message : err), variant: "destructive" });
+    } finally { setWaSavingPhone(false); }
+  };
+
+  const deleteWaPhone = async () => {
+    const raw = localStorage.getItem("bb_user");
+    const email = raw ? (JSON.parse(raw).email ?? "") : "";
+    if (!email) return;
+    setWaDeletingPhone(true);
+    try {
+      await fetch(`${API_BASE}/auth/whatsapp-phone`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      setWaMyPhone(null);
+      setWaPhoneInput("");
+      toast({ title: "מספר הוסר", description: "WhatsApp אישי נותק מהחשבון" });
+    } catch { toast({ title: "שגיאה", description: "לא ניתן להסיר", variant: "destructive" }); }
+    finally { setWaDeletingPhone(false); }
+  };
+
   useEffect(() => {
     fetchGmailStatus();
     fetchTelegramStatus();
@@ -375,7 +441,8 @@ export default function Settings() {
     loadCategories();
     loadEntities();
     loadBusinessProfile();
-  }, [fetchGmailStatus, fetchTelegramStatus, fetchWhatsAppStatus, loadCategories, loadEntities, loadBusinessProfile]);
+    loadWaPhone();
+  }, [fetchGmailStatus, fetchTelegramStatus, fetchWhatsAppStatus, loadCategories, loadEntities, loadBusinessProfile, loadWaPhone]);
 
   // --- API Connections state ---
   const [apiConnections, setApiConnections] = useState<ApiConnection[]>([]);
@@ -1282,6 +1349,84 @@ export default function Settings() {
                   שלח תמונת חשבונית ל-WhatsApp Business — תעובד אוטומטית!
                 </li>
               </ol>
+            </div>
+
+            {/* ── Personal phone registration ── */}
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 px-4 py-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Phone className="w-4 h-4 text-emerald-400" />
+                <p className="text-sm font-semibold text-white">רישום מספר WhatsApp אישי</p>
+                {waMyPhone && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    מחובר
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">
+                רשום את מספר ה-WhatsApp שלך כדי שחשבוניות שתשלח מהמספר הזה יזוהו אוטומטית ויסווגו לחשבון שלך.
+              </p>
+
+              {waMyPhone ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/30 border border-emerald-500/20">
+                    <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span className="text-sm text-emerald-300 font-mono flex-1" dir="ltr">
+                      +{waMyPhone}
+                    </span>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setWaMyPhone(null); setWaPhoneInput(""); }}
+                      className="flex-1 text-xs px-3 py-2 rounded-xl border border-white/10 bg-white/5 text-muted-foreground hover:text-white hover:border-white/20 transition-all"
+                    >
+                      ✏️ שנה מספר
+                    </button>
+                    <button
+                      onClick={deleteWaPhone}
+                      disabled={waDeletingPhone}
+                      className="text-xs px-3 py-2 rounded-xl border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all disabled:opacity-50"
+                    >
+                      {waDeletingPhone ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  <div className="rounded-xl bg-emerald-500/5 border border-emerald-500/20 px-3 py-2">
+                    <p className="text-xs text-emerald-400 font-medium mb-1">📱 כיצד לשלוח חשבונית:</p>
+                    <ul className="text-xs text-emerald-300/70 space-y-0.5 list-disc list-inside">
+                      <li>שלח תמונה/PDF → מסווג אוטומטית</li>
+                      <li>כתוב שם קטגוריה לפני הקובץ: "דלק [תמונה]"</li>
+                      <li>שלח "?" לרשימת כל הפקודות</li>
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div className="flex gap-2">
+                    <div className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl bg-black/20 border border-white/10 shrink-0">
+                      <span className="text-xs text-muted-foreground">🇮🇱 +972</span>
+                    </div>
+                    <input
+                      type="tel"
+                      dir="ltr"
+                      value={waPhoneInput}
+                      onChange={e => setWaPhoneInput(e.target.value)}
+                      placeholder="050-123-4567"
+                      className="flex-1 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder:text-muted-foreground focus:outline-none focus:border-emerald-500/50 font-mono"
+                    />
+                    <button
+                      onClick={saveWaPhone}
+                      disabled={waSavingPhone || !waPhoneInput.trim()}
+                      className="px-3 py-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 transition-all disabled:opacity-50 text-xs font-medium flex items-center gap-1.5"
+                    >
+                      {waSavingPhone ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                      שמור
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    ניתן להזין מספר ישראלי (05X-XXX-XXXX) או בינלאומי עם קידומת המדינה
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
