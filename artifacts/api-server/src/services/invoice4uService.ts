@@ -1,6 +1,5 @@
 // Invoice4U API integration service
-// API base: https://api.invoice4u.co.il/Services/ApiService.svc/
-// Auth flow: API key (INVOICE4U secret) → VerifyLoginApiKey → User Token → GetDocuments
+// Correct auth flow: API key → VerifyLoginApiKey → User Token → use for ALL calls
 
 const API_BASE = "https://api.invoice4u.co.il/Services/ApiService.svc";
 
@@ -10,14 +9,12 @@ function getApiKey(): string {
   return t;
 }
 
-// ─── Token cache ──────────────────────────────────────────────────────────────
-// VerifyLoginApiKey returns a user session token needed for GetDocuments.
-// We cache it for 30 minutes to avoid calling it on every request.
+// ─── User Token cache ─────────────────────────────────────────────────────────
 let _userToken: string | null = null;
 let _tokenExpiry = 0;
 
-async function getUserToken(): Promise<string> {
-  if (_userToken && Date.now() < _tokenExpiry) return _userToken;
+export async function getUserToken(force = false): Promise<string> {
+  if (!force && _userToken && Date.now() < _tokenExpiry) return _userToken;
 
   const apiKey = getApiKey();
   const res = await fetch(`${API_BASE}/VerifyLoginApiKey`, {
@@ -27,23 +24,47 @@ async function getUserToken(): Promise<string> {
   });
   if (!res.ok) throw new Error(`VerifyLoginApiKey HTTP ${res.status}`);
   const json = await res.json() as { d: string | null };
-  if (!json.d) throw new Error("VerifyLoginApiKey returned no token");
+  if (!json.d || json.d === "UnauthorizedUser" || json.d.length < 20) {
+    throw new Error("API_KEY_INVALID");
+  }
 
   _userToken = json.d;
-  _tokenExpiry = Date.now() + 28 * 60 * 1000; // 28 min
+  _tokenExpiry = Date.now() + 28 * 60 * 1000;
   return _userToken;
 }
 
-async function post<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
+async function callPost<T>(endpoint: string, body: Record<string, unknown>, retry = true): Promise<T> {
   const res = await fetch(`${API_BASE}/${endpoint}`, {
     method: "POST",
     headers: { "Content-Type": "application/json; charset=utf-8" },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`Invoice4U ${endpoint} HTTP ${res.status}`);
-  const json = await res.json() as { d: T; ExceptionType?: string; Message?: string };
+
+  const text = await res.text();
+  if (!text || text.trim() === "") return null as T;
+
+  let json: { d: T; ExceptionType?: string; Message?: string };
+  try { json = JSON.parse(text); } catch { throw new Error(`Invoice4U ${endpoint}: invalid JSON`); }
+
   if (json.ExceptionType) throw new Error(`Invoice4U error: ${json.Message}`);
   return json.d;
+}
+
+// Wraps a call with auto-retry on stale token
+async function withToken<T>(fn: (token: string) => Promise<T>): Promise<T> {
+  const token = await getUserToken();
+  try {
+    return await fn(token);
+  } catch (e) {
+    const msg = (e as Error).message;
+    if (msg.includes("Unauthorized") || msg.includes("token")) {
+      // Retry with fresh token
+      const fresh = await getUserToken(true);
+      return await fn(fresh);
+    }
+    throw e;
+  }
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -53,7 +74,7 @@ export interface I4UDocument {
   DocumentNumber: number;
   DocType: number;
   DocTypeName: string;
-  DocumentDate: string;   // /Date(ms)/ format
+  DocumentDate: string;
   ClientName: string;
   Total: number;
   Vat: number;
@@ -74,8 +95,8 @@ export interface I4UBranch {
 }
 
 export interface MonthlyReportRow {
-  month: string;       // "2025-01"
-  monthLabel: string;  // "ינואר 2025"
+  month: string;
+  monthLabel: string;
   income: number;
   expense: number;
   net: number;
@@ -84,7 +105,6 @@ export interface MonthlyReportRow {
   documents: I4UDocument[];
 }
 
-// Doc types: income = 1,2,3,6 | expense = 8,9
 const INCOME_TYPES  = new Set([1, 2, 3, 6]);
 const EXPENSE_TYPES = new Set([8, 9]);
 
@@ -100,57 +120,71 @@ function parseI4UDate(raw: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
+// ─── Check API activation ─────────────────────────────────────────────────────
+// We detect if API document access is enabled by trying a small GetDocuments call.
+// UnauthorizedUser in Errors → not active. null → active (just empty account).
+export async function checkApiActive(): Promise<{ active: boolean; orgName?: string; email?: string }> {
+  return withToken(async (token) => {
+    type DocResult = { Response: I4UDocument[] | null; Errors: { Error: string }[] } | null;
+    const data = await callPost<DocResult>("GetDocuments", {
+      dr: { PageNumber: 1, PageSize: 1 },
+      token,
+    });
+
+    if (!data) return { active: true };  // null = authorized, just empty
+    const wrapper = data as { Errors?: { Error: string }[] };
+    const hasAuthError = wrapper.Errors?.some(e => e.Error === "UnauthorizedUser");
+    return { active: !hasAuthError };
+  });
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function getBranches(): Promise<I4UBranch[]> {
-  // GetBranches works with the API key directly
-  const data = await post<I4UBranch[] | null>("GetBranches", { token: getApiKey() });
-  return data ?? [];
+  return withToken(async (token) => {
+    // GetBranches can return array directly or CommonCollection wrapper
+    const raw = await callPost<I4UBranch[] | { Response?: I4UBranch[] } | null>(
+      "GetBranches", { token }
+    );
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    const wrapped = raw as { Response?: I4UBranch[] | null };
+    return wrapped.Response ?? [];
+  });
 }
 
 export async function getDocuments(opts: {
-  dateFrom?: string;  // dd/MM/yyyy
+  dateFrom?: string;
   dateTo?: string;
   docTypeId?: number;
   branchId?: number;
   pageNumber?: number;
   pageSize?: number;
 }): Promise<{ documents: I4UDocument[]; empty: boolean }> {
-  // GetDocuments requires a User Token (not API key)
-  const userToken = await getUserToken();
+  return withToken(async (token) => {
+    const dr: Record<string, unknown> = {
+      PageNumber: opts.pageNumber ?? 1,
+      PageSize:   opts.pageSize   ?? 200,
+    };
+    if (opts.dateFrom)  dr.DateFrom  = opts.dateFrom;
+    if (opts.dateTo)    dr.DateTo    = opts.dateTo;
+    if (opts.docTypeId) dr.DocTypeID = opts.docTypeId;
+    if (opts.branchId)  dr.BranchId  = opts.branchId;
 
-  const dr: Record<string, unknown> = {
-    PageNumber: opts.pageNumber ?? 1,
-    PageSize:   opts.pageSize   ?? 200,
-  };
-  if (opts.dateFrom)  dr.DateFrom  = opts.dateFrom;
-  if (opts.dateTo)    dr.DateTo    = opts.dateTo;
-  if (opts.docTypeId) dr.DocTypeID = opts.docTypeId;
-  if (opts.branchId)  dr.BranchId  = opts.branchId;
+    type DocResult = { Response: I4UDocument[] | null; Errors: { Error: string }[] } | null;
+    const data = await callPost<DocResult>("GetDocuments", { dr, token });
 
-  const data = await post<{ Response: I4UDocument[] | null; Errors: { Error: string }[] } | null>(
-    "GetDocuments",
-    { dr, token: userToken }
-  );
+    if (!data) return { documents: [], empty: true };
+    if (Array.isArray(data)) return { documents: data as I4UDocument[], empty: false };
 
-  if (!data) return { documents: [], empty: true };
-
-  // Check for auth error — if so, invalidate cached token and retry once
-  const wrapper = data as { Response?: I4UDocument[] | null; Errors?: { Error: string }[] };
-  const hasAuthError = wrapper.Errors?.some(e => e.Error === "UnauthorizedUser");
-  if (hasAuthError) {
-    _userToken = null; // invalidate cache
-    const freshToken = await getUserToken();
-    const retry = await post<{ Response: I4UDocument[] | null } | null>(
-      "GetDocuments",
-      { dr, token: freshToken }
-    );
-    if (!retry) return { documents: [], empty: true };
-    return { documents: (retry as { Response?: I4UDocument[] | null }).Response ?? [], empty: false };
-  }
-
-  const docs = wrapper.Response ?? [];
-  return { documents: docs, empty: docs.length === 0 };
+    const wrapper = data as { Response?: I4UDocument[] | null; Errors?: { Error: string }[] };
+    const hasAuthError = wrapper.Errors?.some(e => e.Error === "UnauthorizedUser");
+    if (hasAuthError) {
+      throw new Error("UnauthorizedUser — API access not enabled in Invoice4U settings");
+    }
+    const docs = wrapper.Response ?? [];
+    return { documents: docs, empty: docs.length === 0 };
+  });
 }
 
 export async function getMonthlyReport(year: number): Promise<{
@@ -161,14 +195,11 @@ export async function getMonthlyReport(year: number): Promise<{
 }> {
   const dateFrom = `01/01/${year}`;
   const dateTo   = `31/12/${year}`;
-
   const { documents: docs, empty } = await getDocuments({ dateFrom, dateTo, pageSize: 500 });
 
-  // Build month buckets
   const byMonth = new Map<string, I4UDocument[]>();
   for (let m = 1; m <= 12; m++) {
-    const key = `${year}-${String(m).padStart(2, "0")}`;
-    byMonth.set(key, []);
+    byMonth.set(`${year}-${String(m).padStart(2, "0")}`, []);
   }
 
   for (const doc of docs) {
@@ -184,34 +215,15 @@ export async function getMonthlyReport(year: number): Promise<{
   for (const [month, mdocs] of byMonth.entries()) {
     const [y, m] = month.split("-").map(Number);
     let income = 0, expense = 0, incomeCount = 0, expenseCount = 0;
-
     for (const d of mdocs) {
       const total = Number(d.Total) || 0;
-      if (INCOME_TYPES.has(d.DocType)) {
-        income += total; incomeCount++;
-        totalIncome += total;
-      } else if (EXPENSE_TYPES.has(d.DocType)) {
-        expense += total; expenseCount++;
-        totalExpense += total;
-      }
+      if (INCOME_TYPES.has(d.DocType))  { income  += total; incomeCount++;  totalIncome  += total; }
+      if (EXPENSE_TYPES.has(d.DocType)) { expense += total; expenseCount++; totalExpense += total; }
     }
-
-    rows.push({
-      month,
-      monthLabel: `${MONTH_NAMES_HE[m - 1]} ${y}`,
-      income, expense,
-      net: income - expense,
-      incomeCount, expenseCount,
-      documents: mdocs,
-    });
+    rows.push({ month, monthLabel: `${MONTH_NAMES_HE[m - 1]} ${y}`, income, expense, net: income - expense, incomeCount, expenseCount, documents: mdocs });
   }
 
-  return {
-    rows,
-    hasDocuments: !empty && docs.length > 0,
-    totalIncome,
-    totalExpense,
-  };
+  return { rows, hasDocuments: !empty && docs.length > 0, totalIncome, totalExpense };
 }
 
 export function exportToCsv(rows: MonthlyReportRow[]): string {
@@ -219,5 +231,5 @@ export function exportToCsv(rows: MonthlyReportRow[]): string {
   const lines = rows.map(r =>
     [r.monthLabel, r.income.toFixed(2), r.expense.toFixed(2), r.net.toFixed(2), r.incomeCount, r.expenseCount].join(",")
   );
-  return "\uFEFF" + [header, ...lines].join("\n"); // BOM for Hebrew Excel
+  return "\uFEFF" + [header, ...lines].join("\n");
 }

@@ -1,24 +1,40 @@
 import { Router } from "express";
-import { getBranches, getDocuments, getMonthlyReport, exportToCsv } from "../services/invoice4uService.js";
+import { getBranches, getDocuments, getMonthlyReport, exportToCsv, checkApiActive, getUserToken } from "../services/invoice4uService.js";
 
 const router = Router();
 
-// GET /api/invoice4u/status — verify connection & return branches
+// GET /api/invoice4u/status
 router.get("/status", async (_req, res) => {
   try {
-    const configured = !!process.env.INVOICE4U;
-    if (!configured) {
-      res.json({ connected: false, error: "INVOICE4U secret not set" });
+    if (!process.env.INVOICE4U) {
+      res.json({ connected: false, apiActive: false, error: "INVOICE4U secret not set" });
       return;
     }
+
+    // Verify the API key can produce a valid user token
+    try { await getUserToken(true); } catch (e) {
+      const isInvalid = (e as Error).message === "API_KEY_INVALID";
+      res.json({
+        connected: false,
+        apiActive: false,
+        error: isInvalid ? "API_KEY_INVALID" : (e as Error).message,
+      });
+      return;
+    }
+
+    // Check document API activation
+    const { active: apiActive } = await checkApiActive();
+
+    // Get branches (works even when ApiActive=false for document access)
     const branches = await getBranches();
-    res.json({ connected: true, branches });
+
+    res.json({ connected: true, apiActive, branches });
   } catch (e) {
-    res.json({ connected: false, error: (e as Error).message });
+    res.json({ connected: false, apiActive: false, error: (e as Error).message });
   }
 });
 
-// GET /api/invoice4u/report?year=2025 — monthly income/expense report
+// GET /api/invoice4u/report?year=2025
 router.get("/report", async (req, res) => {
   try {
     const year = Number(req.query["year"]) || new Date().getFullYear();
@@ -29,7 +45,7 @@ router.get("/report", async (req, res) => {
   }
 });
 
-// GET /api/invoice4u/export?year=2025 — download CSV
+// GET /api/invoice4u/export?year=2025
 router.get("/export", async (req, res) => {
   try {
     const year = Number(req.query["year"]) || new Date().getFullYear();
@@ -50,9 +66,7 @@ router.get("/documents", async (req, res) => {
     const month = Number(req.query["month"]) || undefined;
     const type  = (req.query["type"] as string) || "all";
 
-    let dateFrom: string;
-    let dateTo:   string;
-
+    let dateFrom: string, dateTo: string;
     if (month) {
       const lastDay = new Date(year, month, 0).getDate();
       dateFrom = `01/${String(month).padStart(2, "0")}/${year}`;

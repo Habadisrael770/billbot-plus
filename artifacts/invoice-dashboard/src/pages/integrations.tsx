@@ -1182,17 +1182,29 @@ function AccountantCard() {
 
 /* ── Invoice4U ───────────────────────────────────────────────────────────── */
 function Invoice4UCard() {
-  const [status,  setStatus]  = useState<{ connected: boolean; branches?: { ID:number; Name:string }[]; error?: string } | null>(null);
+  const [status,  setStatus]  = useState<{
+    connected: boolean;
+    apiActive?: boolean;
+    orgName?: string;
+    email?: string;
+    branches?: { ID: number; Name: string }[];
+    error?: string;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [open,    setOpen]    = useState(false);
 
-  useEffect(() => {
+  const refresh = () => {
+    setLoading(true);
     fetch(`${API_BASE}/invoice4u/status`)
       .then(r => r.json())
       .then(d => setStatus(d))
       .catch(() => setStatus({ connected: false, error: "שגיאת רשת" }))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const fullyActive = status?.connected && status?.apiActive;
 
   return (
     <SectionCard
@@ -1208,19 +1220,106 @@ function Invoice4UCard() {
       badge={
         loading ? (
           <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-        ) : status?.connected ? (
+        ) : fullyActive ? (
           <span className="flex items-center gap-1 text-xs font-medium text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2 py-0.5">
-            <CheckCircle2 className="w-3 h-3" /> מחובר
+            <CheckCircle2 className="w-3 h-3" /> פעיל
+          </span>
+        ) : status?.connected ? (
+          <span className="flex items-center gap-1 text-xs font-medium text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5">
+            <XCircle className="w-3 h-3" /> API לא מופעל
           </span>
         ) : (
-          <span className="flex items-center gap-1 text-xs font-medium text-amber-500 bg-amber-500/10 border border-amber-500/20 rounded-full px-2 py-0.5">
+          <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted border border-border rounded-full px-2 py-0.5">
             <XCircle className="w-3 h-3" /> לא מוגדר
           </span>
         )
       }
     >
-      {!loading && status?.connected ? (
+      {loading ? null : !status?.connected ? (
+        status?.error === "API_KEY_INVALID" ? (
+          /* ── API key expired / rejected ── */
+          <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-4 space-y-3">
+            <p className="text-xs font-semibold text-red-400">ה-API key פג תוקף או לא תקין — יש לעדכן אותו</p>
+            <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside leading-relaxed">
+              <li>היכנס ל-Invoice4U → <strong className="text-foreground">הגדרות → חשבון → API</strong></li>
+              <li>וודא שגישת API <strong className="text-foreground">מופעלת</strong></li>
+              <li><strong className="text-foreground">העתק את ה-API key</strong> המעודכן</li>
+              <li>עדכן את ה-Secret <code className="bg-muted px-1 py-0.5 rounded text-[10px]">INVOICE4U</code> בלוח ה-Secrets</li>
+            </ol>
+            <div className="flex items-center gap-2 pt-1">
+              <a
+                href="https://private.invoice4u.co.il/newsite/he/settings/account"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+                פתח הגדרות Invoice4U
+              </a>
+              <button
+                onClick={refresh}
+                className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-border text-xs font-medium hover:bg-muted transition-colors"
+              >
+                <Loader2 className="w-3 h-3" />
+                בדוק שוב
+              </button>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {status?.error ?? "הוסף את מפתח ה-API של Invoice4U כ-Secret בשם INVOICE4U"}
+          </p>
+        )
+      ) : !status.apiActive ? (
+        /* ── API key valid but ApiActive=false ── */
         <div className="space-y-3">
+          {/* Account info */}
+          {status.orgName && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <span>מחובר לחשבון: <span className="font-medium text-foreground">{status.orgName}</span>{status.email ? ` (${status.email})` : ""}</span>
+            </div>
+          )}
+
+          {/* Warning box */}
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+            <p className="text-xs font-semibold text-amber-500">נדרשת הפעלת גישת API ב-Invoice4U</p>
+            <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside leading-relaxed">
+              <li>היכנס ל-Invoice4U → <strong className="text-foreground">הגדרות → חשבון → API</strong></li>
+              <li>אפשר את האפשרות <strong className="text-foreground">"הפעל גישת API"</strong> / <strong className="text-foreground">"Enable API"</strong></li>
+              <li>לחץ <strong className="text-foreground">שמור</strong></li>
+              <li>העתק מחדש את ה-API key מאותו עמוד</li>
+              <li>עדכן את ה-Secret בשם <code className="bg-muted px-1 py-0.5 rounded text-[10px]">INVOICE4U</code></li>
+            </ol>
+            <div className="flex items-center gap-2 pt-1">
+              <a
+                href="https://private.invoice4u.co.il/newsite/he/settings/account"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 h-8 px-3 rounded-xl bg-blue-600 text-white text-xs font-medium hover:bg-blue-700 transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" />
+                פתח הגדרות Invoice4U
+              </a>
+              <button
+                onClick={refresh}
+                className="flex items-center gap-1.5 h-8 px-3 rounded-xl border border-border text-xs font-medium hover:bg-muted transition-colors"
+              >
+                <Loader2 className="w-3 h-3" />
+                בדוק שוב
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* ── Fully active ── */
+        <div className="space-y-3">
+          {status.orgName && (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+              <span>{status.orgName}{status.email ? ` · ${status.email}` : ""}</span>
+            </div>
+          )}
           {status.branches && status.branches.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {status.branches.map(b => (
@@ -1235,20 +1334,13 @@ function Invoice4UCard() {
             <BarChart3 className="w-3.5 h-3.5" />
             {open ? "סגור דוח" : "הצג דוח הכנסות/הוצאות"}
           </button>
-
           {open && (
             <div className="mt-2 rounded-2xl border border-border bg-background p-4">
               <Invoice4UReport />
             </div>
           )}
         </div>
-      ) : !loading ? (
-        <p className="text-xs text-muted-foreground">
-          {status?.error
-            ? `שגיאה: ${status.error}`
-            : "הוסף את מפתח ה-API של Invoice4U כ-Secret בשם INVOICE4U"}
-        </p>
-      ) : null}
+      )}
     </SectionCard>
   );
 }
