@@ -101,10 +101,19 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
         document.body.removeChild(a);
         setLoadingGoogle(false);
       } else {
-        // Poll: if user closes popup without completing, reset loading state
+        // Poll: detect popup close and check if login was completed
         const timer = setInterval(() => {
           if (popup.closed) {
             clearInterval(timer);
+            // Check if popup wrote login state to localStorage before closing
+            const stored = localStorage.getItem("bb_user");
+            if (stored) {
+              try {
+                const u = JSON.parse(stored) as { email: string };
+                onLogin(u.email ?? "");
+                return;
+              } catch {}
+            }
             setLoadingGoogle(false);
           }
         }, 800);

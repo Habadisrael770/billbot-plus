@@ -70,13 +70,65 @@ function AppRouter() {
   const [loggedIn,  setLoggedIn]  = useState(() => !!localStorage.getItem("bb_user"));
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem("bb_wizard_done") === "1");
 
+  const handleLogin = (email: string) => {
+    localStorage.setItem("bb_user", JSON.stringify({ email: email || "user" }));
+    setLoggedIn(true);
+  };
+
+  // Handle Google OAuth completion.
+  //
+  // Architecture in Replit:
+  //   Main Replit browser tab
+  //   └── Replit iframe (cross-origin shell)
+  //       └── Our app iframe (our origin — where this code runs)
+  //
+  // When user clicks "Login with Google":
+  //   popup = window.open(googleUrl)   ← opener = our app iframe
+  //   Google → callback → popup navigates to /?gmail=connected  (our origin)
+  //   The popup loads our App.tsx again, detects gmail=connected,
+  //   calls handleLogin() then sends postMessage to opener and closes.
+  //   Our app iframe receives the postMessage and calls handleLogin() too.
+  //
+  useEffect(() => {
+    // ── Case 1: we ARE the popup (window.opener exists and gmail=connected in URL)
+    const params = new URLSearchParams(window.location.search);
+    const gmail = params.get("gmail");
+    const email = params.get("email") ?? "";
+
+    if (gmail === "connected" && window.opener) {
+      // Running inside the popup — notify the opener (our app iframe) via postMessage
+      window.history.replaceState({}, "", window.location.pathname);
+      try {
+        window.opener.postMessage({ type: "GMAIL_CONNECTED", email }, "*");
+      } catch {}
+      // Close this popup after a short delay
+      setTimeout(() => window.close(), 800);
+      return;
+    }
+
+    // ── Case 2: redirect-based (popup was blocked, _top navigated here)
+    if (gmail === "connected") {
+      window.history.replaceState({}, "", window.location.pathname);
+      handleLogin(email);
+      return;
+    }
+
+    if (loggedIn) return;
+
+    // ── Case 3: Listen for postMessage from popup (popup → opener = this window)
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === "GMAIL_CONNECTED") {
+        handleLogin(e.data.email ?? "");
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [loggedIn]);
+
   if (!loggedIn) {
     return (
       <LoginPage
-        onLogin={(email) => {
-          localStorage.setItem("bb_user", JSON.stringify({ email: email || "user" }));
-          setLoggedIn(true);
-        }}
+        onLogin={handleLogin}
         onSkip={() => {
           localStorage.setItem("bb_user", JSON.stringify({ email: "guest" }));
           setLoggedIn(true);

@@ -316,7 +316,16 @@ export default function Settings() {
       const res = await fetch(`${API_BASE}/gmail-auth/url`);
       const data = await res.json() as { url?: string; error?: string };
       if (data.url) {
-        window.location.href = data.url;
+        // Open popup; if blocked use _top to escape iframe
+        const w = 520, h = 640;
+        const left = Math.max(0, (window.screen.width  - w) / 2);
+        const top  = Math.max(0, (window.screen.height - h) / 2);
+        const popup = window.open(data.url, "gmail-settings", `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`);
+        if (!popup) {
+          const a = document.createElement("a");
+          a.href = data.url; a.target = "_top"; a.rel = "noopener";
+          document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
       } else {
         toast({ title: "שגיאה", description: data.error ?? "לא ניתן לקבל כתובת חיבור", variant: "destructive" });
       }

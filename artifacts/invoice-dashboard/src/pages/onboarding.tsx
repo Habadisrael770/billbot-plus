@@ -120,6 +120,36 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
 
   const back = () => { setDir(-1); setStep((s) => s - 1); };
 
+  const openUrlSafely = (url: string) => {
+    const w = 520, h = 640;
+    const left = Math.max(0, (window.screen.width  - w) / 2);
+    const top  = Math.max(0, (window.screen.height - h) / 2);
+    const popup = window.open(url, "gmail-onboard", `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`);
+    if (!popup) {
+      // Popup blocked — escape iframe via _top instead of navigating iframe itself
+      const a = document.createElement("a");
+      a.href = url; a.target = "_top"; a.rel = "noopener";
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    } else {
+      // Poll for OAuth result in localStorage (written by callback page)
+      const interval = setInterval(() => {
+        try {
+          const raw = localStorage.getItem("bb_oauth_result");
+          if (!raw) return;
+          const result = JSON.parse(raw) as { type: string; email: string; ts: number };
+          if (result.type === "GMAIL_CONNECTED" && Date.now() - result.ts < 30000) {
+            clearInterval(interval);
+            localStorage.removeItem("bb_oauth_result");
+            setGmailConnected(true);
+            setGmailEmail(result.email ?? "");
+            setConnecting(false);
+          }
+        } catch {}
+        if (popup.closed) { clearInterval(interval); setConnecting(false); }
+      }, 500);
+    }
+  };
+
   const handleConnectGmail = async () => {
     setConnecting(true);
     try {
@@ -127,7 +157,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
       const data = await res.json() as { url?: string };
       if (data.url) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ step: 2, bizName, phone, plan }));
-        window.location.href = data.url;
+        openUrlSafely(data.url);
       } else {
         setGmailConnected(true);
         setGmailEmail("demo@billbot.co.il");

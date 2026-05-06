@@ -216,24 +216,11 @@ router.get("/callback", async (req, res) => {
       document.getElementById('bar').style.width = '100%';
     });
 
-    if (window.opener) {
-      // Popup flow — notify parent and close
-      try {
-        window.opener.postMessage({ type: 'GMAIL_CONNECTED', email: EMAIL }, '*');
-      } catch(e) {}
-      setTimeout(function() { window.close(); }, 1600);
-    } else {
-      // Main-window flow (mobile / popup-blocked) — redirect back to app
-      setTimeout(function() {
-        window.location.replace(FALLBACK);
-      }, 1800);
-
-      // Safety: show manual button after 5s in case JS redirect is slow
-      setTimeout(function() {
-        document.getElementById('btn').style.display = 'inline-block';
-        document.getElementById('hint').textContent = 'אם הדף לא מתחלף, לחץ על הכפתור';
-      }, 5000);
-    }
+    // Navigate this window (popup or main tab) to the app with ?gmail=connected.
+    // The app (App.tsx) handles this param:
+    //   - If window.opener exists → it's a popup → sends postMessage to opener then closes
+    //   - If no opener → it's a main-window redirect → logs in directly
+    window.location.replace(FALLBACK);
   </script>
 </body>
 </html>`);

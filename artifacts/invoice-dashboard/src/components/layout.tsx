@@ -454,7 +454,7 @@ function MobileSidebar({
           onClick={() => {
             localStorage.removeItem("bb_user");
             localStorage.removeItem("bb_wizard_done");
-            window.location.href = "/login";
+            window.location.reload();
           }}
           className="w-full flex items-center gap-4 px-5 h-[54px] rounded-2xl active:scale-[0.97] transition-all"
           style={lm ? {
