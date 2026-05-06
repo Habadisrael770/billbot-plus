@@ -55,10 +55,11 @@ router.get("/callback", async (req, res) => {
       heMsg = "מנהל ה-Google Workspace שלך חסם גישה לאפליקציות לא מאומתות.";
       hint  = "בקש ממנהל ה-IT שלך להוסיף את BillBOT+ לרשימת האפליקציות המאושרות.";
     } else if (isAccessDenied) {
-      heMsg = "Google דחתה את הגישה — האפליקציה טרם עברה אימות Google.";
-      hint  = "במסך הגוגל, לחץ 'מתקדם' → 'עבור ל-BillBOT+ (לא בטוח)' כדי להמשיך.";
+      heMsg = "שגיאה 403: המייל שלך לא ברשימת המשתמשים המאושרים.";
+      hint  = "יש להוסיף את כתובת המייל כ-Test User ב-Google Cloud Console.";
     }
     const fallbackUrl = `${appBase}/?gmail=error&msg=${encodeURIComponent(heMsg)}`;
+    const consoleUrl  = "https://console.cloud.google.com/apis/credentials/consent";
     res.send(`<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -71,39 +72,53 @@ router.get("/callback", async (req, res) => {
            min-height:100vh; display:flex; align-items:center; justify-content:center;
            text-align:center; padding:24px; }
     .card { background:rgba(255,255,255,0.05); border:1px solid rgba(255,100,100,0.3);
-            border-radius:20px; padding:36px 28px; max-width:360px; width:100%; }
+            border-radius:20px; padding:36px 28px; max-width:400px; width:100%; }
     .icon { width:60px; height:60px; border-radius:50%;
             background:linear-gradient(135deg,#dc2626,#ef4444);
             display:flex; align-items:center; justify-content:center;
             margin:0 auto 18px; font-size:28px; }
-    h2 { font-size:18px; font-weight:700; color:#f87171; margin-bottom:10px; }
-    .msg { font-size:13px; color:rgba(255,255,255,0.6); margin-bottom:12px; line-height:1.5; }
-    .hint { font-size:12px; color:rgba(255,200,0,0.8); background:rgba(255,200,0,0.08);
-            border:1px solid rgba(255,200,0,0.2); border-radius:10px;
-            padding:10px 14px; margin-bottom:18px; line-height:1.5; text-align:right; }
-    .btn { display:inline-block; padding:10px 24px;
-           background:rgba(255,255,255,0.1); color:#fff;
-           border-radius:12px; font-size:14px; font-weight:600;
-           text-decoration:none; border:1px solid rgba(255,255,255,0.15); }
-    .code { font-size:11px; color:rgba(255,255,255,0.25); margin-top:12px; direction:ltr; }
+    h2 { font-size:18px; font-weight:700; color:#f87171; margin-bottom:8px; }
+    .msg { font-size:13px; color:rgba(255,255,255,0.55); margin-bottom:16px; line-height:1.5; }
+    .steps { text-align:right; background:rgba(255,200,0,0.06); border:1px solid rgba(255,200,0,0.18);
+             border-radius:12px; padding:14px 16px; margin-bottom:18px; }
+    .steps-title { font-size:12px; font-weight:700; color:rgba(255,200,0,0.9); margin-bottom:8px; }
+    .step { font-size:12px; color:rgba(255,255,255,0.55); margin-bottom:4px; line-height:1.5; }
+    .step span { color:rgba(255,200,0,0.75); }
+    .btns { display:flex; gap:10px; flex-direction:column; }
+    .btn-primary { display:block; padding:11px 20px;
+           background:linear-gradient(90deg,#4361ee,#2dd4bf); color:#fff;
+           border-radius:12px; font-size:13px; font-weight:700;
+           text-decoration:none; }
+    .btn-back { display:block; padding:10px 20px;
+           background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.6);
+           border-radius:12px; font-size:13px; font-weight:600;
+           text-decoration:none; border:1px solid rgba(255,255,255,0.12); }
+    .code { font-size:10px; color:rgba(255,255,255,0.2); margin-top:14px; direction:ltr; }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="icon">✕</div>
-    <h2>לא ניתן להתחבר ל-Gmail</h2>
+    <div class="icon">🔒</div>
+    <h2>גישה חסומה — שגיאה 403</h2>
     <p class="msg">${heMsg}</p>
-    <p class="hint">💡 ${hint}</p>
-    <a href="${fallbackUrl}" class="btn">חזרה לאפליקציה</a>
-    <p class="code">google error: ${googleError}</p>
+    <div class="steps">
+      <p class="steps-title">⚡ כך מתקנים (פחות מ-2 דקות):</p>
+      <p class="step">1. לחץ "פתח Google Console" למטה</p>
+      <p class="step">2. גלול ל-<span>Test users</span> → לחץ <span>+ Add Users</span></p>
+      <p class="step">3. הכנס את כתובת המייל שרצית להתחבר איתה</p>
+      <p class="step">4. לחץ <span>Save</span> וחכה 10 שניות</p>
+      <p class="step">5. חזור לאפליקציה ונסה שוב</p>
+    </div>
+    <div class="btns">
+      <a href="${consoleUrl}" target="_blank" rel="noopener" class="btn-primary">🔧 פתח Google Console</a>
+      <a href="${fallbackUrl}" class="btn-back">← חזרה לאפליקציה</a>
+    </div>
+    <p class="code">error: ${googleError}${isAdminBlock ? " (admin_policy_enforced)" : ""}</p>
   </div>
   <script>
     var FALLBACK = ${JSON.stringify(fallbackUrl)};
     if (window.opener) {
       try { window.opener.postMessage({ type: 'GMAIL_ERROR', error: ${JSON.stringify(heMsg)} }, '*'); } catch(e) {}
-      setTimeout(function() { window.close(); }, 4000);
-    } else {
-      setTimeout(function() { window.location.replace(FALLBACK); }, 4000);
     }
   </script>
 </body>
