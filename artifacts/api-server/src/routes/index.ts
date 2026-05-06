@@ -14,6 +14,7 @@ import gmailAuthRouter from "./gmail-auth.js";
 import { publicRouter, internalApiKeysRouter } from "./public-api.js";
 import invoice4uRouter from "./invoice4u.js";
 import authRouter from "./auth.js";
+import imapAuthRouter from "./imap-auth.js";
 
 const router: IRouter = Router();
 
@@ -33,5 +34,6 @@ router.use("/public", publicRouter);
 router.use("/internal/api-keys", internalApiKeysRouter);
 router.use("/invoice4u", invoice4uRouter);
 router.use("/auth", authRouter);
+router.use("/imap-auth", imapAuthRouter);
 
 export default router;

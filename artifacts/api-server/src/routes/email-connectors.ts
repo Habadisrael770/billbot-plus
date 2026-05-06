@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { getAllGmailClients, getGmailStatus } from "../services/gmailOAuth.js";
 import { processInvoice } from "../services/invoiceProcessingService.js";
+import { scanImapForInvoices, listImapAccounts } from "../services/imapService.js";
 
 const router: IRouter = Router();
 
@@ -17,8 +18,15 @@ function getMonthUploadsDir(): string {
 
 router.get("/gmail/status", async (_req, res) => {
   try {
-    const status = await getGmailStatus();
-    res.json(status);
+    const gmailStatus = await getGmailStatus();
+    const imapAccounts = await listImapAccounts();
+    const imapConnected = imapAccounts.length > 0;
+    res.json({
+      ...gmailStatus,
+      connected: gmailStatus.connected || imapConnected,
+      imapAccounts,
+      imapConnected,
+    });
   } catch (err) {
     res.json({ connected: false, email: null, error: String(err) });
   }
@@ -30,7 +38,15 @@ async function runGmailScan(
   onProgress: (pct: number, msg: string, extra?: object) => void,
 ): Promise<{ found: number; processed: number; skipped: number; errors: string[]; yearsScanned: number; accounts_scanned: number }> {
   const allClients = await getAllGmailClients();
-  onProgress(5, "מתחבר ל-Gmail...");
+  const imapAccounts = await listImapAccounts();
+  const hasGmail = allClients.length > 0;
+  const hasImap  = imapAccounts.length > 0;
+
+  if (!hasGmail && !hasImap) {
+    throw new Error("אין חשבון מחובר. חבר Gmail או הכנס סיסמת אפליקציה.");
+  }
+
+  onProgress(5, "מתחבר לתיבת הדואר...");
 
   let afterDate: Date;
   const yearsBack = Math.min(Math.max(Number(body?.yearsBack) || 4, 1), 4);
@@ -146,7 +162,41 @@ async function runGmailScan(
     }
   }
 
-  return { found: totalFound, processed, skipped, errors: errors.slice(0, 5), yearsScanned: yearsBack, accounts_scanned: allClients.length };
+  // ── IMAP scan (App Password accounts) ─────────────────────────────────────
+  if (hasImap) {
+    onProgress(85, "סורק תיבות IMAP...");
+    try {
+      const imapAttachments = await scanImapForInvoices(afterDate, (pct, msg) => {
+        onProgress(85 + Math.round(pct * 0.1), msg);
+      });
+      totalFound += imapAttachments.length;
+      for (const att of imapAttachments) {
+        try {
+          const extMap: Record<string, string> = { pdf: ".pdf", jpeg: ".jpg", jpg: ".jpg", png: ".png" };
+          const rawExt = att.filename.split(".").pop()?.toLowerCase() ?? "pdf";
+          const ext = extMap[rawExt] ?? ".pdf";
+          const monthDir = getMonthUploadsDir();
+          const fname = `imap-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
+          const filePath = path.join(monthDir, fname);
+          fs.writeFileSync(filePath, att.buffer);
+          await processInvoice({
+            filePath,
+            extracted: { date: att.date.toISOString().split("T")[0] },
+            sourceType: "email",
+          });
+          processed++;
+        } catch (err) {
+          const errMsg = String(err);
+          if (errMsg.includes("VENDOR_BLOCKED:")) skipped++;
+          else errors.push(`[IMAP:${att.email}] ${errMsg}`);
+        }
+      }
+    } catch (err) {
+      errors.push(`[IMAP] ${String(err)}`);
+    }
+  }
+
+  return { found: totalFound, processed, skipped, errors: errors.slice(0, 5), yearsScanned: yearsBack, accounts_scanned: allClients.length + imapAccounts.length };
 }
 
 // ── SSE streaming scan (real-time progress — no proxy timeout) ─────────────
