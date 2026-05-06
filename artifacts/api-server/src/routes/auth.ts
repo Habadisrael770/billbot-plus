@@ -115,35 +115,7 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ── Upsert user from Google OAuth (called internally) ────────────────────────
-export async function upsertGoogleUser(params: {
-  email: string;
-  name?: string | null;
-  avatarUrl?: string | null;
-  googleId?: string | null;
-}): Promise<void> {
-  const existing = await db.select({ id: usersTable.id })
-    .from(usersTable)
-    .where(eq(usersTable.email, params.email.toLowerCase()))
-    .limit(1);
-
-  if (existing.length > 0) {
-    await db.update(usersTable).set({
-      name:        params.name   ?? undefined,
-      avatarUrl:   params.avatarUrl ?? undefined,
-      googleId:    params.googleId  ?? undefined,
-      lastLoginAt: new Date(),
-      updatedAt:   new Date(),
-    }).where(eq(usersTable.email, params.email.toLowerCase()));
-  } else {
-    await db.insert(usersTable).values({
-      email:      params.email.toLowerCase(),
-      name:       params.name      ?? null,
-      avatarUrl:  params.avatarUrl ?? null,
-      googleId:   params.googleId  ?? null,
-      lastLoginAt: new Date(),
-    });
-  }
-}
+// upsertGoogleUser lives in userService.ts to avoid circular imports
+export { upsertGoogleUser } from "../services/userService.js";
 
 export default router;

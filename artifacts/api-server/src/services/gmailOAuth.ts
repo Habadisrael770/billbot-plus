@@ -1,10 +1,10 @@
 // Gmail OAuth2 service — full read permissions (gmail.readonly + userinfo.email)
-// Requires: GOOGLE_CLIENT_ID (or GOOGLE_ID), GOOGLE_CLIENT_SECRET env vars
+// Requires: GMAIL_CLIENT_ID (or GOOGLE_ID), GMAIL_CLIENT_SECRET env vars
 import { google } from "googleapis";
 import { db } from "@workspace/db";
 import { gmailTokens } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
-import { upsertGoogleUser } from "../routes/auth.js";
+import { upsertGoogleUser } from "./userService.js";
 
 const SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
@@ -12,7 +12,6 @@ const SCOPES = [
   "https://www.googleapis.com/auth/userinfo.email",
   "https://www.googleapis.com/auth/userinfo.profile",
 ];
-// NOTE: gmail.readonly is a restricted scope — requires test user OR verified app
 
 function getOAuth2Client() {
   const clientId     = process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_ID;
@@ -26,7 +25,7 @@ function getOAuth2Client() {
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 }
 
-function getRedirectUri(): string {
+export function getRedirectUri(): string {
   if (process.env.GOOGLE_REDIRECT_URI) return process.env.GOOGLE_REDIRECT_URI;
   const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(",")[0];
   if (domain) return `https://${domain}/api/gmail-auth/callback`;
@@ -39,8 +38,8 @@ export function getGmailAuthUrl(): string {
   return oAuth2Client.generateAuthUrl({
     access_type: "offline",
     scope: SCOPES,
-    // select_account forces Google to always show the account picker first,
-    // so the user can explicitly choose a test-user account before consent
+    // prompt=consent forces Google to always re-issue a refresh_token
+    // select_account lets user pick which account to use
     prompt: "select_account consent",
   });
 }
@@ -50,22 +49,27 @@ export async function handleGmailCallback(code: string): Promise<string> {
   const oAuth2Client = getOAuth2Client();
   const { tokens }   = await oAuth2Client.getToken(code);
 
-  if (!tokens.access_token || !tokens.refresh_token) {
-    throw new Error("Did not receive required tokens from Google");
+  if (!tokens.access_token) {
+    throw new Error("לא התקבל access token מ-Google");
   }
 
+  // Get user info (works with access_token alone)
   oAuth2Client.setCredentials(tokens);
   const oauth2 = google.oauth2({ version: "v2", auth: oAuth2Client });
   const { data } = await oauth2.userinfo.get();
-  const email = data.email ?? "unknown";
+  const email = data.email;
 
-  // Upsert user record in users table (so Google login = app login)
+  if (!email) {
+    throw new Error("לא ניתן לקבל את כתובת האימייל מ-Google");
+  }
+
+  // Upsert user in the users table (Google login = app login)
   try {
     await upsertGoogleUser({
       email,
-      name:      data.name      ?? null,
-      avatarUrl: data.picture   ?? null,
-      googleId:  data.id        ?? null,
+      name:      data.name    ?? null,
+      avatarUrl: data.picture ?? null,
+      googleId:  data.id      ?? null,
     });
   } catch (e) {
     console.warn("[gmailOAuth] upsertGoogleUser failed (non-fatal):", e);
@@ -75,21 +79,34 @@ export async function handleGmailCallback(code: string): Promise<string> {
     ? new Date(tokens.expiry_date)
     : new Date(Date.now() + 3600 * 1000);
 
-  const existing = await db.select().from(gmailTokens).where(eq(gmailTokens.email, email));
+  const existing = await db
+    .select()
+    .from(gmailTokens)
+    .where(eq(gmailTokens.email, email))
+    .limit(1);
+
   if (existing.length > 0) {
+    // ── CRITICAL FIX: Google doesn't always re-issue refresh_token on re-auth.
+    // Keep the existing refresh_token if a new one wasn't provided.
+    const existingRow = existing[0]!;
     await db.update(gmailTokens)
       .set({
         accessToken:  tokens.access_token,
-        refreshToken: tokens.refresh_token,
+        refreshToken: tokens.refresh_token ?? existingRow.refreshToken, // keep old if missing
         expiresAt,
         updatedAt: new Date(),
       })
       .where(eq(gmailTokens.email, email));
   } else {
+    // First time — refresh_token is required for offline access
+    if (!tokens.refresh_token) {
+      // This shouldn't happen since we request prompt=consent, but handle gracefully
+      console.warn("[gmailOAuth] No refresh_token on first connect — offline access may not work");
+    }
     await db.insert(gmailTokens).values({
       email,
       accessToken:  tokens.access_token,
-      refreshToken: tokens.refresh_token,
+      refreshToken: tokens.refresh_token ?? "",
       expiresAt,
     });
   }
@@ -101,7 +118,7 @@ export async function handleGmailCallback(code: string): Promise<string> {
 export async function getGmailClient() {
   const rows = await db.select().from(gmailTokens).limit(1);
   if (rows.length === 0) throw new Error("Gmail not connected");
-  return buildGmailClientFromRow(rows[0]);
+  return buildGmailClientFromRow(rows[0]!);
 }
 
 // ── Get ALL Gmail clients (one per connected account) ─────────────────────
@@ -145,18 +162,25 @@ export async function getGmailStatus(): Promise<{
   credentialsConfigured: boolean;
   redirectUri: string;
 }> {
-  const credentialsConfigured = !!((process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_ID) && process.env.GOOGLE_CLIENT_SECRET);
+  const credentialsConfigured = !!(
+    (process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || process.env.GOOGLE_ID) &&
+    (process.env.GMAIL_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET)
+  );
   const redirectUri = getRedirectUri();
   try {
     const clients = await getAllGmailClients();
     const emails = clients.map(c => c.email);
-    return { connected: true, email: emails[0], emails, credentialsConfigured, redirectUri };
+    return { connected: true, email: emails[0] ?? null, emails, credentialsConfigured, redirectUri };
   } catch {
     return { connected: false, email: null, emails: [], credentialsConfigured, redirectUri };
   }
 }
 
 // ── Disconnect — remove tokens from DB ────────────────────────────────────
-export async function disconnectGmail(): Promise<void> {
-  await db.delete(gmailTokens);
+export async function disconnectGmail(email?: string): Promise<void> {
+  if (email) {
+    await db.delete(gmailTokens).where(eq(gmailTokens.email, email));
+  } else {
+    await db.delete(gmailTokens);
+  }
 }
