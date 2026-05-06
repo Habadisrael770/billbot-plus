@@ -15,6 +15,7 @@ import { publicRouter, internalApiKeysRouter } from "./public-api.js";
 import invoice4uRouter from "./invoice4u.js";
 import authRouter from "./auth.js";
 import imapAuthRouter from "./imap-auth.js";
+import inboundEmailRouter from "./inbound-email.js";
 
 const router: IRouter = Router();
 
@@ -35,5 +36,6 @@ router.use("/internal/api-keys", internalApiKeysRouter);
 router.use("/invoice4u", invoice4uRouter);
 router.use("/auth", authRouter);
 router.use("/imap-auth", imapAuthRouter);
+router.use("/inbound-email", inboundEmailRouter);
 
 export default router;

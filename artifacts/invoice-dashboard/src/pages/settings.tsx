@@ -298,6 +298,13 @@ export default function Settings() {
   const [isFetchingTg, setIsFetchingTg] = useState(false);
   const { toast } = useToast();
 
+  // ── Email Forwarding state ────────────────────────────────────────────────
+  const [fwdAddress, setFwdAddress]     = useState<string | null>(null);
+  const [fwdToken,   setFwdToken]       = useState<string | null>(null);
+  const [fwdLoading, setFwdLoading]     = useState(false);
+  const [fwdStep,    setFwdStep]        = useState(0); // 0=hidden guide, 1..4=steps
+  const [fwdCopied,  setFwdCopied]      = useState(false);
+
   // ── WhatsApp personal phone registration ──────────────────────────────────
   const [waMyPhone, setWaMyPhone] = useState<string | null>(null);
   const [waPhoneInput, setWaPhoneInput] = useState("");
@@ -434,6 +441,47 @@ export default function Settings() {
     finally { setWaDeletingPhone(false); }
   };
 
+  // ── Load / regenerate forwarding address ─────────────────────────────────
+  const loadFwdAddress = useCallback(async () => {
+    const raw   = localStorage.getItem("bb_user");
+    const email = raw ? (JSON.parse(raw).email ?? "") : "";
+    if (!email || email === "guest") return;
+    setFwdLoading(true);
+    try {
+      const res  = await fetch(`${API_BASE}/inbound-email/address?email=${encodeURIComponent(email)}`);
+      const data = await res.json() as { address: string; token: string };
+      setFwdAddress(data.address ?? null);
+      setFwdToken(data.token ?? null);
+    } catch { /* ignore */ }
+    finally { setFwdLoading(false); }
+  }, []);
+
+  const regenerateFwdAddress = async () => {
+    const raw   = localStorage.getItem("bb_user");
+    const email = raw ? (JSON.parse(raw).email ?? "") : "";
+    if (!email) return;
+    setFwdLoading(true);
+    try {
+      const res  = await fetch(`${API_BASE}/inbound-email/regenerate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await res.json() as { address: string; token: string };
+      setFwdAddress(data.address ?? null);
+      setFwdToken(data.token ?? null);
+      toast({ title: "כתובת חדשה נוצרה", description: "הכתובת הישנה בוטלה. עדכן את כלל ה-Gmail." });
+    } catch { toast({ title: "שגיאה", description: "לא ניתן לחדש", variant: "destructive" }); }
+    finally { setFwdLoading(false); }
+  };
+
+  const copyFwdAddress = async () => {
+    if (!fwdAddress) return;
+    await navigator.clipboard.writeText(fwdAddress);
+    setFwdCopied(true);
+    setTimeout(() => setFwdCopied(false), 2000);
+  };
+
   useEffect(() => {
     fetchGmailStatus();
     fetchTelegramStatus();
@@ -442,7 +490,8 @@ export default function Settings() {
     loadEntities();
     loadBusinessProfile();
     loadWaPhone();
-  }, [fetchGmailStatus, fetchTelegramStatus, fetchWhatsAppStatus, loadCategories, loadEntities, loadBusinessProfile, loadWaPhone]);
+    loadFwdAddress();
+  }, [fetchGmailStatus, fetchTelegramStatus, fetchWhatsAppStatus, loadCategories, loadEntities, loadBusinessProfile, loadWaPhone, loadFwdAddress]);
 
   // --- API Connections state ---
   const [apiConnections, setApiConnections] = useState<ApiConnection[]>([]);
@@ -1148,6 +1197,219 @@ export default function Settings() {
             </div>
 
             <ConnectorCard provider="outlook" />
+          </div>
+        </div>
+
+        {/* ── Email Forwarding section ──────────────────────────────────────── */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <Mail className="w-4 h-4 text-violet-400" />
+            <h2 className="text-sm font-semibold text-white">העברת מייל אוטומטית</h2>
+            <span className="text-xs text-muted-foreground">— ללא OAuth, ללא הרשאות מיוחדות</span>
+          </div>
+
+          <div className="rounded-2xl border border-white/5 bg-card/20 p-5 flex flex-col gap-4" dir="rtl">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center">
+                  <Mail className="w-5 h-5 text-violet-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">כתובת העברת מייל</p>
+                  <p className="text-xs text-muted-foreground">הכתובת הייחודית שלך לקבלת חשבוניות</p>
+                </div>
+              </div>
+              {fwdAddress ? (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-500/10 border border-violet-500/20">
+                  <div className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+                  <span className="text-xs text-violet-400 font-medium">פעיל</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-muted/30 border border-white/10">
+                  <Loader2 className={`w-3.5 h-3.5 ${fwdLoading ? "animate-spin" : ""} text-muted-foreground`} />
+                  <span className="text-xs text-muted-foreground">{fwdLoading ? "טוען..." : "לא זמין"}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Forwarding address display */}
+            {fwdAddress && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5">כתובת ה-Forwarding הייחודית שלך:</p>
+                <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-black/30 border border-violet-500/20">
+                  <Mail className="w-3.5 h-3.5 text-violet-400 shrink-0" />
+                  <p className="text-xs text-violet-300 font-mono flex-1 truncate" dir="ltr">{fwdAddress}</p>
+                  <button
+                    onClick={copyFwdAddress}
+                    className="shrink-0 flex items-center gap-1 text-muted-foreground hover:text-violet-400 transition-all text-xs"
+                  >
+                    {fwdCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    {fwdCopied ? "הועתק!" : ""}
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5">
+                  כל מייל שיישלח לכתובת זו יעובד אוטומטית. שמור אותה בסוד — ניתן לחדש אם נפרצה.
+                </p>
+              </div>
+            )}
+
+            {/* Interactive setup guide */}
+            <div className="rounded-xl border border-violet-500/20 bg-violet-950/20 overflow-hidden">
+              <button
+                onClick={() => setFwdStep(s => s === 0 ? 1 : 0)}
+                className="w-full flex items-center justify-between px-4 py-3 text-xs font-medium text-violet-300 hover:text-white transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <ScanText className="w-3.5 h-3.5" />
+                  📋 מדריך הגדרה — כיצד להעביר מיילים מ-Gmail אוטומטית
+                </span>
+                {fwdStep > 0 ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+
+              {fwdStep > 0 && (
+                <div className="px-4 pb-4 space-y-4">
+                  {/* Step progress */}
+                  <div className="flex gap-1.5 mb-2">
+                    {[1,2,3,4].map(s => (
+                      <button
+                        key={s}
+                        onClick={() => setFwdStep(s)}
+                        className={`flex-1 h-1 rounded-full transition-all ${fwdStep >= s ? "bg-violet-400" : "bg-white/10"}`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Step 1 */}
+                  {fwdStep === 1 && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-white">שלב 1 מתוך 4 — העתק את כתובת ה-BillBOT+</p>
+                      {fwdAddress ? (
+                        <div className="rounded-lg bg-black/30 border border-violet-500/20 p-3">
+                          <p className="text-[10px] text-muted-foreground mb-1">הכתובת לשכפול:</p>
+                          <p className="text-xs font-mono text-violet-300 break-all" dir="ltr">{fwdAddress}</p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">טוען כתובת...</p>
+                      )}
+                      <button
+                        onClick={copyFwdAddress}
+                        className="w-full py-2 rounded-lg bg-violet-500/20 border border-violet-500/30 text-xs text-violet-300 font-medium hover:bg-violet-500/30 transition-all flex items-center justify-center gap-2"
+                      >
+                        {fwdCopied ? <><Check className="w-3.5 h-3.5 text-emerald-400" /> הועתק!</> : <><Copy className="w-3.5 h-3.5" /> העתק כתובת</>}
+                      </button>
+                      <button onClick={() => setFwdStep(2)} className="w-full py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-muted-foreground hover:text-white transition-all">
+                        הבא: פתח הגדרות Gmail ←
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Step 2 */}
+                  {fwdStep === 2 && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-white">שלב 2 מתוך 4 — פתח הגדרות Gmail</p>
+                      <div className="rounded-lg bg-black/20 border border-white/10 p-3 space-y-2">
+                        <p className="text-xs text-muted-foreground">בדפדפן, פתח Gmail ולחץ על:</p>
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="px-2 py-0.5 rounded bg-white/10 text-white font-mono">⚙️ הגדרות</span>
+                          <span className="text-muted-foreground">→</span>
+                          <span className="px-2 py-0.5 rounded bg-white/10 text-white font-mono">ראה את כל ההגדרות</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs mt-1">
+                          <span className="text-muted-foreground">לשונית:</span>
+                          <span className="px-2 py-0.5 rounded bg-white/10 text-white font-mono">העברה ו-POP/IMAP</span>
+                        </div>
+                      </div>
+                      <a
+                        href="https://mail.google.com/mail/u/0/#settings/fwdandpop"
+                        target="_blank" rel="noreferrer"
+                        className="w-full py-2 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-400 font-medium hover:bg-red-500/20 transition-all flex items-center justify-center gap-2"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        פתח הגדרות Gmail ישירות
+                      </a>
+                      <div className="flex gap-2">
+                        <button onClick={() => setFwdStep(1)} className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-muted-foreground hover:text-white transition-all">→ חזרה</button>
+                        <button onClick={() => setFwdStep(3)} className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-muted-foreground hover:text-white transition-all">הבא ←</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 3 */}
+                  {fwdStep === 3 && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-white">שלב 3 מתוך 4 — צור כלל העברה</p>
+                      <div className="rounded-lg bg-black/20 border border-white/10 p-3 space-y-2 text-xs text-muted-foreground">
+                        <p className="font-medium text-white">אפשרות א׳ — העבר הכל (הכי פשוט):</p>
+                        <ol className="space-y-1 list-decimal list-inside">
+                          <li>לחץ <span className="text-white font-mono bg-white/10 px-1 rounded">הוסף כתובת העברה</span></li>
+                          <li>הדבק את כתובת ה-BillBOT+ שהעתקת</li>
+                          <li>אשר דרך המייל שישלח לכתובת זו</li>
+                        </ol>
+                        <hr className="border-white/10 my-2" />
+                        <p className="font-medium text-white">אפשרות ב׳ — רק מיילים עם קבצים מצורפים (מומלץ):</p>
+                        <ol className="space-y-1 list-decimal list-inside">
+                          <li>לחץ <span className="text-white font-mono bg-white/10 px-1 rounded">צור כלל חדש</span> בהגדרות Gmail</li>
+                          <li>בשדה "כולל קבצים מצורפים" — סמן V</li>
+                          <li>בחר "העבר אל" → הדבק כתובת BillBOT+</li>
+                          <li>צור את הכלל</li>
+                        </ol>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => setFwdStep(2)} className="flex-1 py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-muted-foreground hover:text-white transition-all">→ חזרה</button>
+                        <button onClick={() => setFwdStep(4)} className="flex-1 py-2 rounded-lg bg-violet-500/20 border border-violet-500/30 text-xs text-violet-300 hover:bg-violet-500/30 transition-all">הבא ←</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Step 4 */}
+                  {fwdStep === 4 && (
+                    <div className="space-y-3">
+                      <p className="text-xs font-semibold text-white">שלב 4 מתוך 4 — אישור והרצה</p>
+                      <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-3 space-y-2 text-xs">
+                        <p className="text-emerald-400 font-medium">✅ זהו! כעת כל חשבונית שתגיע למייל תועבר אוטומטית ל-BillBOT+</p>
+                        <ul className="text-emerald-300/70 space-y-1 list-disc list-inside mt-2">
+                          <li>הגדרה חד-פעמית — עובדת מאחורי הקלעים לצמיתות</li>
+                          <li>תומך ב-PDF, JPG, PNG</li>
+                          <li>גם Gmail, גם Outlook, גם כל ספק מייל אחר</li>
+                          <li>ללא צורך ב-OAuth, ללא אישורי Google, ללא "אפליקציה לא מאומתת"</li>
+                        </ul>
+                      </div>
+                      <div className="rounded-lg bg-amber-500/5 border border-amber-500/20 p-3 text-xs text-amber-300/80">
+                        <p className="font-medium text-amber-300 mb-1">⚠️ שים לב:</p>
+                        <p>אם תחדש את הכתובת, כלל ה-Gmail הישן יפסיק לעבוד. יצטרך לעדכן אותו.</p>
+                      </div>
+                      <button
+                        onClick={() => setFwdStep(0)}
+                        className="w-full py-2 rounded-lg bg-white/5 border border-white/10 text-xs text-muted-foreground hover:text-white transition-all"
+                      >
+                        סגור מדריך
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Regenerate + Privacy link */}
+            <div className="flex items-center justify-between pt-1">
+              <button
+                onClick={regenerateFwdAddress}
+                disabled={fwdLoading}
+                className="text-xs text-muted-foreground hover:text-rose-400 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3 h-3 ${fwdLoading ? "animate-spin" : ""}`} />
+                חדש כתובת
+              </button>
+              <a
+                href="/privacy"
+                target="_blank"
+                className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+              >
+                <Shield className="w-3 h-3" />
+                מדיניות פרטיות
+              </a>
+            </div>
           </div>
         </div>
 

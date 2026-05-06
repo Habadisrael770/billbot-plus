@@ -17,6 +17,7 @@ import SuppliersPage from "@/pages/suppliers";
 import HelpPage from "@/pages/help";
 import IntegrationsPage from "@/pages/integrations";
 import { AIChat } from "@/components/ai-chat";
+import PrivacyPolicy from "@/pages/privacy";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -125,6 +126,12 @@ function AppRouter() {
     return () => window.removeEventListener("message", onMessage);
   }, [loggedIn]);
 
+  // Privacy page is always public — no login required
+  const currentPath = window.location.pathname.replace(import.meta.env.BASE_URL.replace(/\/$/, ""), "") || "/";
+  if (currentPath === "/privacy" || currentPath.startsWith("/privacy")) {
+    return <PrivacyPolicy />;
+  }
+
   if (!loggedIn) {
     return (
       <LoginPage
@@ -148,6 +155,7 @@ function AppRouter() {
         <Route path="/help" component={HelpPage} />
         <Route path="/profile" component={Profile} />
         <Route path="/settings" component={SettingsPage} />
+        <Route path="/privacy" component={PrivacyPolicy} />
         <Route component={NotFound} />
       </Switch>
 
