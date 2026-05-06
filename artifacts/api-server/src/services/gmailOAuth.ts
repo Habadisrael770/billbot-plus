@@ -4,6 +4,7 @@ import { google } from "googleapis";
 import { db } from "@workspace/db";
 import { gmailTokens } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
+import { upsertGoogleUser } from "../routes/auth.js";
 
 const SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
@@ -57,6 +58,18 @@ export async function handleGmailCallback(code: string): Promise<string> {
   const oauth2 = google.oauth2({ version: "v2", auth: oAuth2Client });
   const { data } = await oauth2.userinfo.get();
   const email = data.email ?? "unknown";
+
+  // Upsert user record in users table (so Google login = app login)
+  try {
+    await upsertGoogleUser({
+      email,
+      name:      data.name      ?? null,
+      avatarUrl: data.picture   ?? null,
+      googleId:  data.id        ?? null,
+    });
+  } catch (e) {
+    console.warn("[gmailOAuth] upsertGoogleUser failed (non-fatal):", e);
+  }
 
   const expiresAt = tokens.expiry_date
     ? new Date(tokens.expiry_date)

@@ -11,3 +11,4 @@ export * from "./businessProfile";
 export * from "./gmailTokens";
 export * from "./chatMemories";
 export * from "./invoiceLineItems";
+export * from "./users";
