@@ -24,8 +24,20 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
   const [passError, setPassError]     = useState<string | null>(null);
   const [successMsg, setSuccessMsg]   = useState<string | null>(null);
 
-  // Handle return from Google OAuth
+  // Handle postMessage from Google OAuth popup
   useEffect(() => {
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === "GMAIL_CONNECTED") {
+        setLoadingGoogle(false);
+        onLogin(e.data.email ?? "");
+      } else if (e.data?.type === "GMAIL_ERROR") {
+        setLoadingGoogle(false);
+        setError(e.data.error ?? "שגיאה בהתחברות לגוגל");
+      }
+    };
+    window.addEventListener("message", onMessage);
+
+    // Fallback: handle redirect-based return (mobile / popup-blocked)
     const params = new URLSearchParams(window.location.search);
     const gmail  = params.get("gmail");
     const mail   = params.get("email") ?? "";
@@ -37,6 +49,8 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
       setError(msg);
       window.history.replaceState({}, "", window.location.pathname);
     }
+
+    return () => window.removeEventListener("message", onMessage);
   }, []);
 
   const resetErrors = () => {
@@ -52,19 +66,40 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
     setMode(m);
   };
 
-  // ── Google OAuth ────────────────────────────────────────────────────────
+  // ── Google OAuth (popup flow — avoids iframe/403 block) ─────────────────
   const handleGoogle = async () => {
     setLoadingGoogle(true);
     resetErrors();
     try {
-      // Use login-url (basic scopes only) to avoid 403 from restricted Gmail scopes
       const res  = await fetch(`${API_BASE}/gmail-auth/login-url`);
       const data = await res.json() as { url?: string; error?: string };
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
+      if (!data.url) {
         setError("לא ניתן לקבל קישור לגוגל. נסה שוב.");
         setLoadingGoogle(false);
+        return;
+      }
+
+      // Open in a popup so Google doesn't block the iframe context
+      const w = 520, h = 640;
+      const left = Math.max(0, (window.screen.width  - w) / 2);
+      const top  = Math.max(0, (window.screen.height - h) / 2);
+      const popup = window.open(
+        data.url,
+        "google-login",
+        `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`
+      );
+
+      if (!popup) {
+        // Popup was blocked — fall back to redirect
+        window.location.href = data.url;
+      } else {
+        // Poll: if user closes popup without completing, reset loading state
+        const timer = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(timer);
+            setLoadingGoogle(false);
+          }
+        }, 800);
       }
     } catch {
       setError("לא ניתן להתחבר לשרת. נסה שוב.");
