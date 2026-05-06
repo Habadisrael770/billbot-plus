@@ -35,21 +35,6 @@ const DATE_PRESETS: { key: DatePreset; label: string; months?: number }[] = [
   { key: "all", label: "הכל",                    },
 ];
 
-const SCAN_STAGES = [
-  { from: 0,  to: 18, label: "מתחבר ל-Gmail..." },
-  { from: 18, to: 40, label: "מחפש מיילים עם קבצים..." },
-  { from: 40, to: 62, label: "מוריד קבצים..." },
-  { from: 62, to: 80, label: "מנתח חשבוניות עם AI..." },
-  { from: 80, to: 94, label: "שומר נתונים..." },
-];
-
-function getStageLabel(pct: number) {
-  for (const s of SCAN_STAGES) {
-    if (pct >= s.from && pct < s.to) return s.label;
-  }
-  return "מסיים...";
-}
-
 function isPaidPlan() {
   try {
     const raw = localStorage.getItem("bb_onboarding_progress");
@@ -80,31 +65,12 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
   const [datePreset, setDatePreset] = useState<DatePreset>("3m");
   const [phase, setPhase] = useState<Phase>("idle");
   const [progress, setProgress] = useState(0);
+  const [stageMsg, setStageMsg] = useState("מתחבר ל-Gmail...");
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [connectingGmail, setConnectingGmail] = useState(false);
   const paid = isPaidPlan();
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const clearTimer = () => {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-  };
-
-  const startProgress = () => {
-    setProgress(0);
-    let current = 0;
-    timerRef.current = setInterval(() => {
-      if (current < 70) {
-        current += Math.random() * 1.6 + 0.4;        // Fast: 0→70%
-      } else if (current < 88) {
-        current += Math.random() * 0.5 + 0.12;       // Medium: 70→88%
-      } else if (current < 99.5) {
-        current += Math.random() * 0.03 + 0.005;     // Very slow creep: 88→99.5%
-      }
-      if (current > 99.5) current = 99.5;            // Never reaches 100 until API responds
-      setProgress(Math.round(current * 10) / 10);
-    }, 300);
-  };
+  const abortRef = useRef<AbortController | null>(null);
 
   const loadStatus = async () => {
     setLoadingStatus(true);
@@ -125,9 +91,11 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
       setScanResult(null);
       setPhase("idle");
       setProgress(0);
-      clearTimer();
+      setStageMsg("מתחבר ל-Gmail...");
     }
-    return () => clearTimer();
+    return () => {
+      abortRef.current?.abort();
+    };
   }, [isOpen]);
 
   useEffect(() => {
@@ -175,7 +143,12 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
     if (!status?.connected) return;
     setPhase("scanning");
     setScanResult(null);
-    startProgress();
+    setProgress(0);
+    setStageMsg("מתחבר ל-Gmail...");
+
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
     try {
       const preset = DATE_PRESETS.find(p => p.key === datePreset);
       const yearsBack = preset?.months ? Math.ceil(preset.months / 12) || 1 : 4;
@@ -186,31 +159,56 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
         body.sinceDate = since.toISOString().split("T")[0];
       }
 
-      const res = await fetch(`${API_BASE}/email-connectors/gmail/scan`, {
+      // Use SSE streaming endpoint — no proxy timeout, real progress
+      const res = await fetch(`${API_BASE}/email-connectors/gmail/scan-stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
+        signal: ctrl.signal,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "שגיאה בסריקה");
 
-      // Animate to 100% then show result
-      clearTimer();
-      setProgress(100);
-      await new Promise(r => setTimeout(r, 600));
+      if (!res.ok || !res.body) throw new Error("שגיאה בהתחברות לשרת הסריקה");
 
-      setScanResult({
-        found:     data.found     ?? 0,
-        processed: data.processed ?? 0,
-        skipped:   data.skipped   ?? 0,
-        errors:    data.errors    ?? [],
-      });
-      setPhase("done");
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer    = "";
 
-      queryClient.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
-      queryClient.invalidateQueries({ queryKey: getGetInvoiceSummaryQueryKey() });
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const chunks = buffer.split("\n\n");
+        buffer = chunks.pop() ?? "";
+
+        for (const chunk of chunks) {
+          const dataLine = chunk.split("\n").find(l => l.startsWith("data: "));
+          if (!dataLine) continue;
+          let event: Record<string, unknown>;
+          try { event = JSON.parse(dataLine.slice(6)); } catch { continue; }
+
+          if (event.type === "progress") {
+            setProgress(Number(event.pct) || 0);
+            setStageMsg(String(event.msg || ""));
+          } else if (event.type === "done") {
+            setProgress(100);
+            await new Promise(r => setTimeout(r, 500));
+            setScanResult({
+              found:     Number(event.found)     || 0,
+              processed: Number(event.processed) || 0,
+              skipped:   Number(event.skipped)   || 0,
+              errors:    (event.errors as string[]) ?? [],
+            });
+            setPhase("done");
+            queryClient.invalidateQueries({ queryKey: getListInvoicesQueryKey() });
+            queryClient.invalidateQueries({ queryKey: getGetInvoiceSummaryQueryKey() });
+          } else if (event.type === "error") {
+            throw new Error(String(event.error || "שגיאה בסריקה"));
+          }
+        }
+      }
     } catch (err) {
-      clearTimer();
+      if ((err as Error).name === "AbortError") return; // user closed dialog
       setProgress(0);
       setPhase("idle");
       toast({
@@ -285,7 +283,7 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
               {/* Stage label */}
               <div className="text-center">
                 <p className="text-[16px] font-bold text-white mb-1">סורק מיילים</p>
-                <p className="text-[13px] text-white/50">{getStageLabel(progress)}</p>
+                <p className="text-[13px] text-white/50">{stageMsg}</p>
               </div>
 
               {/* Progress bar */}
@@ -309,43 +307,16 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
                 </div>
               </div>
 
-              {/* Stages checklist */}
-              <div className="w-full space-y-2.5">
-                {SCAN_STAGES.map((s, i) => {
-                  const done   = progress >= s.to;
-                  const active = progress >= s.from && progress < s.to;
-                  return (
-                    <div key={i} className="flex items-center gap-2.5">
-                      <div
-                        className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 transition-all duration-500 ${
-                          done ? "" : active ? "border-2" : "border border-white/15"
-                        }`}
-                        style={
-                          done   ? { background: "linear-gradient(135deg, #4361ee, #2dd4bf)" }
-                        : active ? { borderColor: "#2dd4bf", background: "rgba(45,212,191,0.15)" }
-                        : {}
-                        }
-                      >
-                        {done && <CheckCircle2 className="w-3 h-3 text-white" />}
-                        {active && (
-                          <motion.div
-                            animate={{ scale: [0.6, 1, 0.6] }}
-                            transition={{ duration: 1, repeat: Infinity }}
-                            className="w-1.5 h-1.5 rounded-full"
-                            style={{ background: "#2dd4bf" }}
-                          />
-                        )}
-                      </div>
-                      <span className={`text-[12px] transition-colors duration-300 ${
-                        done   ? "text-white/35 line-through"
-                      : active ? "text-white font-medium"
-                      : "text-white/25"
-                      }`}>
-                        {s.label}
-                      </span>
-                    </div>
-                  );
-                })}
+              {/* Live status hint */}
+              <div
+                className="w-full px-4 py-3 rounded-xl text-center text-[12px]"
+                style={{ background: "rgba(45,212,191,0.06)", border: "1px solid rgba(45,212,191,0.15)" }}
+              >
+                <span className="text-white/50">
+                  הסריקה עשויה לקחת מספר דקות בהתאם לכמות המיילים.
+                </span>
+                <br />
+                <span className="text-white/30 text-[11px]">ניתן להשאיר את החלון פתוח</span>
               </div>
             </motion.div>
           )}
