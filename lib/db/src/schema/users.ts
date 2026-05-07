@@ -8,6 +8,7 @@ export const usersTable = pgTable("users", {
   avatarUrl:        text("avatar_url"),
   googleId:         text("google_id").unique(),
   whatsappPhone:    text("whatsapp_phone").unique(),
+  telegramChatId:   text("telegram_chat_id"),
   forwardingToken:  text("forwarding_token").unique(),
   isActive:         boolean("is_active").notNull().default(true),
   createdAt:        timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

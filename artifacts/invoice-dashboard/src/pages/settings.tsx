@@ -119,7 +119,7 @@ export default function Settings() {
   const [, navigate] = useLocation();
 
   // ── Desktop tab navigation ────────────────────────────────────────────────
-  const [settingsTab, setSettingsTab] = useState<"business" | "connections">("business");
+  const [settingsTab, setSettingsTab] = useState<"business" | "connections" | "automations">("business");
 
   // ── Mobile hub navigation ─────────────────────────────────────────────────
   type MobileSection = null | "connectors" | "biz" | "plan" | "security" | "usage" | "accountant" | "ai";
@@ -314,6 +314,139 @@ export default function Settings() {
   const [waSavingPhone, setWaSavingPhone] = useState(false);
   const [waDeletingPhone, setWaDeletingPhone] = useState(false);
 
+  // ── Automations state ─────────────────────────────────────────────────────
+  interface Automation {
+    id: string; userId: string; name: string; message: string;
+    channels: string; scheduleType: string; scheduleDay: number;
+    scheduleHour: number; isActive: boolean;
+    lastRunAt: string | null; nextRunAt: string | null;
+    createdAt: string;
+  }
+  const [automations, setAutomations] = useState<Automation[]>([]);
+  const [autoLoading, setAutoLoading] = useState(false);
+  const [showNewAutoForm, setShowNewAutoForm] = useState(false);
+  const [autoSaving, setAutoSaving] = useState(false);
+  const [autoSendingId, setAutoSendingId] = useState<string | null>(null);
+  const [newAutoName,     setNewAutoName]     = useState("");
+  const [newAutoMsg,      setNewAutoMsg]      = useState("שלום {{שם}},\n\nלקראת סוף חודש {{חודש}} — האם העברת אליי את כל החשבוניות? 📋\n\nBillBOT+ 🤖");
+  const [newAutoChannels, setNewAutoChannels] = useState<string[]>(["email"]);
+  const [newAutoSchedule, setNewAutoSchedule] = useState("end_of_month");
+  const [newAutoDay,      setNewAutoDay]      = useState(1);
+  const [newAutoHour,     setNewAutoHour]     = useState(9);
+
+  const getEmail = () => {
+    const raw = localStorage.getItem("bb_user");
+    return raw ? (JSON.parse(raw).email ?? "") : "";
+  };
+
+  const loadAutomations = useCallback(async () => {
+    const email = getEmail();
+    if (!email) return;
+    setAutoLoading(true);
+    try {
+      const r = await fetch(`${API_BASE}/automations?email=${encodeURIComponent(email)}`);
+      const data = await r.json() as Automation[];
+      setAutomations(data);
+    } catch { /* ignore */ } finally { setAutoLoading(false); }
+  }, []);
+
+  const seedDefaultAutomations = useCallback(async () => {
+    const email = getEmail();
+    if (!email) return;
+    try {
+      await fetch(`${API_BASE}/automations/seed-defaults`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      await loadAutomations();
+    } catch { /* ignore */ }
+  }, [loadAutomations]);
+
+  const createAutomation = async () => {
+    const email = getEmail();
+    if (!email || !newAutoName.trim() || !newAutoMsg.trim()) {
+      toast({ title: "שגיאה", description: "מלא שם והודעה", variant: "destructive" });
+      return;
+    }
+    setAutoSaving(true);
+    try {
+      const r = await fetch(`${API_BASE}/automations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email, name: newAutoName, message: newAutoMsg,
+          channels: newAutoChannels, scheduleType: newAutoSchedule,
+          scheduleDay: newAutoDay, scheduleHour: newAutoHour,
+        }),
+      });
+      const created = await r.json() as Automation;
+      setAutomations((p) => [...p, created]);
+      setShowNewAutoForm(false);
+      setNewAutoName(""); setNewAutoMsg("שלום {{שם}},\n\nלקראת סוף חודש {{חודש}} — האם העברת אליי את כל החשבוניות? 📋\n\nBillBOT+ 🤖");
+      setNewAutoChannels(["email"]); setNewAutoSchedule("end_of_month");
+      toast({ title: "✅ אוטומציה נוצרה!" });
+    } catch { toast({ title: "שגיאה", variant: "destructive" }); }
+    finally { setAutoSaving(false); }
+  };
+
+  const toggleAutomation = async (id: string, isActive: boolean) => {
+    try {
+      const r = await fetch(`${API_BASE}/automations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive }),
+      });
+      const updated = await r.json() as Automation;
+      setAutomations((p) => p.map((a) => a.id === id ? updated : a));
+    } catch { toast({ title: "שגיאה", variant: "destructive" }); }
+  };
+
+  const deleteAutomation = async (id: string) => {
+    try {
+      await fetch(`${API_BASE}/automations/${id}`, { method: "DELETE" });
+      setAutomations((p) => p.filter((a) => a.id !== id));
+      toast({ title: "אוטומציה נמחקה" });
+    } catch { toast({ title: "שגיאה", variant: "destructive" }); }
+  };
+
+  const sendAutomationNow = async (id: string) => {
+    const email = getEmail();
+    if (!email) return;
+    setAutoSendingId(id);
+    try {
+      const r = await fetch(`${API_BASE}/automations/${id}/send-now`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const data = await r.json() as { ok: boolean; sent: string[]; errors: string[] };
+      if (data.ok && data.sent?.length) {
+        toast({ title: `✅ נשלח דרך: ${data.sent.join(", ")}` });
+        loadAutomations();
+      } else {
+        const errMsg = data.errors?.join(", ") ?? "לא נשלח";
+        toast({ title: "שגיאה בשליחה", description: errMsg, variant: "destructive" });
+      }
+    } catch { toast({ title: "שגיאה", variant: "destructive" }); }
+    finally { setAutoSendingId(null); }
+  };
+
+  const scheduleLabel = (a: Automation): string => {
+    if (a.scheduleType === "end_of_month") return a.scheduleDay === 1 ? "יום לפני סוף החודש" : `${a.scheduleDay} ימים לפני סוף החודש`;
+    if (a.scheduleType === "start_of_month") return "ה-1 לכל חודש";
+    return `ה-${a.scheduleDay} לכל חודש`;
+  };
+
+  const channelIcon = (ch: string) => ch === "email" ? "✉️" : ch === "whatsapp" ? "📱" : "✈️";
+  const channelLabel = (ch: string) => ch === "email" ? "מייל" : ch === "whatsapp" ? "WhatsApp" : "טלגרם";
+
+  const toggleChannel = (ch: string) => {
+    setNewAutoChannels((prev) =>
+      prev.includes(ch) ? prev.filter((c) => c !== ch) : [...prev, ch]
+    );
+  };
+
   const fetchGmailStatus = useCallback(async () => {
     setIsLoadingGmail(true);
     try {
@@ -494,7 +627,8 @@ export default function Settings() {
     loadBusinessProfile();
     loadWaPhone();
     loadFwdAddress();
-  }, [fetchGmailStatus, fetchTelegramStatus, fetchWhatsAppStatus, loadCategories, loadEntities, loadBusinessProfile, loadWaPhone, loadFwdAddress]);
+    loadAutomations().then(() => seedDefaultAutomations());
+  }, [fetchGmailStatus, fetchTelegramStatus, fetchWhatsAppStatus, loadCategories, loadEntities, loadBusinessProfile, loadWaPhone, loadFwdAddress, loadAutomations, seedDefaultAutomations]);
 
   // --- API Connections state ---
   const [apiConnections, setApiConnections] = useState<ApiConnection[]>([]);
@@ -1023,6 +1157,17 @@ export default function Settings() {
           >
             <Plug className="w-4 h-4" />
             חיבורים
+          </button>
+          <button
+            onClick={() => setSettingsTab("automations")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              settingsTab === "automations"
+                ? "bg-primary text-white shadow-lg shadow-primary/20"
+                : "text-muted-foreground hover:text-white"
+            }`}
+          >
+            <Bell className="w-4 h-4" />
+            אוטומציות
           </button>
         </div>
 
@@ -2598,6 +2743,267 @@ export default function Settings() {
         </div>
 
         </>} {/* end TAB: הגדרות העסק */}
+
+        {/* ═══ TAB: אוטומציות ═══ */}
+        {settingsTab === "automations" && (
+          <div className="space-y-5" dir="rtl">
+
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-primary" />
+                <h2 className="text-sm font-semibold text-white">אוטומציות ותזכורות</h2>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => setShowNewAutoForm((p) => !p)}
+                className="rounded-xl gap-1.5 text-xs"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                {showNewAutoForm ? "ביטול" : "צור אוטומציה"}
+              </Button>
+            </div>
+
+            {/* Create form */}
+            {showNewAutoForm && (
+              <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 space-y-4" dir="rtl">
+                <p className="text-sm font-semibold text-white">🔔 אוטומציה חדשה</p>
+
+                {/* Name */}
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">שם האוטומציה</label>
+                  <input
+                    value={newAutoName}
+                    onChange={(e) => setNewAutoName(e.target.value)}
+                    placeholder="לדוגמה: תזכורת חשבוניות חודשית"
+                    className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-muted-foreground outline-none focus:border-primary/50"
+                  />
+                </div>
+
+                {/* Message */}
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">
+                    תוכן ההודעה
+                    <span className="text-primary mr-1">— ניתן להשתמש ב-{"{{שם}}"}, {"{{חודש}}"}, {"{{שנה}}"}</span>
+                  </label>
+                  <textarea
+                    value={newAutoMsg}
+                    onChange={(e) => setNewAutoMsg(e.target.value)}
+                    rows={4}
+                    className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-muted-foreground outline-none focus:border-primary/50 resize-none"
+                  />
+                </div>
+
+                {/* Channels */}
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">ערוצי שליחה</label>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { key: "email",    icon: "✉️", label: "מייל" },
+                      { key: "whatsapp", icon: "📱", label: "WhatsApp" },
+                      { key: "telegram", icon: "✈️", label: "טלגרם" },
+                    ].map((ch) => (
+                      <button
+                        key={ch.key}
+                        onClick={() => toggleChannel(ch.key)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
+                          newAutoChannels.includes(ch.key)
+                            ? "bg-primary/20 border-primary/50 text-primary"
+                            : "bg-white/5 border-white/10 text-muted-foreground hover:border-white/20"
+                        }`}
+                      >
+                        <span>{ch.icon}</span> {ch.label}
+                        {newAutoChannels.includes(ch.key) && <Check className="w-3 h-3" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Schedule */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-muted-foreground">תזמון</label>
+                    <select
+                      value={newAutoSchedule}
+                      onChange={(e) => setNewAutoSchedule(e.target.value)}
+                      className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-primary/50"
+                    >
+                      <option value="end_of_month">לפני סוף החודש</option>
+                      <option value="start_of_month">תחילת החודש (ה-1)</option>
+                      <option value="custom">יום מותאם אישית</option>
+                    </select>
+                  </div>
+
+                  {newAutoSchedule === "end_of_month" && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">כמה ימים לפני?</label>
+                      <select
+                        value={newAutoDay}
+                        onChange={(e) => setNewAutoDay(Number(e.target.value))}
+                        className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-primary/50"
+                      >
+                        {[1,2,3,5,7].map((d) => (
+                          <option key={d} value={d}>{d} {d === 1 ? "יום" : "ימים"}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {newAutoSchedule === "custom" && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">יום בחודש (1–28)</label>
+                      <input
+                        type="number" min={1} max={28}
+                        value={newAutoDay}
+                        onChange={(e) => setNewAutoDay(Number(e.target.value))}
+                        className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-primary/50"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Hour */}
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">שעת שליחה</label>
+                  <select
+                    value={newAutoHour}
+                    onChange={(e) => setNewAutoHour(Number(e.target.value))}
+                    className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-primary/50"
+                  >
+                    {[6,7,8,9,10,11,12,14,16,18,20].map((h) => (
+                      <option key={h} value={h}>{String(h).padStart(2,"0")}:00</option>
+                    ))}
+                  </select>
+                </div>
+
+                <Button
+                  onClick={createAutomation}
+                  disabled={autoSaving || !newAutoName.trim() || newAutoChannels.length === 0}
+                  className="w-full rounded-xl gap-2"
+                >
+                  {autoSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  שמור אוטומציה
+                </Button>
+              </div>
+            )}
+
+            {/* Loading */}
+            {autoLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {/* Empty state */}
+            {!autoLoading && automations.length === 0 && !showNewAutoForm && (
+              <div className="rounded-2xl border border-dashed border-white/10 p-8 text-center space-y-3">
+                <Bell className="w-8 h-8 text-muted-foreground mx-auto opacity-40" />
+                <p className="text-sm text-muted-foreground">אין אוטומציות עדיין</p>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setShowNewAutoForm(true)}
+                  className="rounded-xl border border-white/10 gap-1.5 text-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" /> צור אוטומציה ראשונה
+                </Button>
+              </div>
+            )}
+
+            {/* Automations list */}
+            {!autoLoading && automations.map((auto) => {
+              const channels: string[] = (() => { try { return JSON.parse(auto.channels); } catch { return ["email"]; } })();
+              const isRunning = autoSendingId === auto.id;
+              const nextRun   = auto.nextRunAt
+                ? new Date(auto.nextRunAt).toLocaleDateString("he-IL", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })
+                : "—";
+              const lastRun   = auto.lastRunAt
+                ? new Date(auto.lastRunAt).toLocaleDateString("he-IL", { day: "numeric", month: "long" })
+                : "טרם נשלח";
+
+              return (
+                <div
+                  key={auto.id}
+                  className={`rounded-2xl border p-5 space-y-3 transition-all ${
+                    auto.isActive
+                      ? "border-white/10 bg-card/30"
+                      : "border-white/5 bg-card/10 opacity-60"
+                  }`}
+                >
+                  {/* Top row */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">{auto.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">📅 {scheduleLabel(auto)} | 🕘 {String(auto.scheduleHour).padStart(2,"0")}:00</p>
+                    </div>
+                    {/* Active toggle */}
+                    <button
+                      onClick={() => toggleAutomation(auto.id, !auto.isActive)}
+                      className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${auto.isActive ? "bg-primary" : "bg-white/10"}`}
+                    >
+                      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${auto.isActive ? "right-0.5" : "left-0.5"}`} />
+                    </button>
+                  </div>
+
+                  {/* Channels */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {channels.map((ch) => (
+                      <span key={ch} className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-lg bg-white/5 border border-white/8 text-muted-foreground">
+                        {channelIcon(ch)} {channelLabel(ch)}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Message preview */}
+                  <div className="rounded-xl bg-white/3 border border-white/5 px-3 py-2">
+                    <p className="text-xs text-muted-foreground line-clamp-2 whitespace-pre-line">{auto.message}</p>
+                  </div>
+
+                  {/* Meta */}
+                  <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+                    <span>⏭ הבא: {nextRun}</span>
+                    <span>✅ אחרון: {lastRun}</span>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={isRunning}
+                      onClick={() => sendAutomationNow(auto.id)}
+                      className="flex-1 rounded-xl border border-white/10 gap-1.5 text-xs hover:bg-primary/10 hover:border-primary/30"
+                    >
+                      {isRunning ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                      שלח עכשיו
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => deleteAutomation(auto.id)}
+                      className="rounded-xl border border-red-500/20 text-red-400 hover:bg-red-500/10 gap-1.5 text-xs"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Info box */}
+            <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 space-y-1" dir="rtl">
+              <p className="text-xs font-medium text-blue-400">💡 טיפים לשימוש</p>
+              <ul className="text-[11px] text-muted-foreground space-y-1 list-disc list-inside">
+                <li>השתמש ב-{"{{שם}}"} לשם הלקוח, {"{{חודש}}"} לחודש הנוכחי</li>
+                <li>ניתן לשלוח דרך מספר ערוצים בו זמנית</li>
+                <li>לשליחה דרך WhatsApp — חובה לרשום מספר טלפון בהגדרות חיבורים</li>
+                <li>לשליחה דרך טלגרם — חובה לחבר את הבוט ולהגדיר TELEGRAM_CHAT_ID</li>
+              </ul>
+            </div>
+
+          </div>
+        )}
+        {/* end TAB: אוטומציות */}
 
       </motion.div>
       </div>

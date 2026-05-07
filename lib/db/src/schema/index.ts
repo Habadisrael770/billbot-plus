@@ -13,3 +13,4 @@ export * from "./chatMemories";
 export * from "./invoiceLineItems";
 export * from "./users";
 export * from "./loyaltyMembers";
+export * from "./automations";
