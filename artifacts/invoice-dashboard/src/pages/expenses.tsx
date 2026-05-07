@@ -336,34 +336,45 @@ export default function ExpensesPage() {
               <div className="h-48 flex items-center justify-center text-muted-foreground text-xs">
                 אין נתונים
               </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={categoryData} layout="vertical" margin={{ top: 0, right: 4, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.05)" />
-                  <XAxis
-                    type="number"
-                    tick={{ fill: "#888", fontSize: 10 }}
-                    tickLine={false}
-                    axisLine={false}
-                    tickFormatter={(v) => `₪${(v / 1000).toFixed(0)}k`}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="name"
-                    tick={{ fill: "#ccc", fontSize: 11 }}
-                    tickLine={false}
-                    axisLine={false}
-                    width={80}
-                  />
-                  <Tooltip content={<CatTooltip />} />
-                  <Bar dataKey="value" name="סכום" radius={[0, 4, 4, 0]}>
-                    {categoryData.map((_, i) => (
-                      <Cell key={i} fill={CAT_PALETTE[i % CAT_PALETTE.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            )}
+            ) : (() => {
+              const maxLabelLen = Math.max(...categoryData.map((d) => d.name.length));
+              const yAxisWidth  = Math.min(Math.max(maxLabelLen * 7.5, 80), 160);
+              const chartH      = Math.max(180, categoryData.length * 38);
+              const truncate    = (s: string) => s.length > 18 ? s.slice(0, 17) + "…" : s;
+              return (
+                <ResponsiveContainer width="100%" height={chartH}>
+                  <BarChart
+                    data={categoryData}
+                    layout="vertical"
+                    margin={{ top: 4, right: 12, left: 4, bottom: 4 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(255,255,255,0.05)" />
+                    <XAxis
+                      type="number"
+                      tick={{ fill: "#888", fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => `₪${(v / 1000).toFixed(0)}k`}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      tickFormatter={truncate}
+                      tick={{ fill: "#ccc", fontSize: 11, direction: "rtl" }}
+                      tickLine={false}
+                      axisLine={false}
+                      width={yAxisWidth}
+                    />
+                    <Tooltip content={<CatTooltip />} />
+                    <Bar dataKey="value" name="סכום" radius={[0, 4, 4, 0]} barSize={20}>
+                      {categoryData.map((_, i) => (
+                        <Cell key={i} fill={CAT_PALETTE[i % CAT_PALETTE.length]} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              );
+            })()}
           </div>
         </motion.div>
       )}
