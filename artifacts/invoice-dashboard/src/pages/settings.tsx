@@ -1693,6 +1693,121 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* WhatsApp — Twilio Sandbox */}
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <MessageCircle className="w-4 h-4 text-green-400" />
+            <h2 className="text-sm font-semibold text-white">WhatsApp — Twilio Sandbox</h2>
+            <span className="text-xs text-muted-foreground">— חלופה מהירה ל-Meta</span>
+          </div>
+
+          <div className="rounded-2xl border border-white/5 bg-card/20 p-5 flex flex-col gap-4" dir="rtl">
+            {/* Status */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+                  <MessageCircle className="w-5 h-5 text-green-400" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white">Twilio WhatsApp</p>
+                  <p className="text-xs text-muted-foreground">מספר Sandbox: +1 415 523 8886</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
+                <span className="text-xs text-amber-400">ממתין להגדרה</span>
+              </div>
+            </div>
+
+            {/* Webhook URL */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-1.5">Webhook URL להגדרה ב-Twilio Console:</p>
+              <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-black/30 border border-white/10">
+                <Webhook className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <p className="text-xs text-white/70 font-mono truncate flex-1" dir="ltr">
+                  {webhookBaseUrl}/twilio-whatsapp/webhook
+                </p>
+                <button
+                  onClick={() => copyToClipboard(`${webhookBaseUrl}/twilio-whatsapp/webhook`)}
+                  className="text-muted-foreground hover:text-white transition-all"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Env vars */}
+            <div className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 space-y-2">
+              <p className="text-xs text-muted-foreground font-medium">משתני סביבה נדרשים (Secrets):</p>
+              {[
+                { key: "TWILIO_ACCOUNT_SID", desc: "Account SID מ-Twilio Console" },
+                { key: "TWILIO_AUTH_TOKEN", desc: "Auth Token מ-Twilio Console" },
+                { key: "TWILIO_WHATSAPP_NUMBER", desc: 'מספר ה-Sandbox: whatsapp:+14155238886' },
+              ].map(({ key, desc }) => (
+                <div key={key} className="flex items-start gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <code className="text-xs bg-white/8 text-primary px-1.5 py-0.5 rounded shrink-0" dir="ltr">{key}</code>
+                    <span className="text-xs text-muted-foreground">{desc}</span>
+                  </div>
+                  <button
+                    onClick={() => copyToClipboard(key)}
+                    className="shrink-0 text-muted-foreground hover:text-white transition-all mt-0.5"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Step-by-step */}
+            <div className="rounded-xl border border-green-500/20 bg-green-500/5 px-4 py-3">
+              <p className="text-xs text-green-400 font-medium mb-2">⚡ הנחיות הגדרה — Twilio Sandbox (5 דקות)</p>
+              <ol className="text-xs text-green-300/80 flex flex-col gap-2 list-decimal list-inside">
+                <li>
+                  פתח{" "}
+                  <a
+                    href="https://www.twilio.com/try-twilio"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-green-400 hover:underline inline-flex items-center gap-0.5"
+                  >
+                    twilio.com/try-twilio <ExternalLink className="w-2.5 h-2.5" />
+                  </a>{" "}
+                  → צור חשבון חינמי (ללא כרטיס אשראי)
+                </li>
+                <li>
+                  בדאשבורד: העתק את <strong>Account SID</strong> ואת <strong>Auth Token</strong> → הוסף ל-Secrets
+                </li>
+                <li>
+                  בתפריט: <strong>Messaging → Try it out → Send a WhatsApp Message</strong>
+                </li>
+                <li>
+                  שלח מהטלפון שלך ל-<strong dir="ltr">+1 415 523 8886</strong> את ההודעה:{" "}
+                  <code className="bg-black/20 px-1 rounded dir-ltr">join &lt;sandbox-keyword&gt;</code>
+                  (המילה שמופיעה ב-Twilio Console)
+                </li>
+                <li>
+                  בטוויליו: Sandbox Settings → Webhook URL → הדבק את כתובת ה-Webhook למעלה → שמור
+                </li>
+                <li>
+                  <Smartphone className="w-3 h-3 inline ml-1" />
+                  שלח תמונת חשבונית ל-WhatsApp → תעובד אוטומטית!
+                </li>
+              </ol>
+            </div>
+
+            <a
+              href="https://console.twilio.com"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20 transition-all text-sm font-medium"
+            >
+              <ExternalLink className="w-4 h-4" />
+              פתח Twilio Console
+            </a>
+          </div>
+        </div>
+
         {/* AI settings */}
         <div>
           <div className="flex items-center gap-2 mb-3">
