@@ -17,6 +17,7 @@ import authRouter from "./auth.js";
 import imapAuthRouter from "./imap-auth.js";
 import inboundEmailRouter from "./inbound-email.js";
 import twilioWhatsappRouter from "./twilio-whatsapp.js";
+import loyaltyRouter from "./loyalty.js";
 
 const router: IRouter = Router();
 
@@ -39,5 +40,6 @@ router.use("/auth", authRouter);
 router.use("/imap-auth", imapAuthRouter);
 router.use("/inbound-email", inboundEmailRouter);
 router.use("/twilio-whatsapp", twilioWhatsappRouter);
+router.use("/loyalty", loyaltyRouter);
 
 export default router;

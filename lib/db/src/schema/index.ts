@@ -12,3 +12,4 @@ export * from "./gmailTokens";
 export * from "./chatMemories";
 export * from "./invoiceLineItems";
 export * from "./users";
+export * from "./loyaltyMembers";

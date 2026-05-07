@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/loyalty-club/"
+title = "מועדון לקוחות"
+version = "1.0.0"
+id = "artifacts/loyalty-club"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/loyalty-club/" ]
+localPort = 26108
+
+[services.development]
+run = "pnpm --filter @workspace/loyalty-club run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/loyalty-club", "run", "build" ]
+publicDir = "artifacts/loyalty-club/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26108"
+BASE_PATH = "/loyalty-club/"
