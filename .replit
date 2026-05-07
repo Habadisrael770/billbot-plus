@@ -37,3 +37,4 @@ BILLBOT_PUBLIC_API_KEY = "bbp_99ff9a5afc5726ba6c31b3bd4c5cffadfae79b192944c2beed
 BILLBOT_GMAIL_SCAN_ENDPOINT = "https://dc086eb1-7bde-429c-a879-eb80b41757d1-00-2j2cz2s8jqfl2.riker.replit.dev/api/public/gmail-scan"
 BILLBOT_INVOICES_ENDPOINT = "https://dc086eb1-7bde-429c-a879-eb80b41757d1-00-2j2cz2s8jqfl2.riker.replit.dev/api/public/invoices"
 BILLBOT_SUMMARY_ENDPOINT = "https://dc086eb1-7bde-429c-a879-eb80b41757d1-00-2j2cz2s8jqfl2.riker.replit.dev/api/public/summary"
+TWILIO_WHATSAPP_NUMBER = "whatsapp:+14155238886"
