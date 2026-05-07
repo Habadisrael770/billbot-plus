@@ -25,17 +25,12 @@ import {
   MailPlus,
   FileSpreadsheet,
   CalendarDays,
-  CalendarRange,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   ArrowLeft,
   Receipt,
   MailOpen,
-  Lock,
-  Zap,
 } from "lucide-react";
-import { useInvoices, useInvoiceSummaryByMonth, useInvoiceMutations } from "@/hooks/use-invoices";
+import { useInvoices, useInvoiceMutations } from "@/hooks/use-invoices";
 import { Layout } from "@/components/layout";
 import { StatCard } from "@/components/stat-card";
 import { Badge } from "@/components/ui/badge";
@@ -539,119 +534,96 @@ function InvoiceCard({
   );
 }
 
-// ── Plan-based year access ────────────────────────────────────────────────────
-const MIN_YEAR = 2023;
-function useAvailableYears(): { years: number[]; yearsBack: number } {
-  const [plan, setPlan] = React.useState<string>(() =>
-    typeof window !== "undefined" ? (localStorage.getItem("bb_plan") ?? "basic") : "basic"
-  );
-  React.useEffect(() => {
-    const onStorage = () => setPlan(localStorage.getItem("bb_plan") ?? "basic");
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-  const currentYear = new Date().getFullYear();
-  const yearsBack = plan === "business" ? currentYear - MIN_YEAR : plan === "pro" ? 2 : 1;
-  const years: number[] = [];
-  for (let y = currentYear; y >= Math.max(MIN_YEAR, currentYear - yearsBack); y--) {
-    years.push(y);
-  }
-  return { years, yearsBack };
-}
+// ── Date Range Picker popup ───────────────────────────────────────────────────
+const DATE_PRESETS_LIST = [
+  { key: "today", label: "היום"      },
+  { key: "week",  label: "שבוע"      },
+  { key: "month", label: "החודש"     },
+  { key: "3m",    label: "3 חודשים"  },
+  { key: "6m",    label: "חצי שנה"   },
+  { key: "year",  label: "שנה"       },
+  { key: "all",   label: "הכל"       },
+] as const;
 
-// ── Year Picker Dialog ────────────────────────────────────────────────────────
-function YearPickerDialog({
-  open,
+function DateRangePicker({
+  activePreset,
+  customFrom,
+  customTo,
+  onPreset,
+  onCustomChange,
+  onCustomApply,
   onClose,
-  selectedYear,
-  onSelect,
 }: {
-  open: boolean;
+  activePreset: string;
+  customFrom: string;
+  customTo: string;
+  onPreset: (k: string) => void;
+  onCustomChange: (from: string, to: string) => void;
+  onCustomApply: () => void;
   onClose: () => void;
-  selectedYear: number;
-  onSelect: (year: number) => void;
 }) {
-  const { years } = useAvailableYears();
-  const plan = typeof window !== "undefined" ? (localStorage.getItem("bb_plan") ?? "basic") : "basic";
-  const lockedYears: number[] = [];
-  const currentYear = new Date().getFullYear();
-  if (plan === "basic") {
-    for (let y = currentYear - 2; y >= MIN_YEAR; y--) lockedYears.push(y);
-  } else if (plan === "pro") {
-    for (let y = currentYear - 3; y >= MIN_YEAR; y--) lockedYears.push(y);
-  }
-  const allYears = [...years, ...lockedYears];
-
-  if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      onClick={onClose}
+      className="absolute top-full right-0 mt-2 z-50 w-72 rounded-2xl border border-border bg-card shadow-2xl p-4"
+      dir="rtl"
+      onClick={(e) => e.stopPropagation()}
     >
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div
-        className="relative z-10 w-[310px] rounded-2xl border border-border bg-card shadow-2xl p-5"
-        dir="rtl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex flex-col items-center gap-2 mb-5">
-          <div className="w-12 h-12 rounded-full flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #4361ee22, #2dd4bf22)" }}>
-            <CalendarRange className="w-6 h-6 text-blue-500" />
-          </div>
-          <h2 className="text-base font-bold text-foreground">בחר שנה</h2>
-          <p className="text-[12px] text-muted-foreground text-center">לסינון הוצאות לפי שנה</p>
-        </div>
-
-        {/* Year options */}
-        <div className="flex flex-col gap-2 mb-5">
-          {allYears.map((year) => {
-            const isLocked = lockedYears.includes(year);
-            const isActive = year === selectedYear;
-            return (
-              <button
-                key={year}
-                disabled={isLocked}
-                onClick={() => { if (!isLocked) { onSelect(year); onClose(); } }}
-                className={[
-                  "flex items-center justify-between rounded-xl px-4 py-3 border transition-all",
-                  isActive && !isLocked
-                    ? "border-blue-500 bg-blue-500/10 text-blue-600 dark:text-blue-400 font-semibold"
-                    : isLocked
-                    ? "border-border bg-muted/30 text-muted-foreground cursor-not-allowed opacity-60"
-                    : "border-border hover:border-blue-400 hover:bg-elevated text-foreground cursor-pointer",
-                ].join(" ")}
-              >
-                <span className="text-[14px] font-medium">{year}</span>
-                {isLocked ? (
-                  <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 border border-amber-500/20">
-                    <Lock className="w-2.5 h-2.5" />
-                    {plan === "basic" ? "פרו+" : "ביזנס+"}
-                  </span>
-                ) : isActive ? (
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Upgrade prompt if locked years exist */}
-        {lockedYears.length > 0 && (
-          <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 mb-4">
-            <Zap className="w-4 h-4 text-amber-500 shrink-0" />
-            <p className="text-[11px] text-amber-600 dark:text-amber-400">
-              {plan === "basic" ? "שדרג לפרו לגישה ל-3 שנים" : "שדרג לביזנס לגישה לכל השנים"}
-            </p>
-          </div>
-        )}
-
+      <p className="text-xs font-semibold text-muted-foreground mb-2.5">בחר טווח תאריכים</p>
+      <div className="grid grid-cols-2 gap-1.5 mb-4">
+        {DATE_PRESETS_LIST.filter((p) => p.key !== "all").map((p) => (
+          <button
+            key={p.key}
+            onClick={() => onPreset(p.key)}
+            className={`h-8 rounded-[10px] text-xs font-medium transition-all ${
+              activePreset === p.key
+                ? "bg-primary text-white"
+                : "bg-elevated border border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
         <button
-          onClick={onClose}
-          className="w-full h-9 rounded-xl border border-border text-[13px] text-muted-foreground hover:bg-elevated transition-colors"
+          onClick={() => onPreset("all")}
+          className={`h-8 col-span-2 rounded-[10px] text-xs font-medium transition-all ${
+            activePreset === "all"
+              ? "bg-primary text-white"
+              : "bg-elevated border border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+          }`}
         >
-          סגור
+          הכל
+        </button>
+      </div>
+      <div className="border-t border-border pt-3 space-y-2">
+        <p className="text-xs text-muted-foreground">טווח מותאם אישית</p>
+        <div className="flex gap-2 items-center">
+          <div className="flex flex-col gap-1 flex-1">
+            <span className="text-[10px] text-muted-foreground">מ-</span>
+            <input
+              type="date"
+              value={customFrom}
+              onChange={(e) => onCustomChange(e.target.value, customTo)}
+              style={{ colorScheme: "dark" }}
+              className="h-8 px-2 rounded-[10px] border border-border bg-background text-xs text-foreground w-full focus:outline-none focus:ring-1 focus:ring-primary/40"
+            />
+          </div>
+          <div className="flex flex-col gap-1 flex-1">
+            <span className="text-[10px] text-muted-foreground">עד</span>
+            <input
+              type="date"
+              value={customTo}
+              onChange={(e) => onCustomChange(customFrom, e.target.value)}
+              style={{ colorScheme: "dark" }}
+              className="h-8 px-2 rounded-[10px] border border-border bg-background text-xs text-foreground w-full focus:outline-none focus:ring-1 focus:ring-primary/40"
+            />
+          </div>
+        </div>
+        <button
+          onClick={onCustomApply}
+          disabled={!customFrom || !customTo}
+          className="w-full h-8 rounded-[10px] bg-primary/15 border border-primary/30 text-primary text-xs font-medium hover:bg-primary/25 transition-colors disabled:opacity-40"
+        >
+          החל טווח
         </button>
       </div>
     </div>
@@ -670,8 +642,51 @@ export default function Dashboard() {
   };
 
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState({ year: now.getFullYear(), month: now.getMonth() });
-  const { data: apiSummary } = useInvoiceSummaryByMonth(selectedMonth.year, selectedMonth.month);
+
+  // ── Date range state ──────────────────────────────────────────────────────
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => ({
+    from: new Date(now.getFullYear(), now.getMonth(), 1),
+    to:   new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59),
+  }));
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [activePreset, setActivePreset] = useState("month");
+  const [customFrom, setCustomFrom] = useState(() => format(new Date(now.getFullYear(), now.getMonth(), 1), "yyyy-MM-dd"));
+  const [customTo,   setCustomTo]   = useState(() => format(new Date(now.getFullYear(), now.getMonth() + 1, 0), "yyyy-MM-dd"));
+
+  const applyPreset = (key: string) => {
+    const n = new Date();
+    let from: Date;
+    let to = new Date(n.getFullYear(), n.getMonth(), n.getDate(), 23, 59, 59);
+    switch (key) {
+      case "today": from = new Date(n.getFullYear(), n.getMonth(), n.getDate()); break;
+      case "week":  from = new Date(n); from.setDate(from.getDate() - 7); break;
+      case "month": from = new Date(n.getFullYear(), n.getMonth(), 1); to = new Date(n.getFullYear(), n.getMonth() + 1, 0, 23, 59, 59); break;
+      case "3m":    from = new Date(n); from.setMonth(from.getMonth() - 3); break;
+      case "6m":    from = new Date(n); from.setMonth(from.getMonth() - 6); break;
+      case "year":  from = new Date(n); from.setFullYear(from.getFullYear() - 1); break;
+      default:      from = new Date(2020, 0, 1); to = new Date(n.getFullYear(), n.getMonth(), n.getDate(), 23, 59, 59);
+    }
+    setDateRange({ from, to });
+    setActivePreset(key);
+    setCustomFrom(format(from, "yyyy-MM-dd"));
+    setCustomTo(format(to, "yyyy-MM-dd"));
+    setDatePickerOpen(false);
+  };
+
+  const applyCustomRange = () => {
+    if (!customFrom || !customTo) return;
+    const from = new Date(customFrom);
+    const to   = new Date(customTo + "T23:59:59");
+    setDateRange({ from, to });
+    setActivePreset("custom");
+    setDatePickerOpen(false);
+  };
+
+  // Range label for display
+  const rangeLabel = activePreset === "all"
+    ? "כל הזמן"
+    : `${format(dateRange.from, "d MMM")} — ${format(dateRange.to, "d MMM yyyy")}`;
+
   const [uploadOpen, setUploadOpen] = useState(false);
   const [gmailScanOpen, setGmailScanOpen] = useState(false);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -679,31 +694,33 @@ export default function Dashboard() {
   const [emailOpen, setEmailOpen] = useState(false);
   const [emailMode, setEmailMode] = useState<"scan" | "attach">("scan");
   const [accountantOpen, setAccountantOpen] = useState(false);
-  const [yearDialogOpen, setYearDialogOpen] = useState(false);
   const [mergeDialog, setMergeDialog] = useState<{
     isOpen: boolean;
     invoiceId: string | null;
     rawVendorName: string | null;
   }>({ isOpen: false, invoiceId: null, rawVendorName: null });
 
-  const prevMonth = () => setSelectedMonth(({ year, month }) =>
-    month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 }
-  );
-  const nextMonth = () => setSelectedMonth(({ year, month }) => {
-    const nm = month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 };
-    const isAfterNow = nm.year > now.getFullYear() || (nm.year === now.getFullYear() && nm.month > now.getMonth());
-    return isAfterNow ? { year, month } : nm;
-  });
-
-  // Date-filtered invoices based on selected month
+  // ── Date-range filtered invoices ──────────────────────────────────────────
   const dateFilteredInvoices = useMemo(() => {
     if (!invoices) return [];
+    const fromMs = dateRange.from.getTime();
+    const toMs   = dateRange.to.getTime();
     return (invoices as InvoiceRow[]).filter((inv) => {
       if (!inv.invoiceDate) return false;
-      const d = new Date(inv.invoiceDate);
-      return d.getFullYear() === selectedMonth.year && d.getMonth() === selectedMonth.month;
+      const d = new Date(inv.invoiceDate).getTime();
+      return d >= fromMs && d <= toMs;
     });
-  }, [invoices, selectedMonth]);
+  }, [invoices, dateRange]);
+
+  // ── Client-side summary stats (synced to current date range) ─────────────
+  const summaryStats = useMemo(() => ({
+    total_documents:      dateFilteredInvoices.length,
+    supplier_invoices:    dateFilteredInvoices.filter((i) => i.documentType !== "receipt").length,
+    total_amount:         dateFilteredInvoices.reduce((s, i) => s + Number(i.total || 0), 0).toFixed(0),
+    total_vat:            dateFilteredInvoices.reduce((s, i) => s + Number(i.vat   || 0), 0).toFixed(0),
+    pending_review:       dateFilteredInvoices.filter((i) => i.status === "pending_review").length,
+    suspected_duplicates: dateFilteredInvoices.filter((i) => i.duplicateStatus !== "unique").length,
+  }), [dateFilteredInvoices]);
 
   const filteredInvoices = useMemo(() => {
     let result = dateFilteredInvoices;
@@ -733,9 +750,6 @@ export default function Dashboard() {
     setEmailOpen(true);
   };
 
-  const monthStart = format(new Date(selectedMonth.year, selectedMonth.month, 1), "d MMM yyyy");
-  const monthEnd = format(new Date(selectedMonth.year, selectedMonth.month + 1, 0), "d MMM yyyy");
-  const monthLabel = format(new Date(selectedMonth.year, selectedMonth.month, 1), "MMMM yyyy");
   const recentInvoices = useMemo(() => dateFilteredInvoices.slice(0, 3) as InvoiceRow[], [dateFilteredInvoices]);
 
   // Greeting by hour
@@ -758,39 +772,33 @@ export default function Dashboard() {
           {userName ? `${greeting}, ${userName.split(" ")[0]} 👋` : "דשבורד"}
         </h1>
         <p className="text-[13px] text-muted-foreground mt-1">
-          סקירה כללית עבור {monthLabel}
+          סקירה כללית · {rangeLabel}
         </p>
 
-        {/* ── Mobile action row: month picker + upload + scan ── */}
+        {/* ── Mobile action row: יומן + upload + scan ── */}
         <div className="sm:hidden flex items-center gap-2 mt-3">
-          {/* Month picker */}
-          <div className="flex items-center gap-1 flex-1 min-w-0 h-10 rounded-[10px] border border-border bg-card px-2">
+          {/* Date range button (mobile) */}
+          <div className="relative flex-1 min-w-0">
             <button
-              onClick={prevMonth}
-              className="w-7 h-7 flex items-center justify-center rounded-[7px] hover:bg-elevated transition-colors text-muted-foreground hover:text-foreground active:scale-90"
+              onClick={() => setDatePickerOpen((o) => !o)}
+              className="w-full h-10 rounded-[10px] flex items-center gap-2 px-3 border border-border bg-card text-[12px] font-semibold text-foreground hover:bg-elevated active:scale-95 transition-all"
             >
-              <ChevronRight className="w-4 h-4" />
+              <CalendarDays className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+              <span className="flex-1 truncate text-right">{rangeLabel}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             </button>
-            <span className="flex-1 text-center text-[13px] font-semibold text-foreground truncate">
-              {monthLabel}
-            </span>
-            <button
-              onClick={nextMonth}
-              className="w-7 h-7 flex items-center justify-center rounded-[7px] hover:bg-elevated transition-colors text-muted-foreground hover:text-foreground active:scale-90"
-              disabled={selectedMonth.year === now.getFullYear() && selectedMonth.month === now.getMonth()}
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
+            {datePickerOpen && (
+              <DateRangePicker
+                activePreset={activePreset}
+                customFrom={customFrom}
+                customTo={customTo}
+                onPreset={applyPreset}
+                onCustomChange={(f, t) => { setCustomFrom(f); setCustomTo(t); }}
+                onCustomApply={applyCustomRange}
+                onClose={() => setDatePickerOpen(false)}
+              />
+            )}
           </div>
-
-          {/* Year picker button (mobile) */}
-          <button
-            onClick={() => setYearDialogOpen(true)}
-            className="h-10 px-3 rounded-[10px] flex items-center gap-1.5 border border-border bg-card text-[12px] font-semibold text-foreground hover:bg-elevated active:scale-95 transition-all shrink-0"
-          >
-            <CalendarRange className="w-3.5 h-3.5 text-blue-500" />
-            {selectedMonth.year}
-          </button>
 
           {/* Upload invoice */}
           <button
@@ -808,49 +816,37 @@ export default function Dashboard() {
             className="h-10 px-3 rounded-[10px] flex items-center gap-1.5 text-[12px] font-semibold whitespace-nowrap shrink-0 active:scale-95 transition-all border border-border bg-card text-foreground hover:bg-elevated"
           >
             <MailOpen className="w-3.5 h-3.5" />
-            סרוק מייל
+            סרוק
           </button>
         </div>
       </div>
 
-      {/* ── Desktop toolbar: month picker + actions ── */}
+      {/* ── Desktop toolbar: יומן date range + actions ── */}
       <div className="hidden sm:flex items-center justify-between gap-3 mb-1" dir="rtl">
 
-        {/* Month picker + Year button */}
-        <div className="flex items-center gap-2">
-          <div
-            className="flex items-center gap-1 h-10 rounded-[10px] px-2 border border-border bg-card"
-            style={{ minWidth: 200 }}
-          >
-            <button
-              onClick={prevMonth}
-              className="w-7 h-7 flex items-center justify-center rounded-[7px] hover:bg-elevated text-muted-foreground hover:text-foreground transition-colors active:scale-90"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-            <div className="flex items-center gap-2 flex-1 justify-center">
-              <CalendarDays className="w-4 h-4 text-muted-foreground shrink-0" />
-              <span className="text-[13px] font-semibold text-foreground whitespace-nowrap">
-                {monthStart} — {monthEnd}
-              </span>
-            </div>
-            <button
-              onClick={nextMonth}
-              disabled={selectedMonth.year === now.getFullYear() && selectedMonth.month === now.getMonth()}
-              className="w-7 h-7 flex items-center justify-center rounded-[7px] hover:bg-elevated text-muted-foreground hover:text-foreground transition-colors active:scale-90 disabled:opacity-30 disabled:cursor-not-allowed"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Year picker button (desktop) */}
+        {/* יומן — Date range picker button */}
+        <div className="relative">
           <button
-            onClick={() => setYearDialogOpen(true)}
-            className="h-10 px-3 rounded-[10px] flex items-center gap-2 border border-border bg-card text-[13px] font-semibold text-foreground hover:bg-elevated hover:border-blue-400 active:scale-95 transition-all whitespace-nowrap"
+            onClick={() => setDatePickerOpen((o) => !o)}
+            className="h-10 px-4 rounded-[10px] flex items-center gap-2 border border-border bg-card text-[13px] font-semibold text-foreground hover:bg-elevated hover:border-primary/40 active:scale-95 transition-all whitespace-nowrap"
           >
-            <CalendarRange className="w-4 h-4 text-blue-500" />
-            {selectedMonth.year}
+            <CalendarDays className="w-4 h-4 text-blue-500" />
+            <span>יומן</span>
+            <span className="text-muted-foreground font-normal">·</span>
+            <span className="text-foreground">{rangeLabel}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
+          {datePickerOpen && (
+            <DateRangePicker
+              activePreset={activePreset}
+              customFrom={customFrom}
+              customTo={customTo}
+              onPreset={applyPreset}
+              onCustomChange={(f, t) => { setCustomFrom(f); setCustomTo(t); }}
+              onCustomApply={applyCustomRange}
+              onClose={() => setDatePickerOpen(false)}
+            />
+          )}
         </div>
 
         {/* Action buttons */}
@@ -878,22 +874,22 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         <StatCard
           title="סה״כ מסמכים"
-          value={apiSummary?.total_documents ?? 0}
+          value={summaryStats.total_documents}
           icon={<Files className="w-5 h-5 sm:w-6 sm:h-6" />}
           delay={0}
           onClick={() => goToExpenses("הכל")}
         />
         <StatCard
           title="חשבוניות ספק"
-          value={apiSummary?.supplier_invoices ?? 0}
+          value={summaryStats.supplier_invoices}
           icon={<ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />}
           delay={0.05}
           onClick={() => goToExpenses("הכל")}
         />
         <StatCard
           title="סה״כ חשבוניות"
-          value={apiSummary?.total_amount
-            ? `₪${Number(apiSummary.total_amount).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`
+          value={Number(summaryStats.total_amount) > 0
+            ? `₪${Number(summaryStats.total_amount).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`
             : "₪0"}
           icon={<Banknote className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-400" />}
           delay={0.1}
@@ -901,8 +897,8 @@ export default function Dashboard() {
         />
         <StatCard
           title="סה״כ מע״מ"
-          value={apiSummary?.total_vat && Number(apiSummary.total_vat) > 0
-            ? `₪${Number(apiSummary.total_vat).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`
+          value={Number(summaryStats.total_vat) > 0
+            ? `₪${Number(summaryStats.total_vat).toLocaleString("he-IL", { maximumFractionDigits: 0 })}`
             : "₪0"}
           icon={<Tag className="w-5 h-5 sm:w-6 sm:h-6 text-violet-400" />}
           delay={0.15}
@@ -910,18 +906,18 @@ export default function Dashboard() {
         />
         <StatCard
           title="ממתינות לאישור"
-          value={apiSummary?.pending_review ?? 0}
+          value={summaryStats.pending_review}
           icon={<Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-400" />}
           delay={0.2}
           onClick={() => goToExpenses("ממתין")}
         />
         <StatCard
           title="חשודות בכפילות"
-          value={apiSummary?.suspected_duplicates ?? 0}
+          value={summaryStats.suspected_duplicates}
           icon={<Copy className="w-5 h-5 sm:w-6 sm:h-6 text-rose-400" />}
           trend={
-            apiSummary && Number(apiSummary.total_documents) > 0
-              ? `${((Number(apiSummary.suspected_duplicates) / Number(apiSummary.total_documents)) * 100).toFixed(1)}%`
+            summaryStats.total_documents > 0
+              ? `${((summaryStats.suspected_duplicates / summaryStats.total_documents) * 100).toFixed(1)}%`
               : undefined
           }
           trendUp={false}
@@ -949,8 +945,8 @@ export default function Dashboard() {
               <Receipt className="w-4 h-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-[15px] font-bold text-foreground leading-tight">הוצאות החודש</h2>
-              <p className="text-[11px] text-muted-foreground">{monthLabel}</p>
+              <h2 className="text-[15px] font-bold text-foreground leading-tight">הוצאות הטווח</h2>
+              <p className="text-[11px] text-muted-foreground">{rangeLabel}</p>
             </div>
           </div>
           <Link href="/expenses">
@@ -1249,19 +1245,10 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* ── Year Picker Dialog ── */}
-      <YearPickerDialog
-        open={yearDialogOpen}
-        onClose={() => setYearDialogOpen(false)}
-        selectedYear={selectedMonth.year}
-        onSelect={(year) => {
-          setSelectedMonth(({ month }) => {
-            const isCurrentYear = year === now.getFullYear();
-            const clampedMonth = isCurrentYear && month > now.getMonth() ? now.getMonth() : month;
-            return { year, month: clampedMonth };
-          });
-        }}
-      />
+      {/* ── Click-outside overlay for date picker ── */}
+      {datePickerOpen && (
+        <div className="fixed inset-0 z-40" onClick={() => setDatePickerOpen(false)} />
+      )}
 
       {/* ── Dialogs ── */}
       <MergeAliasDialog
@@ -1296,6 +1283,11 @@ export default function Dashboard() {
       <GmailScanDialog
         isOpen={gmailScanOpen}
         onClose={() => setGmailScanOpen(false)}
+        onViewInvoices={() => {
+          setGmailScanOpen(false);
+          sessionStorage.setItem("bb_expense_source_filter", "gmail");
+          navigate("/expenses");
+        }}
       />
     </Layout>
   );

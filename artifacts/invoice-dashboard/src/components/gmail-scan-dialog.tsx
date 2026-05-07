@@ -56,9 +56,10 @@ interface ScanResult {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  onViewInvoices?: () => void;
 }
 
-export function GmailScanDialog({ isOpen, onClose }: Props) {
+export function GmailScanDialog({ isOpen, onClose, onViewInvoices }: Props) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -428,7 +429,17 @@ export function GmailScanDialog({ isOpen, onClose }: Props) {
                 <button onClick={() => { setScanResult(null); setPhase("idle"); setProgress(0); }} className="flex-1 h-11 rounded-xl text-[13px] font-semibold text-white/60 border border-white/12 hover:bg-white/8 transition-all">
                   סרוק שוב
                 </button>
-                <button onClick={onClose} className="flex-1 h-11 rounded-xl flex items-center justify-center gap-2 text-[13px] font-bold text-white transition-all active:scale-[0.98]" style={{ background: "linear-gradient(90deg, #4361ee, #2dd4bf)" }}>
+                <button
+                  onClick={() => {
+                    if (scanResult.processed > 0 && onViewInvoices) {
+                      onViewInvoices();
+                    } else {
+                      onClose();
+                    }
+                  }}
+                  className="flex-1 h-11 rounded-xl flex items-center justify-center gap-2 text-[13px] font-bold text-white transition-all active:scale-[0.98]"
+                  style={{ background: "linear-gradient(90deg, #4361ee, #2dd4bf)" }}
+                >
                   <ArrowLeft className="w-4 h-4" />
                   {scanResult.processed > 0 ? "צפה בחשבוניות" : "סגור"}
                 </button>
