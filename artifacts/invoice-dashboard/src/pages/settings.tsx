@@ -118,6 +118,9 @@ const INITIAL: Record<"outlook", EmailConnector> = {
 export default function Settings() {
   const [, navigate] = useLocation();
 
+  // ── Desktop tab navigation ────────────────────────────────────────────────
+  const [settingsTab, setSettingsTab] = useState<"business" | "connections">("business");
+
   // ── Mobile hub navigation ─────────────────────────────────────────────────
   type MobileSection = null | "connectors" | "biz" | "plan" | "security" | "usage" | "accountant" | "ai";
   const [mobileSection, setMobileSection] = useState<MobileSection>(null);
@@ -997,6 +1000,32 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* ── Desktop Tab Switcher ── */}
+        <div className="hidden md:flex items-center gap-1 p-1 rounded-2xl bg-white/5 border border-white/8 self-start">
+          <button
+            onClick={() => setSettingsTab("business")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              settingsTab === "business"
+                ? "bg-primary text-white shadow-lg shadow-primary/20"
+                : "text-muted-foreground hover:text-white"
+            }`}
+          >
+            <Building2 className="w-4 h-4" />
+            הגדרות העסק
+          </button>
+          <button
+            onClick={() => setSettingsTab("connections")}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
+              settingsTab === "connections"
+                ? "bg-primary text-white shadow-lg shadow-primary/20"
+                : "text-muted-foreground hover:text-white"
+            }`}
+          >
+            <Plug className="w-4 h-4" />
+            חיבורים
+          </button>
+        </div>
+
         {/* ── Placeholder sections (mobile only, no desktop equivalent) ── */}
         <div id="sec-plan" className="md:hidden rounded-2xl border border-border bg-card p-5 space-y-4">
           <div className="flex items-center gap-3">
@@ -1080,7 +1109,8 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* existing sections below — tagged with IDs for mobile scroll-to */}
+        {/* ═══ TAB: חיבורים ═══ */}
+        {(settingsTab === "connections" || mobileSection !== null) && <>
 
         {/* Email connectors section */}
         <div id="sec-connectors">
@@ -2045,6 +2075,20 @@ export default function Settings() {
           )}
         </div>
 
+        {/* Save — connections tab */}
+        <Button
+          onClick={saveSettings}
+          disabled={isSaving}
+          className="w-full h-11 rounded-2xl bg-primary hover:bg-primary/90 gap-2 text-sm font-medium"
+        >
+          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {isSaving ? "שומר..." : "שמור הגדרות"}
+        </Button>
+
+        </>}
+
+        {(settingsTab === "business" || mobileSection !== null) && <>
+
         {/* ── Business Profile ── */}
         <div id="sec-biz" className="rounded-2xl border border-white/10 bg-card/30 p-5 space-y-5" dir="rtl">
           {/* Header */}
@@ -2553,15 +2597,8 @@ export default function Settings() {
           </button>
         </div>
 
-        {/* Save */}
-        <Button
-          onClick={saveSettings}
-          disabled={isSaving}
-          className="w-full h-11 rounded-2xl bg-primary hover:bg-primary/90 gap-2 text-sm font-medium"
-        >
-          {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {isSaving ? "שומר..." : "שמור הגדרות"}
-        </Button>
+        </>} {/* end TAB: הגדרות העסק */}
+
       </motion.div>
       </div>
     </Layout>
