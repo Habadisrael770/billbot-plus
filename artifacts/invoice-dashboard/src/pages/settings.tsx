@@ -119,7 +119,14 @@ export default function Settings() {
   const [, navigate] = useLocation();
 
   // ── Desktop tab navigation ────────────────────────────────────────────────
-  const [settingsTab, setSettingsTab] = useState<"business" | "connections" | "automations">("business");
+  const [settingsTab, setSettingsTab] = useState<"business" | "connections" | "automations">(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const t = params.get("tab");
+      if (t === "automations" || t === "connections") return t;
+    }
+    return "business";
+  });
 
   // ── Mobile hub navigation ─────────────────────────────────────────────────
   type MobileSection = null | "connectors" | "biz" | "plan" | "security" | "usage" | "accountant" | "ai";
@@ -341,7 +348,8 @@ export default function Settings() {
 
   const getEmail = () => {
     const raw = localStorage.getItem("bb_user");
-    return raw ? (JSON.parse(raw).email ?? "") : "";
+    if (!raw) return "";
+    try { return JSON.parse(raw).email ?? ""; } catch { return raw.includes("@") ? raw : ""; }
   };
 
   const loadAutomations = useCallback(async () => {
@@ -608,7 +616,8 @@ export default function Settings() {
   // ── Load / regenerate forwarding address ─────────────────────────────────
   const loadFwdAddress = useCallback(async () => {
     const raw   = localStorage.getItem("bb_user");
-    const email = raw ? (JSON.parse(raw).email ?? "") : "";
+    let email = "";
+    if (raw) { try { email = JSON.parse(raw).email ?? ""; } catch { email = raw.includes("@") ? raw : ""; } }
     if (!email || email === "guest") return;
     setFwdLoading(true);
     try {

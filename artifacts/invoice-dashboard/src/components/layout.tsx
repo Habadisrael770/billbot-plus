@@ -7,6 +7,7 @@ import {
   Building2,
   SendHorizonal,
   Zap,
+  Bot,
   Settings,
   HelpCircle,
   User,
@@ -18,7 +19,6 @@ import {
   Moon,
   Gift,
   Upload,
-
   Camera,
   Crown,
   Menu,
@@ -45,11 +45,12 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const PRIMARY_NAV = [
-  { href: "/",             icon: LayoutDashboard, label: "דשבורד",       desc: "סקירה כללית ותזרים",         color: "text-primary",    bg: "rgba(75,126,245,0.08)",  border: "rgba(75,126,245,0.25)"  },
-  { href: "/expenses",     icon: Receipt,         label: "הוצאות",       desc: "חשבוניות ותשלומים",          color: "text-teal",       bg: "rgba(45,212,191,0.08)",  border: "rgba(45,212,191,0.25)"  },
-  { href: "/suppliers",    icon: Building2,       label: "ספקים",        desc: "ניהול ספקים וקשרים",         color: "text-amber-400",  bg: "rgba(251,191,36,0.08)",  border: "rgba(251,191,36,0.25)"  },
-  { href: "/export",       icon: SendHorizonal,   label: 'ייצוא לרו"ח', desc: "שליחת דוחות לרואה חשבון",   color: "text-violet-400", bg: "rgba(139,92,246,0.08)",  border: "rgba(139,92,246,0.25)"  },
-  { href: "/integrations", icon: Zap,             label: "אינטגרציות",   desc: "Gmail, Telegram, API",       color: "text-rose-400",   bg: "rgba(244,63,94,0.08)",   border: "rgba(244,63,94,0.25)"   },
+  { href: "/",                           icon: LayoutDashboard, label: "דשבורד",       desc: "סקירה כללית ותזרים",         color: "text-primary",    bg: "rgba(75,126,245,0.08)",  border: "rgba(75,126,245,0.25)"  },
+  { href: "/expenses",                   icon: Receipt,         label: "הוצאות",       desc: "חשבוניות ותשלומים",          color: "text-teal",       bg: "rgba(45,212,191,0.08)",  border: "rgba(45,212,191,0.25)"  },
+  { href: "/suppliers",                  icon: Building2,       label: "ספקים",        desc: "ניהול ספקים וקשרים",         color: "text-amber-400",  bg: "rgba(251,191,36,0.08)",  border: "rgba(251,191,36,0.25)"  },
+  { href: "/export",                     icon: SendHorizonal,   label: 'ייצוא לרו"ח', desc: "שליחת דוחות לרואה חשבון",   color: "text-violet-400", bg: "rgba(139,92,246,0.08)",  border: "rgba(139,92,246,0.25)"  },
+  { href: "/integrations",               icon: Zap,             label: "אינטגרציות",   desc: "Gmail, Telegram, API",       color: "text-rose-400",   bg: "rgba(244,63,94,0.08)",   border: "rgba(244,63,94,0.25)"   },
+  { href: "/settings?tab=automations",   icon: Bot,             label: "אוטומציות",    desc: "שליחה אוטומטית ותזמונים",   color: "text-emerald-400", bg: "rgba(52,211,153,0.08)", border: "rgba(52,211,153,0.25)"  },
 ];
 
 const SECONDARY_NAV = [
@@ -64,6 +65,28 @@ function accentAt(rgba: string, alpha: number) {
 
 const ALL_NAV = [...PRIMARY_NAV, ...SECONDARY_NAV];
 
+// Resolve the display label for the current path (ignore query params)
+function navLabel(location: string): string {
+  const searchParams = typeof window !== "undefined" ? window.location.search : "";
+  const isAutomations = location === "/settings" && searchParams.includes("tab=automations");
+  if (isAutomations) return "אוטומציות";
+  return ALL_NAV.find((n) => n.href.split("?")[0] === location)?.label ?? "דשבורד";
+}
+
+// Check if a nav item is active given the current location + search params
+function isNavActive(itemHref: string, location: string): boolean {
+  const [itemPath, itemQuery] = itemHref.split("?");
+  if (itemPath !== location) return false;
+  if (!itemQuery) {
+    // settings base path is only active when NOT in automations tab
+    const searchParams = typeof window !== "undefined" ? window.location.search : "";
+    if (itemPath === "/settings") return !searchParams.includes("tab=automations");
+    return true;
+  }
+  const searchParams = typeof window !== "undefined" ? window.location.search : "";
+  return searchParams.includes(itemQuery);
+}
+
 function CompactSidebar({ location, onClose }: { location: string; onClose?: () => void }) {
   return (
     <div className="h-full flex flex-col">
@@ -72,7 +95,7 @@ function CompactSidebar({ location, onClose }: { location: string; onClose?: () 
       </div>
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
         {PRIMARY_NAV.map((item) => {
-          const active = location === item.href;
+          const active = isNavActive(item.href, location);
           return (
             <Link
               key={item.href}
@@ -90,7 +113,7 @@ function CompactSidebar({ location, onClose }: { location: string; onClose?: () 
       </nav>
       <div className="py-4 px-2 space-y-1 border-t border-border">
         {SECONDARY_NAV.map((item) => {
-          const active = location === item.href;
+          const active = isNavActive(item.href, location);
           return (
             <Link
               key={item.href}
@@ -331,7 +354,7 @@ function MobileSidebar({
 
         {/* Primary nav — category cards */}
         {PRIMARY_NAV.map((item, i) => {
-          const active = location === item.href;
+          const active = isNavActive(item.href, location);
           const cardBorder = active ? accentAt(item.border, 0.85) : accentAt(item.border, 0.33);
           const iconBg = lm ? accentAt(item.border, 0.13) : accentAt(item.border, 0.20);
           const cardBg = active
@@ -378,7 +401,7 @@ function MobileSidebar({
 
         {/* Secondary nav — same category card style */}
         {SECONDARY_NAV.map((item, i) => {
-          const active = location === item.href;
+          const active = isNavActive(item.href, location);
           const cardBorder = active ? accentAt(item.border, 0.85) : accentAt(item.border, 0.33);
           const iconBg = lm ? accentAt(item.border, 0.13) : accentAt(item.border, 0.20);
           const cardBg = active
@@ -592,7 +615,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { search, setSearch } = useSearch();
   const { theme, toggleTheme } = useTheme();
 
-  const currentLabel = ALL_NAV.find((n) => n.href === location)?.label ?? "דשבורד";
+  const currentLabel = navLabel(location);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-background">
@@ -662,7 +685,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* Main Content */}
         <div className="flex-1 flex flex-col h-full overflow-hidden relative min-w-0">
           {/* Header */}
-          <header className="h-16 md:h-14 flex items-center gap-2 px-3 sm:px-6 border-b border-border bg-card z-10 shrink-0" style={{ boxShadow: "var(--shadow-sm)" }}>
+          <header dir="rtl" className="h-16 md:h-14 flex items-center gap-2 px-3 sm:px-6 border-b border-border bg-card z-10 shrink-0" style={{ boxShadow: "var(--shadow-sm)" }}>
 
             {/* ── RIGHT side (RTL start): hamburger + small logo ── */}
             <div className="flex items-center gap-2 shrink-0">
