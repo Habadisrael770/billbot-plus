@@ -25,6 +25,10 @@ type DocTypeKey = (typeof DOC_TYPES)[number]["key"];
 
 type SessionState =
   | { type: "idle" }
+  | { type: "awaiting_triage";
+      invoiceId: string; vendor: string; amount: string;
+      date: string; category: string; isDuplicate: boolean; isForeign: boolean; currency: string;
+      amountMissing: boolean; catMissing: boolean }
   | { type: "awaiting_doc_type";
       invoiceId: string; vendor: string; amount: string;
       date: string; category: string; isDuplicate: boolean; isForeign: boolean; currency: string }
@@ -35,7 +39,8 @@ type SessionState =
       invoiceId: string; docType: DocTypeKey; vendor: string;
       amount: string; category: string; currency: string }
   | { type: "awaiting_amount_correct";
-      invoiceId: string; docType: DocTypeKey; category: string }
+      invoiceId: string; vendor: string; category: string; currency: string;
+      nextStep: "triage" | "category" | "action"; docType: DocTypeKey }
   | { type: "awaiting_note";
       invoiceId: string; docType: DocTypeKey; category: string; amount: string; vendor: string; currency: string };
 
@@ -179,16 +184,60 @@ function buildHelpMenu(): string {
   );
 }
 
+// ── Triage menu — shown right after processing ─────────────────────────────
+// Button layout depends on amountMissing / catMissing:
+// Always:  [fix_amount if missing] [fix_category if missing] [fix_doctype] [confirm] [0=menu]
+function triageButtons(amountMissing: boolean, catMissing: boolean): Array<{ label: string; action: string }> {
+  const btns: Array<{ label: string; action: string }> = [];
+  if (amountMissing) btns.push({ label: "✏️  *הכנס סכום*",    action: "fix_amount"   });
+  if (catMissing)    btns.push({ label: "🗂  *בחר קטגוריה*",  action: "fix_category" });
+  btns.push({ label: "📄  *בחר סוג מסמך*",  action: "fix_doctype" });
+  btns.push({ label: "✅  *אשר ושמור כך*",  action: "confirm"     });
+  return btns;
+}
+
+function buildTriageMenu(
+  vendor: string, amount: string, date: string, category: string,
+  isDuplicate: boolean, isForeign: boolean, currency: string,
+  amountMissing: boolean, catMissing: boolean,
+): string {
+  const dupLine     = isDuplicate ? `\n⚠️ *שים לב:* ייתכן כפילות!\n` : "";
+  const foreignLine = isForeign  ? `\n🌍 *ספק חוץ* זוהה\n` : "";
+  const amountLine  = amountMissing
+    ? `💰 *סכום:*      ⚠️ לא זוהה`
+    : `💰 *סכום:*      ${formatAmount(amount, currency)}`;
+  const catLine     = catMissing
+    ? `🗂 *קטגוריה:*  ⚠️ לא זוהתה`
+    : `🗂 *קטגוריה:*  ${category}`;
+
+  const btns = triageButtons(amountMissing, catMissing);
+  const btnLines = btns.map((b, i) => `${i + 1}️⃣  ${b.label}`).join("\n");
+
+  return (
+    `✅ *החשבונית עובדה!*\n${divider()}\n` +
+    `🏢 *ספק:*      ${vendor || "לא זוהה"}\n` +
+    `${amountLine}\n` +
+    `📅 *תאריך:*    ${date || "לא זוהה"}\n` +
+    `${catLine}\n` +
+    `${dupLine}${foreignLine}` +
+    `${divider()}\n\n` +
+    (amountMissing || catMissing ? `⚠️ *נדרש תיקון לפני שמירה*\n\n` : `📝 *בחר פעולה:*\n\n`) +
+    btnLines +
+    `\n0️⃣  🏠  *תפריט ראשי*\n\n` +
+    `_שלח מספר לבחירה_`
+  );
+}
+
 function buildDocTypeMenu(vendor: string, amount: string, date: string, category: string,
   isDuplicate: boolean, isForeign: boolean, currency: string): string {
   const dupLine     = isDuplicate ? `\n⚠️ *שים לב:* ייתכן כפילות!\n` : "";
   const foreignLine = isForeign ? `\n🌍 *ספק חוץ* זוהה\n` : "";
   const amountNum   = parseFloat(amount || "0");
   const amountLine  = (isNaN(amountNum) || amountNum === 0)
-    ? `💰 *סכום:*     ⚠️ לא זוהה — תתבקש לתקן`
+    ? `💰 *סכום:*     ⚠️ לא זוהה`
     : `💰 *סכום:*     ${formatAmount(amount, currency)}`;
   const catLine     = (!category || category === "לא סווג")
-    ? `🗂 *קטגוריה:* ⚠️ לא זוהתה — תתבקש לבחור`
+    ? `🗂 *קטגוריה:* ⚠️ לא זוהתה`
     : `🗂 *קטגוריה:* ${category}`;
   return (
     `✅ *החשבונית עובדה!*\n${divider()}\n` +
@@ -201,6 +250,20 @@ function buildDocTypeMenu(vendor: string, amount: string, date: string, category
     `📄 *מהו סוג המסמך?*\n\n` +
     DOC_TYPES.map((d, i) => `${i + 1}️⃣  ${d.emoji} ${d.label}`).join("\n") +
     `\n\n_שלח מספר לבחירה_`
+  );
+}
+
+function buildAmountMenu(currentAmount: string, currency: string): string {
+  const cur = parseFloat(currentAmount || "0");
+  const curLine = (!isNaN(cur) && cur > 0)
+    ? `📊 *סכום נוכחי:* ${formatAmount(currentAmount, currency)}\n\n`
+    : ``;
+  return (
+    `✏️ *הכנס סכום*\n${divider()}\n` +
+    curLine +
+    `הקלד את הסכום הנכון (מספר בלבד):\n` +
+    `💡 דוגמה: \`1250.50\`\n\n` +
+    `0️⃣  דלג ⏭`
   );
 }
 
@@ -307,6 +370,59 @@ router.post("/webhook", express.urlencoded({ extended: false }), async (req, res
       return;
     }
 
+    // ── State: awaiting_triage ────────────────────────────────────────────────
+    if (session.type === "awaiting_triage") {
+      const { invoiceId, vendor, amount, date, category, isDuplicate, isForeign, currency, amountMissing, catMissing } = session;
+      const btns = triageButtons(amountMissing, catMissing);
+
+      if (text === "0") { clearSession(phone); await sendTwilioReply(from, buildMainMenu(user.name)); return; }
+
+      const num = parseInt(text, 10);
+      if (isNaN(num) || num < 1 || num > btns.length) {
+        await sendTwilioReply(from, buildTriageMenu(vendor, amount, date, category, isDuplicate, isForeign, currency, amountMissing, catMissing));
+        return;
+      }
+      const action = btns[num - 1].action;
+
+      if (action === "fix_amount") {
+        setSession(phone, {
+          type: "awaiting_amount_correct",
+          invoiceId, vendor, category, currency,
+          docType: "tax_invoice", nextStep: catMissing ? "category" : "triage",
+        });
+        await sendTwilioReply(from, buildAmountMenu(amount, currency));
+        return;
+      }
+
+      if (action === "fix_category") {
+        const cats = await getAllCategories();
+        setSession(phone, { type: "awaiting_category_pick", invoiceId, docType: "tax_invoice", categories: cats, vendor, amount, currency });
+        await sendTwilioReply(from, buildCategoryMenu(cats, "🗂 *בחר קטגוריה:*"));
+        return;
+      }
+
+      if (action === "fix_doctype") {
+        setSession(phone, { type: "awaiting_doc_type", invoiceId, vendor, amount, date, category, isDuplicate, isForeign, currency });
+        await sendTwilioReply(from, buildDocTypeMenu(vendor, amount, date, category, isDuplicate, isForeign, currency));
+        return;
+      }
+
+      if (action === "confirm") {
+        await db.update(invoicesTable)
+          .set({ status: "approved", updated_at: new Date() })
+          .where(eq(invoicesTable.id, invoiceId));
+        clearSession(phone);
+        await sendTwilioReply(from,
+          `🎉 *נשמר!*\n\n` +
+          `✅ חשבונית #\`${invoiceId.slice(0, 8)}\` אושרה.\n` +
+          `🏢 ${vendor || "—"} | ${formatAmount(amount, currency)}\n\n` +
+          `שלח חשבונית נוספת או שלח *0* לתפריט 🏠`
+        );
+        return;
+      }
+      return;
+    }
+
     // ── State: awaiting_doc_type ──────────────────────────────────────────────
     if (session.type === "awaiting_doc_type") {
       const num = parseInt(text, 10);
@@ -330,15 +446,11 @@ router.post("/webhook", express.urlencoded({ extended: false }), async (req, res
       if (amountMissing) {
         setSession(phone, {
           type: "awaiting_amount_correct",
-          invoiceId: session.invoiceId, docType: chosen.key, category: session.category,
+          invoiceId: session.invoiceId, vendor: session.vendor,
+          category: session.category, currency: session.currency,
+          docType: chosen.key, nextStep: catMissing ? "category" : "action",
         });
-        await sendTwilioReply(from,
-          `✏️ *תיקון סכום*\n${divider()}\n` +
-          `⚠️ הסכום לא זוהה אוטומטית.\n\n` +
-          `הקלד את הסכום הנכון (מספר בלבד):\n` +
-          `דוגמה: \`1250.50\`\n\n` +
-          `שלח *0* לדילוג (ישמר כ-₪0)`
-        );
+        await sendTwilioReply(from, buildAmountMenu("0", session.currency));
         return;
       }
 
@@ -397,14 +509,8 @@ router.post("/webhook", express.urlencoded({ extended: false }), async (req, res
 
       if (text === "3") {
         // Correct amount
-        setSession(phone, { type: "awaiting_amount_correct", invoiceId, docType, category });
-        await sendTwilioReply(from,
-          `✏️ *תיקון סכום*\n\n` +
-          `הסכום הנוכחי: *${formatAmount(amount, currency)}*\n\n` +
-          `הקלד את הסכום הנכון (מספר בלבד, ללא סמלים):\n` +
-          `דוגמה: \`1250.50\`\n\n` +
-          `שלח *0* לביטול`
-        );
+        setSession(phone, { type: "awaiting_amount_correct", invoiceId, vendor, category, currency, docType, nextStep: "action" });
+        await sendTwilioReply(from, buildAmountMenu(amount, currency));
         return;
       }
 
@@ -466,33 +572,31 @@ router.post("/webhook", express.urlencoded({ extended: false }), async (req, res
 
     // ── State: awaiting_amount_correct ────────────────────────────────────────
     if (session.type === "awaiting_amount_correct") {
-      const { invoiceId, docType, category } = session;
-
-      const [invData] = await db
-        .select({ total: invoicesTable.total, vendor: invoicesTable.normalized_vendor_name, currency: invoicesTable.currency })
-        .from(invoicesTable).where(eq(invoicesTable.id, invoiceId)).limit(1);
-      const vendor   = invData?.vendor   ?? "";
-      const currency = invData?.currency ?? "ILS";
+      const { invoiceId, vendor, category, currency, docType, nextStep } = session;
 
       if (text === "0") {
-        // Skip amount correction — check if category still missing
-        const catMissing = !category || category === "לא סווג";
-        if (catMissing) {
+        // Skip — go wherever nextStep says
+        if (nextStep === "category") {
           const cats = await getAllCategories();
-          setSession(phone, { type: "awaiting_category_pick", invoiceId, docType, categories: cats, vendor, amount: invData?.total ?? "0", currency });
-          await sendTwilioReply(from, buildCategoryMenu(cats, "🗂 *קטגוריה לא זוהתה — בחר:*"));
-          return;
+          setSession(phone, { type: "awaiting_category_pick", invoiceId, docType, categories: cats, vendor, amount: "0", currency });
+          await sendTwilioReply(from, buildCategoryMenu(cats, "🗂 *בחר קטגוריה:*"));
+        } else if (nextStep === "triage") {
+          const [inv] = await db.select({ total: invoicesTable.total, date: invoicesTable.invoice_date })
+            .from(invoicesTable).where(eq(invoicesTable.id, invoiceId)).limit(1);
+          const catMissing = !category || category === "לא סווג";
+          setSession(phone, { type: "awaiting_triage", invoiceId, vendor, amount: inv?.total ?? "0", date: inv?.date ?? "—", category, isDuplicate: false, isForeign: false, currency, amountMissing: false, catMissing });
+          await sendTwilioReply(from, buildTriageMenu(vendor, inv?.total ?? "0", inv?.date ?? "—", category, false, false, currency, false, catMissing));
+        } else {
+          setSession(phone, { type: "awaiting_action", invoiceId, docType, vendor, amount: "0", category, currency });
+          await sendTwilioReply(from, buildActionMenu(vendor, "0", category, docType, currency, invoiceId));
         }
-        const amount = invData?.total ?? "0";
-        setSession(phone, { type: "awaiting_action", invoiceId, docType, vendor, amount, category, currency });
-        await sendTwilioReply(from, buildActionMenu(vendor, amount, category, docType, currency, invoiceId));
         return;
       }
 
       const newAmount = parseFloat(text.replace(/[₪$€,]/g, ""));
       if (isNaN(newAmount) || newAmount <= 0) {
         await sendTwilioReply(from,
-          `❌ סכום לא תקין.\n\nשלח מספר כגון: \`1250.50\`\nשלח *0* לדילוג`
+          `❌ סכום לא תקין.\n\nשלח מספר כגון: \`1250.50\`\n0️⃣  דלג ⏭`
         );
         return;
       }
@@ -501,23 +605,25 @@ router.post("/webhook", express.urlencoded({ extended: false }), async (req, res
         .set({ total: String(newAmount), updated_at: new Date() })
         .where(eq(invoicesTable.id, invoiceId));
 
-      // After fixing amount — if category still missing, jump to category picker
-      const catMissing = !category || category === "לא סווג";
-      if (catMissing) {
+      const confirmed = `✅ *הסכום עודכן ל-${formatAmount(String(newAmount), currency)}*\n\n`;
+
+      if (nextStep === "category") {
         const cats = await getAllCategories();
         setSession(phone, { type: "awaiting_category_pick", invoiceId, docType, categories: cats, vendor, amount: String(newAmount), currency });
-        await sendTwilioReply(from,
-          `✅ הסכום עודכן ל-*${formatAmount(String(newAmount), currency)}*\n\n` +
-          buildCategoryMenu(cats, "🗂 *עכשיו בחר קטגוריה:*")
-        );
+        await sendTwilioReply(from, confirmed + buildCategoryMenu(cats, "🗂 *עכשיו בחר קטגוריה:*"));
+        return;
+      }
+
+      if (nextStep === "triage") {
+        const [inv] = await db.select({ date: invoicesTable.invoice_date }).from(invoicesTable).where(eq(invoicesTable.id, invoiceId)).limit(1);
+        const catMissing = !category || category === "לא סווג";
+        setSession(phone, { type: "awaiting_triage", invoiceId, vendor, amount: String(newAmount), date: inv?.date ?? "—", category, isDuplicate: false, isForeign: false, currency, amountMissing: false, catMissing });
+        await sendTwilioReply(from, confirmed + buildTriageMenu(vendor, String(newAmount), inv?.date ?? "—", category, false, false, currency, false, catMissing));
         return;
       }
 
       setSession(phone, { type: "awaiting_action", invoiceId, docType, vendor, amount: String(newAmount), category, currency });
-      await sendTwilioReply(from,
-        `✅ הסכום עודכן ל-*${formatAmount(String(newAmount), currency)}*\n\n` +
-        buildActionMenu(vendor, String(newAmount), category, docType, currency, invoiceId)
-      );
+      await sendTwilioReply(from, confirmed + buildActionMenu(vendor, String(newAmount), category, docType, currency, invoiceId));
       return;
     }
 
@@ -618,15 +724,20 @@ router.post("/webhook", express.urlencoded({ extended: false }), async (req, res
       const currency = savedInv?.currency ?? "ILS";
       const isForeign = false; // runtime: detected inside processInvoice pipeline
 
+      const isDuplicate = result.duplicateStatus === "duplicate";
+      const amountNum2  = parseFloat(amount || "0");
+      const amountMissing = isNaN(amountNum2) || amountNum2 === 0;
+      const catMissing    = !category || category === "לא סווג";
+
       setSession(phone, {
-        type: "awaiting_doc_type",
+        type: "awaiting_triage",
         invoiceId: result.invoiceId, vendor, amount, date,
-        category, isDuplicate: result.duplicateStatus === "duplicate",
-        isForeign, currency,
+        category, isDuplicate, isForeign, currency,
+        amountMissing, catMissing,
       });
 
-      await sendTwilioReply(from, buildDocTypeMenu(vendor, amount, date, category,
-        result.duplicateStatus === "duplicate", isForeign, currency));
+      await sendTwilioReply(from, buildTriageMenu(vendor, amount, date, category,
+        isDuplicate, isForeign, currency, amountMissing, catMissing));
       return;
     }
 
