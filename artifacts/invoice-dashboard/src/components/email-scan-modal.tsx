@@ -105,8 +105,8 @@ export function EmailScanModal({ isOpen, mode: initialMode, onClose }: EmailScan
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={handleClose} />
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 pb-[68px] sm:pb-4">
+      <div className="absolute inset-0 bg-black/70" onClick={handleClose} />
       <div
         className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-[#0f0f1a] shadow-2xl flex flex-col overflow-hidden"
         dir="rtl"

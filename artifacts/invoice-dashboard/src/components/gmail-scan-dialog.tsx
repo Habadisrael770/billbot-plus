@@ -279,9 +279,9 @@ export function GmailScanDialog({ isOpen, onClose, onViewInvoices }: Props) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 pb-[60px] sm:p-4 sm:pb-4">
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/70"
         onClick={phase === "idle" ? onClose : undefined}
       />
 
@@ -289,13 +289,13 @@ export function GmailScanDialog({ isOpen, onClose, onViewInvoices }: Props) {
         initial={{ opacity: 0, y: 40 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 40 }}
-        transition={{ duration: 0.22, ease: "easeOut" }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
         className="relative w-full sm:max-w-md rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col"
         style={{
           background: "linear-gradient(160deg, #090e24 0%, #060c1e 100%)",
           border: "1.5px solid rgba(67,97,238,0.22)",
-          minHeight: 420,
-          maxHeight: "92vh",
+          minHeight: 380,
+          maxHeight: "88vh",
           overflowY: "auto",
         }}
         dir="rtl"

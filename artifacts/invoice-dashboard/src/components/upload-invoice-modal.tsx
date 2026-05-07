@@ -177,7 +177,7 @@ export function UploadInvoiceModal({ isOpen, onClose }: UploadInvoiceModalProps)
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 p-4 pb-[68px] sm:pb-4">
       <div className="w-full max-w-md rounded-2xl bg-card border border-white/10 shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
