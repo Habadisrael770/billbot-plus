@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
 import { GmailScanDialog } from "@/components/gmail-scan-dialog";
+import { SendToAccountantModal } from "@/components/send-to-accountant-modal";
 import { useTheme } from "@/context/theme-context";
 import { useSearch } from "@/context/search-context";
 import {
@@ -87,7 +88,7 @@ function isNavActive(itemHref: string, location: string): boolean {
   return searchParams.includes(itemQuery);
 }
 
-function CompactSidebar({ location, onClose }: { location: string; onClose?: () => void }) {
+function CompactSidebar({ location, onClose, onAccountant }: { location: string; onClose?: () => void; onAccountant?: () => void }) {
   return (
     <div className="h-full flex flex-col">
       <div className="h-14 flex items-center justify-center border-b border-border shrink-0">
@@ -96,6 +97,21 @@ function CompactSidebar({ location, onClose }: { location: string; onClose?: () 
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
         {PRIMARY_NAV.map((item) => {
           const active = isNavActive(item.href, location);
+          const isExport = item.href === "/export";
+          if (isExport) {
+            return (
+              <button
+                key={item.href}
+                onClick={() => { onClose?.(); onAccountant?.(); }}
+                className={`w-full flex flex-col items-center gap-1 px-2 py-3 rounded-[10px] transition-all duration-200 ${
+                  active ? "nav-item-active" : "nav-item"
+                }`}
+              >
+                <item.icon className="w-5 h-5 shrink-0" />
+                <span className="text-[9px] font-medium leading-tight text-center">{item.label}</span>
+              </button>
+            );
+          }
           return (
             <Link
               key={item.href}
@@ -138,11 +154,13 @@ function MobileSidebar({
   onClose,
   onUpload,
   onScanEmail,
+  onAccountant,
 }: {
   location: string;
   onClose: () => void;
   onUpload: () => void;
   onScanEmail: () => void;
+  onAccountant: () => void;
 }) {
   const { theme } = useTheme();
   const lm = theme === "light"; // light-mode shorthand
@@ -360,6 +378,29 @@ function MobileSidebar({
           const cardBg = active
             ? (lm ? accentAt(item.border, 0.07) : accentAt(item.border, 0.12))
             : (lm ? "#ffffff" : "transparent");
+          const cardStyle = {
+            padding: "14px 16px",
+            background: cardBg,
+            border: `1.5px solid ${cardBorder}`,
+            boxShadow: active
+              ? `0 0 0 2px ${accentAt(item.border, 0.26)}, 0 1px 4px rgba(0,0,0,0.06)`
+              : lm ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
+          };
+          const cardInner = (
+            <>
+              <div
+                className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: iconBg, border: `1.5px solid ${accentAt(item.border, 0.33)}` }}
+              >
+                <item.icon className={`w-[22px] h-[22px] ${item.color}`} />
+              </div>
+              <div className="flex-1 min-w-0 text-right">
+                <p className="text-[15px] font-bold text-white leading-tight mb-[2px]">{item.label}</p>
+                <p className="text-[12px] text-white/50 truncate whitespace-nowrap overflow-hidden">{item.desc}</p>
+              </div>
+              <ChevronRight className={`w-[18px] h-[18px] shrink-0 rotate-180 ${item.color}`} />
+            </>
+          );
           return (
             <motion.div
               key={item.href}
@@ -367,31 +408,24 @@ function MobileSidebar({
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.06 + i * 0.07, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             >
-              <Link
-                href={item.href}
-                onClick={onClose}
-                className="flex items-center gap-[14px] rounded-[14px] transition-all active:scale-[0.97] w-full"
-                style={{
-                  padding: "14px 16px",
-                  background: cardBg,
-                  border: `1.5px solid ${cardBorder}`,
-                  boxShadow: active
-                    ? `0 0 0 2px ${accentAt(item.border, 0.26)}, 0 1px 4px rgba(0,0,0,0.06)`
-                    : lm ? "0 1px 4px rgba(0,0,0,0.06)" : "none",
-                }}
-              >
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: iconBg, border: `1.5px solid ${accentAt(item.border, 0.33)}` }}
+              {item.href === "/export" ? (
+                <button
+                  onClick={() => { onClose(); onAccountant(); }}
+                  className="flex items-center gap-[14px] rounded-[14px] transition-all active:scale-[0.97] w-full"
+                  style={cardStyle}
                 >
-                  <item.icon className={`w-[22px] h-[22px] ${item.color}`} />
-                </div>
-                <div className="flex-1 min-w-0 text-right">
-                  <p className="text-[15px] font-bold text-white leading-tight mb-[2px]">{item.label}</p>
-                  <p className="text-[12px] text-white/50 truncate whitespace-nowrap overflow-hidden">{item.desc}</p>
-                </div>
-                <ChevronRight className={`w-[18px] h-[18px] shrink-0 rotate-180 ${item.color}`} />
-              </Link>
+                  {cardInner}
+                </button>
+              ) : (
+                <Link
+                  href={item.href}
+                  onClick={onClose}
+                  className="flex items-center gap-[14px] rounded-[14px] transition-all active:scale-[0.97] w-full"
+                  style={cardStyle}
+                >
+                  {cardInner}
+                </Link>
+              )}
             </motion.div>
           );
         })}
@@ -611,6 +645,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [trialDismissed, setTrialDismissed] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [gmailScanOpen, setGmailScanOpen] = useState(false);
+  const [accountantOpen, setAccountantOpen] = useState(false);
   const [location] = useLocation();
   const { search, setSearch } = useSearch();
   const { theme, toggleTheme } = useTheme();
@@ -644,7 +679,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex flex-row-reverse flex-1 overflow-hidden">
         {/* Desktop Sidebar — compact, right */}
         <aside className="hidden md:flex w-20 shrink-0 border-l border-border bg-sidebar flex-col z-20">
-          <CompactSidebar location={location} />
+          <CompactSidebar location={location} onAccountant={() => setAccountantOpen(true)} />
         </aside>
 
         {/* Mobile sidebar — AnimatePresence slide panel */}
@@ -676,6 +711,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   onClose={() => setSidebarOpen(false)}
                   onUpload={() => setUploadOpen(true)}
                   onScanEmail={() => setGmailScanOpen(true)}
+                  onAccountant={() => { setSidebarOpen(false); setAccountantOpen(true); }}
                 />
               </motion.div>
             </>
@@ -841,13 +877,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Mobile bottom nav — 2 items | FAB | 2 items */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card border-t border-border flex items-end justify-around px-1" style={{ height: "60px" }}>
         {(() => {
-          const mobileNav = PRIMARY_NAV.filter((i) => i.href !== "/integrations");
-          const left = mobileNav.slice(0, 2);
-          const right = mobileNav.slice(2);
+          const MOBILE_NAV_ITEMS = [
+            PRIMARY_NAV[0]!, // דשבורד /
+            PRIMARY_NAV[1]!, // הוצאות /expenses
+            PRIMARY_NAV[2]!, // ספקים /suppliers
+            PRIMARY_NAV[5]!, // אוטומציות /settings?tab=automations
+          ];
+          const left  = MOBILE_NAV_ITEMS.slice(0, 2);
+          const right = MOBILE_NAV_ITEMS.slice(2);
           return (
             <>
               {left.map((item) => {
-                const active = location === item.href;
+                const active = isNavActive(item.href, location);
                 return (
                   <Link key={item.href} href={item.href}
                     className={`flex flex-col items-center gap-0.5 px-3 pb-2 pt-1 rounded-[10px] transition-colors flex-1 ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
@@ -874,7 +915,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </div>
 
               {right.map((item) => {
-                const active = location === item.href;
+                const active = isNavActive(item.href, location);
                 return (
                   <Link key={item.href} href={item.href}
                     className={`flex flex-col items-center gap-0.5 px-3 pb-2 pt-1 rounded-[10px] transition-colors flex-1 ${active ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
@@ -899,6 +940,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <GmailScanDialog
         isOpen={gmailScanOpen}
         onClose={() => setGmailScanOpen(false)}
+      />
+
+      {/* Send to Accountant Modal */}
+      <SendToAccountantModal
+        isOpen={accountantOpen}
+        onClose={() => setAccountantOpen(false)}
+        invoiceCount={0}
       />
     </div>
   );

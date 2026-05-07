@@ -30,7 +30,7 @@ const pdfParse = require("pdf-parse") as (
 
 // ─── Models ────────────────────────────────────────────────────────────────
 const VISION_MODEL = "google/gemini-flash-1.5";
-const TEXT_MODEL   = "deepseek/deepseek-chat";
+const TEXT_MODEL   = "google/gemini-flash-1.5";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 export type PdfType          = "text_pdf" | "scanned_pdf" | "encrypted_pdf" | "corrupted_pdf" | "not_pdf";
@@ -91,23 +91,26 @@ export interface AiExtractResult {
 }
 
 // ─── System prompt (shared for image + text) ────────────────────────────────
-const SYSTEM_PROMPT = `You are an invoice OCR specialist. Extract ALL data from the invoice.
-Return ONLY a valid JSON object (no markdown, no code blocks, no explanation) with exactly this structure:
+const SYSTEM_PROMPT = `You are an expert Israeli invoice OCR specialist. Your job is to extract structured data from Hebrew and English invoices.
+
+Return ONLY a valid JSON object — no markdown, no code blocks, no explanation, no preamble. Just raw JSON.
+
+JSON structure:
 {
-  "vendor": "supplier name or null",
-  "tax_id": "Israeli ח.פ / ע.מ / tax number or null",
-  "invoice_number": "invoice/receipt number or null",
-  "date": "YYYY-MM-DD or null",
-  "subtotal": number_or_null,
-  "vat": number_or_null,
-  "total": number_or_null,
+  "vendor": "the business/company name at the top of the invoice or null",
+  "tax_id": "Israeli tax number — look for ח.פ., ע.מ., עוסק מורשה, מספר עוסק, ח\"פ followed by digits — or null",
+  "invoice_number": "invoice/receipt number — look for מספר חשבונית, חשבונית מס, מס' חשבונית, קבלה מספר — or null",
+  "date": "YYYY-MM-DD format — look for תאריך, Israeli date formats like DD/MM/YYYY or DD.MM.YYYY — or null",
+  "subtotal": number before VAT or null,
+  "vat": VAT amount (מע\"מ) as a number or null,
+  "total": total amount to pay (סה\"כ לתשלום, סך הכל) as a number or null,
   "currency": "ILS",
   "document_type": "supplier_invoice|receipt|credit_note|other",
   "line_items": [
     {
-      "product_name": "product description",
+      "product_name": "product/service description in Hebrew or English",
       "barcode": "barcode digits or null",
-      "sku": "SKU or null",
+      "sku": "SKU/מק\"ט or null",
       "quantity": number_or_null,
       "unit": "יח/kg/l/unit or null",
       "unit_price": number_or_null,
@@ -117,13 +120,17 @@ Return ONLY a valid JSON object (no markdown, no code blocks, no explanation) wi
     }
   ]
 }
-Rules:
-- line_items must be an array (empty [] if no rows found, never null)
-- Extract ALL visible product rows — do NOT skip any
-- Do NOT invent values; use null for missing fields
-- Numbers must be numeric types, not strings
-- Dates must be YYYY-MM-DD format
-- Hebrew text must be preserved as-is`;
+
+Critical rules:
+- line_items must always be an array (empty [] if no line rows found — never null)
+- Extract ALL visible product/service rows — do NOT skip any
+- For the vendor field: look for the largest text at the top, company name in header, or "שם העסק" — this is usually the most prominent text on the document
+- For amounts: Israeli invoices use commas as thousands separators (e.g. 1,234.50 = 1234.50) — parse them as numbers
+- For dates: Israeli format is DD/MM/YYYY — convert to YYYY-MM-DD
+- Do NOT invent values; use null only when truly absent from the document
+- Numbers must be numeric types (not strings)
+- Preserve Hebrew text exactly as it appears`;
+
 
 // ─── JSON extraction helper ─────────────────────────────────────────────────
 function extractJson(raw: string): Record<string, unknown> {
@@ -246,7 +253,8 @@ export async function classifyPdf(buffer: Buffer): Promise<PdfClassification> {
     const page_count = parsed.numpages ?? 0;
 
     // Heuristic: if text too short → likely scanned (no selectable text layer)
-    const pdf_type: PdfType = text.length >= 40 ? "text_pdf" : "scanned_pdf";
+    // Hebrew PDFs often have garbled/sparse text extraction, so use a higher threshold
+    const pdf_type: PdfType = text.length >= 120 ? "text_pdf" : "scanned_pdf";
 
     return { pdf_type, text, page_count, failure_reason: null };
   } catch (err: unknown) {
