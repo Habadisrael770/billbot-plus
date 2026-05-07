@@ -24,12 +24,35 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
   const [passError, setPassError]     = useState<string | null>(null);
   const [successMsg, setSuccessMsg]   = useState<string | null>(null);
 
-  // Handle postMessage from Google OAuth popup
+  // Handle Google OAuth return — three channels (in order of reliability):
+  //  1. storage event  — fires immediately when popup sets bb_user in localStorage
+  //                       (works even when window.opener was nullified by Chrome 88+)
+  //  2. postMessage    — works when window.opener is still valid (older browsers)
+  //  3. polling timer  — fallback: checks localStorage when popup closes
   useEffect(() => {
+    let done = false;
+    const finish = (email: string) => {
+      if (done) return;
+      done = true;
+      setLoadingGoogle(false);
+      onLogin(email);
+    };
+
+    // Channel 1: localStorage "storage" event (cross-window, fires before popup closes)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "bb_user" && e.newValue) {
+        try {
+          const u = JSON.parse(e.newValue) as { email?: string };
+          if (u.email) finish(u.email);
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", onStorage);
+
+    // Channel 2: postMessage from popup (works if opener wasn't nullified)
     const onMessage = (e: MessageEvent) => {
       if (e.data?.type === "GMAIL_CONNECTED") {
-        setLoadingGoogle(false);
-        onLogin(e.data.email ?? "");
+        finish(e.data.email ?? "");
       } else if (e.data?.type === "GMAIL_ERROR") {
         setLoadingGoogle(false);
         setError(e.data.error ?? "שגיאה בהתחברות לגוגל");
@@ -37,20 +60,23 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
     };
     window.addEventListener("message", onMessage);
 
-    // Fallback: handle redirect-based return (mobile / popup-blocked)
+    // Channel 3: URL param fallback (redirect-based / popup-blocked / _top nav)
     const params = new URLSearchParams(window.location.search);
     const gmail  = params.get("gmail");
     const mail   = params.get("email") ?? "";
     if (gmail === "connected") {
       window.history.replaceState({}, "", window.location.pathname);
-      onLogin(mail);
+      finish(mail);
     } else if (gmail === "error") {
       const msg = params.get("msg") ?? "שגיאה בהתחברות לגוגל";
       setError(msg);
       window.history.replaceState({}, "", window.location.pathname);
     }
 
-    return () => window.removeEventListener("message", onMessage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("message", onMessage);
+    };
   }, []);
 
   const resetErrors = () => {
@@ -101,22 +127,29 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
         document.body.removeChild(a);
         setLoadingGoogle(false);
       } else {
-        // Poll: detect popup close and check if login was completed
+        // Poll: detect popup close → channel 3 (storage) fallback
+        // The storage event (channel 1) fires BEFORE popup closes, so by the time
+        // we get here the login might already be done. We just clean up the spinner.
         const timer = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(timer);
-            // Check if popup wrote login state to localStorage before closing
-            const stored = localStorage.getItem("bb_user");
-            if (stored) {
-              try {
-                const u = JSON.parse(stored) as { email: string };
-                onLogin(u.email ?? "");
-                return;
-              } catch {}
+          try {
+            if (popup.closed) {
+              clearInterval(timer);
+              // If storage event already fired, login is done — nothing to do.
+              // Otherwise check localStorage one final time as ultimate fallback.
+              const stored = localStorage.getItem("bb_user");
+              if (stored) {
+                try {
+                  const u = JSON.parse(stored) as { email?: string };
+                  if (u.email) { onLogin(u.email); return; }
+                } catch {}
+              }
+              setLoadingGoogle(false);
             }
+          } catch {
+            clearInterval(timer);
             setLoadingGoogle(false);
           }
-        }, 800);
+        }, 500);
       }
     } catch {
       setError("לא ניתן להתחבר לשרת. נסה שוב.");

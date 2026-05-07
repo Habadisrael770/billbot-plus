@@ -91,32 +91,48 @@ function AppRouter() {
   //   Our app iframe receives the postMessage and calls handleLogin() too.
   //
   useEffect(() => {
-    // ── Case 1: we ARE the popup (window.opener exists and gmail=connected in URL)
+    // ── Google OAuth popup return handler ─────────────────────────────────────
+    //
+    // IMPORTANT: Chrome 88+ nullifies window.opener when a popup navigates to a
+    // cross-origin page (Google). Even after the popup returns to our origin via
+    // the callback redirect, window.opener stays null — postMessage fails silently.
+    //
+    // Robust flow:
+    //   popup detected → set bb_user in localStorage (fires "storage" event in opener)
+    //                  → try postMessage (works if opener wasn't nullified)
+    //                  → auto-close popup (triggers polling timer in opener)
+    //   opener detects via: (a) storage event, (b) postMessage, or (c) polling timer
+    //
     const params = new URLSearchParams(window.location.search);
     const gmail = params.get("gmail");
     const email = params.get("email") ?? "";
 
+    // ── Case 1: popup (opener present — Chrome ≤87 or Firefox)
     if (gmail === "connected" && window.opener) {
-      // Running inside the popup — notify the opener (our app iframe) via postMessage
+      // Set localStorage first so opener's "storage" event fires immediately
+      try { localStorage.setItem("bb_user", JSON.stringify({ email })); } catch {}
       window.history.replaceState({}, "", window.location.pathname);
-      try {
-        window.opener.postMessage({ type: "GMAIL_CONNECTED", email }, "*");
-      } catch {}
-      // Close this popup after a short delay
-      setTimeout(() => window.close(), 800);
+      try { window.opener.postMessage({ type: "GMAIL_CONNECTED", email }, "*"); } catch {}
+      setTimeout(() => window.close(), 600);
       return;
     }
 
-    // ── Case 2: redirect-based (popup was blocked, _top navigated here)
+    // ── Case 2: popup with nullified opener (Chrome 88+) OR _top redirect
+    // window.opener is null — postMessage won't work.
+    // Set localStorage so opener's storage event fires, then close this window.
+    // window.close() only works on script-opened windows; on _top redirects it's
+    // a no-op (browser ignores it), so it's safe to call unconditionally.
     if (gmail === "connected") {
+      try { localStorage.setItem("bb_user", JSON.stringify({ email })); } catch {}
       window.history.replaceState({}, "", window.location.pathname);
       handleLogin(email);
+      setTimeout(() => { try { window.close(); } catch {} }, 400);
       return;
     }
 
     if (loggedIn) return;
 
-    // ── Case 3: Listen for postMessage from popup (popup → opener = this window)
+    // ── Case 3: opener — listen for postMessage from popup
     const onMessage = (e: MessageEvent) => {
       if (e.data?.type === "GMAIL_CONNECTED") {
         handleLogin(e.data.email ?? "");
