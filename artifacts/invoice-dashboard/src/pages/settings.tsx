@@ -318,8 +318,8 @@ export default function Settings() {
   interface Automation {
     id: string; userId: string; name: string; message: string;
     channels: string; scheduleType: string; scheduleDay: number;
-    scheduleHour: number; isActive: boolean;
-    lastRunAt: string | null; nextRunAt: string | null;
+    scheduleHour: number; scheduleMinute: number; scheduleDate: string | null;
+    isActive: boolean; lastRunAt: string | null; nextRunAt: string | null;
     createdAt: string;
   }
   const [automations, setAutomations] = useState<Automation[]>([]);
@@ -330,9 +330,14 @@ export default function Settings() {
   const [newAutoName,     setNewAutoName]     = useState("");
   const [newAutoMsg,      setNewAutoMsg]      = useState("שלום {{שם}},\n\nלקראת סוף חודש {{חודש}} — האם העברת אליי את כל החשבוניות? 📋\n\nBillBOT+ 🤖");
   const [newAutoChannels, setNewAutoChannels] = useState<string[]>(["email"]);
+  const [newAutoIsRecurring, setNewAutoIsRecurring] = useState(true);
   const [newAutoSchedule, setNewAutoSchedule] = useState("end_of_month");
   const [newAutoDay,      setNewAutoDay]      = useState(1);
-  const [newAutoHour,     setNewAutoHour]     = useState(9);
+  const [newAutoTime,     setNewAutoTime]     = useState("09:00");
+  const [newAutoDate,     setNewAutoDate]     = useState(() => {
+    const d = new Date(); d.setDate(d.getDate() + 1);
+    return d.toISOString().split("T")[0];
+  });
 
   const getEmail = () => {
     const raw = localStorage.getItem("bb_user");
@@ -369,6 +374,10 @@ export default function Settings() {
       toast({ title: "שגיאה", description: "מלא שם והודעה", variant: "destructive" });
       return;
     }
+    const [hStr, mStr] = newAutoTime.split(":");
+    const scheduleHour   = parseInt(hStr || "9", 10);
+    const scheduleMinute = parseInt(mStr || "0", 10);
+    const scheduleType   = newAutoIsRecurring ? newAutoSchedule : "one_time";
     setAutoSaving(true);
     try {
       const r = await fetch(`${API_BASE}/automations`, {
@@ -376,15 +385,20 @@ export default function Settings() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email, name: newAutoName, message: newAutoMsg,
-          channels: newAutoChannels, scheduleType: newAutoSchedule,
-          scheduleDay: newAutoDay, scheduleHour: newAutoHour,
+          channels: newAutoChannels, scheduleType,
+          scheduleDay: newAutoDay, scheduleHour, scheduleMinute,
+          scheduleDate: newAutoIsRecurring ? undefined : newAutoDate,
         }),
       });
       const created = await r.json() as Automation;
       setAutomations((p) => [...p, created]);
       setShowNewAutoForm(false);
-      setNewAutoName(""); setNewAutoMsg("שלום {{שם}},\n\nלקראת סוף חודש {{חודש}} — האם העברת אליי את כל החשבוניות? 📋\n\nBillBOT+ 🤖");
-      setNewAutoChannels(["email"]); setNewAutoSchedule("end_of_month");
+      setNewAutoName("");
+      setNewAutoMsg("שלום {{שם}},\n\nלקראת סוף חודש {{חודש}} — האם העברת אליי את כל החשבוניות? 📋\n\nBillBOT+ 🤖");
+      setNewAutoChannels(["email"]);
+      setNewAutoIsRecurring(true);
+      setNewAutoSchedule("end_of_month");
+      setNewAutoTime("09:00");
       toast({ title: "✅ אוטומציה נוצרה!" });
     } catch { toast({ title: "שגיאה", variant: "destructive" }); }
     finally { setAutoSaving(false); }
@@ -433,9 +447,23 @@ export default function Settings() {
   };
 
   const scheduleLabel = (a: Automation): string => {
-    if (a.scheduleType === "end_of_month") return a.scheduleDay === 1 ? "יום לפני סוף החודש" : `${a.scheduleDay} ימים לפני סוף החודש`;
-    if (a.scheduleType === "start_of_month") return "ה-1 לכל חודש";
-    return `ה-${a.scheduleDay} לכל חודש`;
+    const mm = String(a.scheduleMinute ?? 0).padStart(2, "0");
+    const hh = String(a.scheduleHour ?? 9).padStart(2, "0");
+    const timeStr = `${hh}:${mm}`;
+    if (a.scheduleType === "one_time") {
+      if (a.scheduleDate) {
+        const [y, m, d] = a.scheduleDate.split("-").map(Number);
+        const dateStr = new Date(y, m - 1, d).toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
+        return `📅 חד-פעמי · ${dateStr} ${timeStr}`;
+      }
+      return `📅 חד-פעמי · ${timeStr}`;
+    }
+    if (a.scheduleType === "end_of_month") {
+      const daysLabel = a.scheduleDay === 1 ? "יום לפני סוף החודש" : `${a.scheduleDay} ימים לפני סוף החודש`;
+      return `🔁 ${daysLabel} · ${timeStr}`;
+    }
+    if (a.scheduleType === "start_of_month") return `🔁 ה-1 לכל חודש · ${timeStr}`;
+    return `🔁 ה-${a.scheduleDay} לכל חודש · ${timeStr}`;
   };
 
   const channelIcon = (ch: string) => ch === "email" ? "✉️" : ch === "whatsapp" ? "📱" : "✈️";
@@ -2819,61 +2847,120 @@ export default function Settings() {
                   </div>
                 </div>
 
-                {/* Schedule */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-xs text-muted-foreground">תזמון</label>
-                    <select
-                      value={newAutoSchedule}
-                      onChange={(e) => setNewAutoSchedule(e.target.value)}
-                      className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-primary/50"
+                {/* Recurring / One-time toggle */}
+                <div className="space-y-2">
+                  <label className="text-xs text-muted-foreground">סוג האוטומציה</label>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setNewAutoIsRecurring(true)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-all ${
+                        newAutoIsRecurring
+                          ? "bg-primary/20 border-primary/50 text-primary"
+                          : "bg-white/5 border-white/10 text-muted-foreground hover:border-white/20"
+                      }`}
                     >
-                      <option value="end_of_month">לפני סוף החודש</option>
-                      <option value="start_of_month">תחילת החודש (ה-1)</option>
-                      <option value="custom">יום מותאם אישית</option>
-                    </select>
+                      🔁 חוזרת (קבועה)
+                    </button>
+                    <button
+                      onClick={() => setNewAutoIsRecurring(false)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-all ${
+                        !newAutoIsRecurring
+                          ? "bg-primary/20 border-primary/50 text-primary"
+                          : "bg-white/5 border-white/10 text-muted-foreground hover:border-white/20"
+                      }`}
+                    >
+                      📅 חד-פעמית
+                    </button>
                   </div>
-
-                  {newAutoSchedule === "end_of_month" && (
-                    <div className="space-y-1.5">
-                      <label className="text-xs text-muted-foreground">כמה ימים לפני?</label>
-                      <select
-                        value={newAutoDay}
-                        onChange={(e) => setNewAutoDay(Number(e.target.value))}
-                        className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-primary/50"
-                      >
-                        {[1,2,3,5,7].map((d) => (
-                          <option key={d} value={d}>{d} {d === 1 ? "יום" : "ימים"}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {newAutoSchedule === "custom" && (
-                    <div className="space-y-1.5">
-                      <label className="text-xs text-muted-foreground">יום בחודש (1–28)</label>
-                      <input
-                        type="number" min={1} max={28}
-                        value={newAutoDay}
-                        onChange={(e) => setNewAutoDay(Number(e.target.value))}
-                        className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-primary/50"
-                      />
-                    </div>
-                  )}
                 </div>
 
-                {/* Hour */}
+                {/* Schedule — recurring */}
+                {newAutoIsRecurring && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs text-muted-foreground">תזמון</label>
+                      <select
+                        value={newAutoSchedule}
+                        onChange={(e) => setNewAutoSchedule(e.target.value)}
+                        dir="ltr"
+                        className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-primary/50"
+                      >
+                        <option value="end_of_month">לפני סוף החודש</option>
+                        <option value="start_of_month">תחילת החודש (ה-1)</option>
+                        <option value="custom">יום מותאם אישית</option>
+                      </select>
+                    </div>
+
+                    {newAutoSchedule === "end_of_month" && (
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-muted-foreground">כמה ימים לפני?</label>
+                        <select
+                          value={newAutoDay}
+                          onChange={(e) => setNewAutoDay(Number(e.target.value))}
+                          dir="ltr"
+                          className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-primary/50"
+                        >
+                          {[1,2,3,5,7].map((d) => (
+                            <option key={d} value={d}>{d} {d === 1 ? "יום" : "ימים"}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {newAutoSchedule === "custom" && (
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-muted-foreground">יום בחודש (1–28)</label>
+                        <input
+                          type="number" min={1} max={28}
+                          value={newAutoDay}
+                          onChange={(e) => setNewAutoDay(Number(e.target.value))}
+                          className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-primary/50"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Date picker — one-time */}
+                {!newAutoIsRecurring && (
+                  <div className="space-y-1.5">
+                    <label className="text-xs text-muted-foreground">תאריך שליחה</label>
+                    <input
+                      type="date"
+                      value={newAutoDate}
+                      onChange={(e) => setNewAutoDate(e.target.value)}
+                      style={{ colorScheme: "dark" }}
+                      className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-primary/50"
+                    />
+                  </div>
+                )}
+
+                {/* Time with minute precision + quick button */}
                 <div className="space-y-1.5">
-                  <label className="text-xs text-muted-foreground">שעת שליחה</label>
-                  <select
-                    value={newAutoHour}
-                    onChange={(e) => setNewAutoHour(Number(e.target.value))}
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-muted-foreground">שעת שליחה (שעה:דקה)</label>
+                    <button
+                      onClick={() => {
+                        const t = new Date(Date.now() + 60 * 1000);
+                        const hh = String(t.getHours()).padStart(2, "0");
+                        const mm = String(t.getMinutes()).padStart(2, "0");
+                        setNewAutoTime(`${hh}:${mm}`);
+                        if (!newAutoIsRecurring) {
+                          setNewAutoDate(t.toISOString().split("T")[0]);
+                        }
+                      }}
+                      className="text-[11px] text-primary hover:text-primary/80 border border-primary/30 rounded-lg px-2 py-0.5 transition-colors"
+                    >
+                      ⚡ דקה מעכשיו
+                    </button>
+                  </div>
+                  <input
+                    type="time"
+                    value={newAutoTime}
+                    onChange={(e) => setNewAutoTime(e.target.value)}
+                    style={{ colorScheme: "dark" }}
                     className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm text-white outline-none focus:border-primary/50"
-                  >
-                    {[6,7,8,9,10,11,12,14,16,18,20].map((h) => (
-                      <option key={h} value={h}>{String(h).padStart(2,"0")}:00</option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
                 <Button
@@ -2934,7 +3021,7 @@ export default function Settings() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-white truncate">{auto.name}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">📅 {scheduleLabel(auto)} | 🕘 {String(auto.scheduleHour).padStart(2,"0")}:00</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{scheduleLabel(auto)}{!auto.isActive && auto.scheduleType === "one_time" ? " · ✔ נשלח" : ""}</p>
                     </div>
                     {/* Active toggle */}
                     <button

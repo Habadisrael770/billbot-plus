@@ -14,34 +14,40 @@ const router: IRouter = Router();
 function calculateNextRun(
   scheduleType: string,
   scheduleDay: number,
-  scheduleHour: number
+  scheduleHour: number,
+  scheduleMinute = 0,
+  scheduleDate?: string | null,
 ): Date {
-  const now  = new Date();
-  const year = now.getFullYear();
+  const now   = new Date();
+  const year  = now.getFullYear();
   const month = now.getMonth();
+  let next    = new Date();
 
-  let next = new Date();
-
-  if (scheduleType === "end_of_month") {
+  if (scheduleType === "one_time") {
+    // Parse the target date from scheduleDate (YYYY-MM-DD) + scheduleHour + scheduleMinute
+    if (scheduleDate) {
+      const [y, m, d] = scheduleDate.split("-").map(Number);
+      next = new Date(y, m - 1, d, scheduleHour, scheduleMinute, 0, 0);
+    } else {
+      // Fallback: 1 minute from now
+      next = new Date(now.getTime() + 60 * 1000);
+    }
+  } else if (scheduleType === "end_of_month") {
     const lastDay = new Date(year, month + 1, 0).getDate();
     const target  = Math.max(1, lastDay - (scheduleDay - 1));
-    next = new Date(year, month, target, scheduleHour, 0, 0, 0);
+    next = new Date(year, month, target, scheduleHour, scheduleMinute, 0, 0);
     if (next <= now) {
-      const nm  = month + 1 > 11 ? 0   : month + 1;
+      const nm  = month + 1 > 11 ? 0        : month + 1;
       const ny  = month + 1 > 11 ? year + 1 : year;
       const nld = new Date(ny, nm + 1, 0).getDate();
-      next = new Date(ny, nm, Math.max(1, nld - (scheduleDay - 1)), scheduleHour, 0, 0, 0);
+      next = new Date(ny, nm, Math.max(1, nld - (scheduleDay - 1)), scheduleHour, scheduleMinute, 0, 0);
     }
   } else if (scheduleType === "start_of_month") {
-    next = new Date(year, month, 1, scheduleHour, 0, 0, 0);
-    if (next <= now) {
-      next = new Date(year, month + 1, 1, scheduleHour, 0, 0, 0);
-    }
+    next = new Date(year, month, 1, scheduleHour, scheduleMinute, 0, 0);
+    if (next <= now) next = new Date(year, month + 1, 1, scheduleHour, scheduleMinute, 0, 0);
   } else {
-    next = new Date(year, month, scheduleDay || 1, scheduleHour, 0, 0, 0);
-    if (next <= now) {
-      next = new Date(year, month + 1, scheduleDay || 1, scheduleHour, 0, 0, 0);
-    }
+    next = new Date(year, month, scheduleDay || 1, scheduleHour, scheduleMinute, 0, 0);
+    if (next <= now) next = new Date(year, month + 1, scheduleDay || 1, scheduleHour, scheduleMinute, 0, 0);
   }
 
   return next;
@@ -106,11 +112,16 @@ async function runAutomation(
   }
 
   const now = new Date();
+  const isOneTime = automation.scheduleType === "one_time";
   await db
     .update(automationsTable)
     .set({
       lastRunAt: now,
-      nextRunAt: calculateNextRun(automation.scheduleType, automation.scheduleDay, automation.scheduleHour),
+      nextRunAt: isOneTime ? null : calculateNextRun(
+        automation.scheduleType, automation.scheduleDay, automation.scheduleHour,
+        automation.scheduleMinute ?? 0, automation.scheduleDate,
+      ),
+      isActive:  isOneTime ? false : automation.isActive,
       updatedAt: now,
     })
     .where(eq(automationsTable.id, automation.id));
@@ -170,31 +181,36 @@ router.get("/", async (req, res) => {
 
 // ── POST /api/automations ─────────────────────────────────────────────────────
 router.post("/", async (req, res) => {
-  const { email, name, message, channels, scheduleType, scheduleDay, scheduleHour } = req.body as {
+  const { email, name, message, channels, scheduleType, scheduleDay, scheduleHour, scheduleMinute, scheduleDate } = req.body as {
     email: string; name: string; message: string; channels: string[];
     scheduleType: string; scheduleDay: number; scheduleHour: number;
+    scheduleMinute?: number; scheduleDate?: string;
   };
   if (!email || !name || !message) { res.status(400).json({ error: "email, name, message required" }); return; }
   const user = await getUserByEmail(email);
   if (!user) { res.status(404).json({ error: "user not found" }); return; }
 
-  const sType = scheduleType || "end_of_month";
-  const sDay  = Number(scheduleDay)  || 1;
-  const sHour = Number(scheduleHour) || 9;
-  const nextRun = calculateNextRun(sType, sDay, sHour);
+  const sType   = scheduleType   || "end_of_month";
+  const sDay    = Number(scheduleDay)    || 1;
+  const sHour   = Number(scheduleHour)   || 9;
+  const sMinute = Number(scheduleMinute) || 0;
+  const sDate   = scheduleDate || null;
+  const nextRun = calculateNextRun(sType, sDay, sHour, sMinute, sDate);
 
   const [created] = await db
     .insert(automationsTable)
     .values({
-      userId:       user.id,
-      name:         name.trim(),
-      message:      message.trim(),
-      channels:     JSON.stringify(channels?.length ? channels : ["email"]),
-      scheduleType: sType,
-      scheduleDay:  sDay,
-      scheduleHour: sHour,
-      isActive:     true,
-      nextRunAt:    nextRun,
+      userId:         user.id,
+      name:           name.trim(),
+      message:        message.trim(),
+      channels:       JSON.stringify(channels?.length ? channels : ["email"]),
+      scheduleType:   sType,
+      scheduleDay:    sDay,
+      scheduleHour:   sHour,
+      scheduleMinute: sMinute,
+      scheduleDate:   sDate,
+      isActive:       true,
+      nextRunAt:      nextRun,
     })
     .returning();
 
@@ -204,23 +220,39 @@ router.post("/", async (req, res) => {
 // ── PATCH /api/automations/:id ────────────────────────────────────────────────
 router.patch("/:id", async (req, res) => {
   const { id } = req.params;
-  const { name, message, channels, scheduleType, scheduleDay, scheduleHour, isActive } = req.body as {
+  const { name, message, channels, scheduleType, scheduleDay, scheduleHour, scheduleMinute, scheduleDate, isActive } = req.body as {
     name?: string; message?: string; channels?: string[]; scheduleType?: string;
-    scheduleDay?: number; scheduleHour?: number; isActive?: boolean;
+    scheduleDay?: number; scheduleHour?: number; scheduleMinute?: number;
+    scheduleDate?: string; isActive?: boolean;
   };
 
   const updates: Partial<typeof automationsTable.$inferInsert> = { updatedAt: new Date() };
-  if (name        !== undefined) updates.name         = name;
-  if (message     !== undefined) updates.message      = message;
-  if (channels    !== undefined) updates.channels     = JSON.stringify(channels);
-  if (scheduleType !== undefined) updates.scheduleType = scheduleType;
-  if (scheduleDay !== undefined) {
-    updates.scheduleDay = scheduleDay;
+  if (name           !== undefined) updates.name           = name;
+  if (message        !== undefined) updates.message        = message;
+  if (channels       !== undefined) updates.channels       = JSON.stringify(channels);
+  if (scheduleType   !== undefined) updates.scheduleType   = scheduleType;
+  if (scheduleDay    !== undefined) updates.scheduleDay    = scheduleDay;
+  if (scheduleHour   !== undefined) updates.scheduleHour   = scheduleHour;
+  if (scheduleMinute !== undefined) updates.scheduleMinute = scheduleMinute;
+  if (scheduleDate   !== undefined) updates.scheduleDate   = scheduleDate;
+  if (isActive       !== undefined) updates.isActive       = isActive;
+
+  // Recalculate nextRunAt when any schedule field changed
+  const scheduleChanged = scheduleType !== undefined || scheduleDay !== undefined ||
+    scheduleHour !== undefined || scheduleMinute !== undefined || scheduleDate !== undefined;
+  if (scheduleChanged) {
     const [existing] = await db.select().from(automationsTable).where(eq(automationsTable.id, id)).limit(1);
-    if (existing) updates.nextRunAt = calculateNextRun(scheduleType ?? existing.scheduleType, scheduleDay, scheduleHour ?? existing.scheduleHour);
+    if (existing) {
+      const sType   = scheduleType   ?? existing.scheduleType;
+      const sDay    = scheduleDay    ?? existing.scheduleDay;
+      const sHour   = scheduleHour   ?? existing.scheduleHour;
+      const sMin    = scheduleMinute ?? existing.scheduleMinute ?? 0;
+      const sDate   = scheduleDate   ?? existing.scheduleDate;
+      updates.nextRunAt = sType === "one_time" && existing.lastRunAt
+        ? null
+        : calculateNextRun(sType, sDay, sHour, sMin, sDate);
+    }
   }
-  if (scheduleHour !== undefined) updates.scheduleHour = scheduleHour;
-  if (isActive !== undefined) updates.isActive = isActive;
 
   const [updated] = await db
     .update(automationsTable)

@@ -133,6 +133,14 @@ export async function processInvoice(
     extracted.currency,
     extracted.tax_id,
   );
+  // Foreign invoices have no Israeli VAT — zero out any AI-extracted VAT
+  if (foreignResult.is_foreign) {
+    extracted.vat = 0;
+    // If only total was extracted (no subtotal), set subtotal = total, vat = 0
+    if (extracted.total != null && extracted.subtotal == null) {
+      extracted.subtotal = extracted.total;
+    }
+  }
 
   // Step 6: Save invoice to database
   const line_items      = extractionMeta?.line_items      ?? [];

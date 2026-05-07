@@ -56,7 +56,9 @@ API routes registered in: `artifacts/api-server/src/index.ts`
 - Category management, business profile, accountant share link
 - DeepSeek AI chat with persistent memory per conversation
 - WhatsApp: register personal phone → send photo/PDF → auto-categorized; caption sets category
-- WhatsApp bot commands: `?` help menu, `קטגוריות` list, caption-based routing
+- WhatsApp bot commands: `?` help menu, `קטגוריות` list; guided correction flow for amount/category
+- Automations: recurring (end_of_month / start_of_month / custom day) OR one-time (specific date), minute-level time precision; after one-time fires → auto-deactivated
+- Dashboard invoice cards: View (eye) + Download buttons linking to `/api/invoices/:id/file`
 
 ## User preferences
 

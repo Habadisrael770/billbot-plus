@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef, useLayoutEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useSearch } from "@/context/search-context";
 import { motion, AnimatePresence } from "framer-motion";
@@ -29,6 +29,8 @@ import {
   ArrowLeft,
   Receipt,
   MailOpen,
+  Eye,
+  Download,
 } from "lucide-react";
 import { useInvoices, useInvoiceMutations } from "@/hooks/use-invoices";
 import { Layout } from "@/components/layout";
@@ -484,6 +486,25 @@ function InvoiceCard({
         {getStatusBadge(inv.status)}
       </div>
 
+      {/* View / Download row */}
+      <div className="flex gap-2 pt-1">
+        <a
+          href={`${API_BASE}/invoices/${inv.id}/file`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 h-8 flex items-center justify-center gap-1.5 border border-primary/25 text-primary hover:bg-primary/8 rounded-[8px] text-xs font-medium transition-colors"
+        >
+          <Eye className="w-3.5 h-3.5" /> צפייה
+        </a>
+        <a
+          href={`${API_BASE}/invoices/${inv.id}/file`}
+          download
+          className="flex-1 h-8 flex items-center justify-center gap-1.5 border border-border text-muted-foreground hover:text-foreground hover:bg-elevated rounded-[8px] text-xs font-medium transition-colors"
+        >
+          <Download className="w-3.5 h-3.5" /> הורדה
+        </a>
+      </div>
+
       <div className="flex items-center gap-2 pt-1 border-t border-border">
         {inv.status === "pending_review" && (
           <button
@@ -546,87 +567,93 @@ const DATE_PRESETS_LIST = [
 ] as const;
 
 function DateRangePicker({
-  activePreset,
-  customFrom,
-  customTo,
-  onPreset,
-  onCustomChange,
-  onCustomApply,
-  onClose,
+  activePreset, customFrom, customTo, onPreset, onCustomChange, onCustomApply, onClose, anchorRef,
 }: {
-  activePreset: string;
-  customFrom: string;
-  customTo: string;
-  onPreset: (k: string) => void;
-  onCustomChange: (from: string, to: string) => void;
-  onCustomApply: () => void;
-  onClose: () => void;
+  activePreset: string; customFrom: string; customTo: string;
+  onPreset: (k: string) => void; onCustomChange: (from: string, to: string) => void;
+  onCustomApply: () => void; onClose: () => void;
+  anchorRef?: React.RefObject<HTMLButtonElement>;
 }) {
+  const [top, setTop] = useState(60);
+  const [right, setRight] = useState(16);
+
+  useLayoutEffect(() => {
+    if (anchorRef?.current) {
+      const r = anchorRef.current.getBoundingClientRect();
+      setTop(r.bottom + 8);
+      setRight(window.innerWidth - r.right);
+    }
+  }, [anchorRef]);
+
   return (
-    <div
-      className="absolute top-full right-0 mt-2 z-50 w-72 rounded-2xl border border-border bg-card shadow-2xl p-4"
-      dir="rtl"
-      onClick={(e) => e.stopPropagation()}
-    >
-      <p className="text-xs font-semibold text-muted-foreground mb-2.5">בחר טווח תאריכים</p>
-      <div className="grid grid-cols-2 gap-1.5 mb-4">
-        {DATE_PRESETS_LIST.filter((p) => p.key !== "all").map((p) => (
+    <>
+      <div className="fixed inset-0 z-[190]" onClick={onClose} />
+      <div
+        style={{ top, right }}
+        className="fixed z-[200] w-72 rounded-2xl border border-border bg-card shadow-2xl p-4"
+        dir="rtl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-xs font-semibold text-muted-foreground mb-2.5">בחר טווח תאריכים</p>
+        <div className="grid grid-cols-2 gap-1.5 mb-4">
+          {DATE_PRESETS_LIST.filter((p) => p.key !== "all").map((p) => (
+            <button
+              key={p.key}
+              onClick={() => onPreset(p.key)}
+              className={`h-8 rounded-[10px] text-xs font-medium transition-all ${
+                activePreset === p.key
+                  ? "bg-primary text-white"
+                  : "bg-elevated border border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
           <button
-            key={p.key}
-            onClick={() => onPreset(p.key)}
-            className={`h-8 rounded-[10px] text-xs font-medium transition-all ${
-              activePreset === p.key
+            onClick={() => onPreset("all")}
+            className={`h-8 col-span-2 rounded-[10px] text-xs font-medium transition-all ${
+              activePreset === "all"
                 ? "bg-primary text-white"
                 : "bg-elevated border border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
             }`}
           >
-            {p.label}
+            הכל
           </button>
-        ))}
-        <button
-          onClick={() => onPreset("all")}
-          className={`h-8 col-span-2 rounded-[10px] text-xs font-medium transition-all ${
-            activePreset === "all"
-              ? "bg-primary text-white"
-              : "bg-elevated border border-border text-muted-foreground hover:text-foreground hover:border-primary/40"
-          }`}
-        >
-          הכל
-        </button>
-      </div>
-      <div className="border-t border-border pt-3 space-y-2">
-        <p className="text-xs text-muted-foreground">טווח מותאם אישית</p>
-        <div className="flex gap-2 items-center">
-          <div className="flex flex-col gap-1 flex-1">
-            <span className="text-[10px] text-muted-foreground">מ-</span>
-            <input
-              type="date"
-              value={customFrom}
-              onChange={(e) => onCustomChange(e.target.value, customTo)}
-              style={{ colorScheme: "dark" }}
-              className="h-8 px-2 rounded-[10px] border border-border bg-background text-xs text-foreground w-full focus:outline-none focus:ring-1 focus:ring-primary/40"
-            />
-          </div>
-          <div className="flex flex-col gap-1 flex-1">
-            <span className="text-[10px] text-muted-foreground">עד</span>
-            <input
-              type="date"
-              value={customTo}
-              onChange={(e) => onCustomChange(customFrom, e.target.value)}
-              style={{ colorScheme: "dark" }}
-              className="h-8 px-2 rounded-[10px] border border-border bg-background text-xs text-foreground w-full focus:outline-none focus:ring-1 focus:ring-primary/40"
-            />
-          </div>
         </div>
-        <button
-          onClick={onCustomApply}
-          disabled={!customFrom || !customTo}
-          className="w-full h-8 rounded-[10px] bg-primary/15 border border-primary/30 text-primary text-xs font-medium hover:bg-primary/25 transition-colors disabled:opacity-40"
-        >
-          החל טווח
-        </button>
+        <div className="border-t border-border pt-3 space-y-2">
+          <p className="text-xs text-muted-foreground">טווח מותאם אישית</p>
+          <div className="flex gap-2 items-center">
+            <div className="flex flex-col gap-1 flex-1">
+              <span className="text-[10px] text-muted-foreground">מ-</span>
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => onCustomChange(e.target.value, customTo)}
+                style={{ colorScheme: "dark" }}
+                className="h-8 px-2 rounded-[10px] border border-border bg-background text-xs text-foreground w-full focus:outline-none focus:ring-1 focus:ring-primary/40"
+              />
+            </div>
+            <div className="flex flex-col gap-1 flex-1">
+              <span className="text-[10px] text-muted-foreground">עד</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => onCustomChange(customFrom, e.target.value)}
+                style={{ colorScheme: "dark" }}
+                className="h-8 px-2 rounded-[10px] border border-border bg-background text-xs text-foreground w-full focus:outline-none focus:ring-1 focus:ring-primary/40"
+              />
+            </div>
+          </div>
+          <button
+            onClick={onCustomApply}
+            disabled={!customFrom || !customTo}
+            className="w-full h-8 rounded-[10px] bg-primary/15 border border-primary/30 text-primary text-xs font-medium hover:bg-primary/25 transition-colors disabled:opacity-40"
+          >
+            החל טווח
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -649,6 +676,7 @@ export default function Dashboard() {
     to:   new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59),
   }));
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const datePickerBtnRef = useRef<HTMLButtonElement>(null);
   const [activePreset, setActivePreset] = useState("month");
   const [customFrom, setCustomFrom] = useState(() => format(new Date(now.getFullYear(), now.getMonth(), 1), "yyyy-MM-dd"));
   const [customTo,   setCustomTo]   = useState(() => format(new Date(now.getFullYear(), now.getMonth() + 1, 0), "yyyy-MM-dd"));
@@ -778,8 +806,9 @@ export default function Dashboard() {
         {/* ── Mobile action row: יומן + upload + scan ── */}
         <div className="sm:hidden flex items-center gap-2 mt-3">
           {/* Date range button (mobile) */}
-          <div className="relative flex-1 min-w-0">
+          <div className="flex-1 min-w-0">
             <button
+              ref={datePickerBtnRef}
               onClick={() => setDatePickerOpen((o) => !o)}
               className="w-full h-10 rounded-[10px] flex items-center gap-2 px-3 border border-border bg-card text-[12px] font-semibold text-foreground hover:bg-elevated active:scale-95 transition-all"
             >
@@ -789,6 +818,7 @@ export default function Dashboard() {
             </button>
             {datePickerOpen && (
               <DateRangePicker
+                anchorRef={datePickerBtnRef}
                 activePreset={activePreset}
                 customFrom={customFrom}
                 customTo={customTo}
@@ -825,8 +855,9 @@ export default function Dashboard() {
       <div className="hidden sm:flex items-center justify-between gap-3 mb-1" dir="rtl">
 
         {/* יומן — Date range picker button */}
-        <div className="relative">
+        <div>
           <button
+            ref={datePickerBtnRef}
             onClick={() => setDatePickerOpen((o) => !o)}
             className="h-10 px-4 rounded-[10px] flex items-center gap-2 border border-border bg-card text-[13px] font-semibold text-foreground hover:bg-elevated hover:border-primary/40 active:scale-95 transition-all whitespace-nowrap"
           >
@@ -838,6 +869,7 @@ export default function Dashboard() {
           </button>
           {datePickerOpen && (
             <DateRangePicker
+              anchorRef={datePickerBtnRef}
               activePreset={activePreset}
               customFrom={customFrom}
               customTo={customTo}
