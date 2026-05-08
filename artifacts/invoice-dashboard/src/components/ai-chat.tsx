@@ -60,7 +60,7 @@ export function AIChat() {
   const plan = getSelectedPlan();
   const isPaid = plan === "starter" || plan === "business";
   const trial = getTrialInfo();
-  const hasAccess = isPaid || trial.inTrial;
+  const hasAccess = true;
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConvId, setActiveConvId]   = useState<number | null>(null);

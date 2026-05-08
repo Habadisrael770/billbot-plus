@@ -71,7 +71,7 @@ const PLAN_LIMITS: Record<string, { invoices: number; emails: number; whatsapp: 
 };
 
 function usePlanStats() {
-  const [plan] = useState<string>(() => localStorage.getItem("bb_plan") ?? "basic");
+  const [plan] = useState<string>(() => localStorage.getItem("bb_plan") ?? "business");
   const [totalInvoices, setTotalInvoices] = useState(0);
   const [blockedVendors, setBlockedVendors] = useState(0);
   const [gmailConnected, setGmailConnected] = useState(false);

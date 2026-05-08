@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Switch, Route, Router as WouterRouter, useLocation } from "wouter";
+import { motion, AnimatePresence } from "framer-motion";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -160,21 +161,34 @@ function AppRouter() {
     );
   }
 
+  const [location] = useLocation();
+
   return (
     <>
       <GmailRedirectHandler />
-      <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/expenses" component={ExpensesPage} />
-        <Route path="/export" component={ExpensesPage} />
-        <Route path="/suppliers" component={SuppliersPage} />
-        <Route path="/integrations" component={IntegrationsPage} />
-        <Route path="/help" component={HelpPage} />
-        <Route path="/profile" component={Profile} />
-        <Route path="/settings" component={SettingsPage} />
-        <Route path="/privacy" component={PrivacyPolicy} />
-        <Route component={NotFound} />
-      </Switch>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={location}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+          style={{ minHeight: "100%" }}
+        >
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/expenses" component={ExpensesPage} />
+            <Route path="/export" component={ExpensesPage} />
+            <Route path="/suppliers" component={SuppliersPage} />
+            <Route path="/integrations" component={IntegrationsPage} />
+            <Route path="/help" component={HelpPage} />
+            <Route path="/profile" component={Profile} />
+            <Route path="/settings" component={SettingsPage} />
+            <Route path="/privacy" component={PrivacyPolicy} />
+            <Route component={NotFound} />
+          </Switch>
+        </motion.div>
+      </AnimatePresence>
 
       {/* Onboarding modal — renders on top of dashboard */}
       {!onboarded && (

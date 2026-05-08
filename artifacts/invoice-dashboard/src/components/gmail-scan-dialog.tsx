@@ -38,12 +38,7 @@ const DATE_PRESETS: { key: DatePreset; label: string; months?: number }[] = [
 ];
 
 function isPaidPlan() {
-  try {
-    const raw = localStorage.getItem("bb_onboarding_progress");
-    if (!raw) return false;
-    const p = JSON.parse(raw);
-    return p.plan && p.plan !== "free";
-  } catch { return false; }
+  return true;
 }
 
 interface ScanResult {
