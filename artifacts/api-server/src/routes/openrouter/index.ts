@@ -33,11 +33,13 @@ async function buildSystemPrompt(): Promise<string> {
     // Recent invoices for context
     const recent = await db
       .select({
+        id: invoicesTable.id,
         vendor: invoicesTable.vendor_name,
         amount: invoicesTable.total_amount,
         currency: invoicesTable.currency,
         date: invoicesTable.invoice_date,
-        category: invoicesTable.category,
+        category: invoicesTable.final_category,
+        suggestedCategory: invoicesTable.suggested_category,
         status: invoicesTable.status,
       })
       .from(invoicesTable)
@@ -46,7 +48,7 @@ async function buildSystemPrompt(): Promise<string> {
 
     const recentBlock = recent.length > 0
       ? `\n== 8 חשבוניות אחרונות ==\n${recent.map((r) =>
-          `• ${r.vendor ?? "—"} | ${r.amount ?? "?"} ${r.currency ?? "₪"} | ${r.date ?? "?"} | ${r.category ?? "ללא קטגוריה"} | ${r.status ?? ""}`
+          `• ID:${r.id} | ${r.vendor ?? "—"} | ${r.amount ?? "?"} ${r.currency ?? "₪"} | ${r.date ?? "?"} | ${r.category ?? r.suggestedCategory ?? "ללא קטגוריה"} | ${r.status ?? ""}`
         ).join("\n")}`
       : "";
 
@@ -103,7 +105,18 @@ ${recentBlock}
 • **פורמט קריא** — השתמש ב-bullets, מספרים, headers כשמתאים
 • **שמור על טון מקצועי-ידידותי** — לא יבש מדי, לא פארי מדי
 • **אל תמציא נתונים** — אם אין לך מידע ספציפי, אמור זאת בכנות
-• **זכרון:** אם המשתמש אומר פרטים חשובים על עסקו (שם עסק, ענף, שם, העדפות) — שמור אותם בזיכרון לשיחות הבאות`;
+• **זכרון:** אם המשתמש אומר פרטים חשובים על עסקו (שם עסק, ענף, שם, העדפות) — שמור אותם בזיכרון לשיחות הבאות
+
+== שיוך קטגוריה לחשבוניות ==
+כאשר המשתמש מבקש לשייך/לאשר קטגוריה לחשבונית, או כאשר זיהית חשבונית ללא קטגוריה:
+1. ציין את הקטגוריה המוצעת בתגובה שלך
+2. **חובה:** בסוף התגובה הוסף בשורה נפרדת את הסימון המדויק:
+   [[CAT_CONFIRM:UUID_כאן:שם_קטגוריה_כאן]]
+   לדוגמה: [[CAT_CONFIRM:3fa85f64-5717-4562-b3fc-2c963f66afa6:תקשורת]]
+3. השתמש תמיד ב-UUID המלא של החשבונית מהנתונים למעלה (שדה ID)
+4. שם הקטגוריה חייב להיות בדיוק אחד מהשמות הקיימים במערכת
+5. אל תוסיף רווחים או תווים נוספים בתוך [[ ]]
+6. הסימון הזה יציג למשתמש כפתורי אישור/דחייה אוטומטית — אל תסביר אותו`;
   } catch {
     return `אתה BillBOT+ AI — עוזר עסקי חכם למערכת ניהול חשבוניות לעסקים ישראלים. השם שלך הוא "בילי".
 ענה תמיד בעברית, בצורה מקצועית וידידותית. היום: ${today}.`;

@@ -50,8 +50,101 @@ function getTrialInfo(): { inTrial: boolean; daysLeft: number; trialExpired: boo
 const BASE_URL = import.meta.env.BASE_URL ?? "/";
 const API_BASE = BASE_URL.replace(/\/$/, "") + "/api";
 
-type Message = { id: number; role: "user" | "assistant"; content: string };
+type CatConfirm = { invoiceId: string; suggestedCategory: string };
+type Message = { id: number; role: "user" | "assistant"; content: string; catConfirm?: CatConfirm };
 type Conversation = { id: number; title: string; createdAt: string };
+
+function parseCatConfirm(raw: string): { text: string; confirm?: CatConfirm } {
+  const match = raw.match(/\[\[CAT_CONFIRM:([a-f0-9-]{36}):([^\]]+)\]\]/i);
+  if (!match) return { text: raw };
+  return {
+    text: raw.replace(match[0], "").trim(),
+    confirm: { invoiceId: match[1].trim(), suggestedCategory: match[2].trim() },
+  };
+}
+
+function CategoryConfirmCard({
+  invoiceId, suggestedCategory, apiBase, categories, onDone,
+}: {
+  invoiceId: string; suggestedCategory: string; apiBase: string;
+  categories: string[]; onDone: (msg: string) => void;
+}) {
+  const [phase, setPhase] = React.useState<"confirm" | "pick" | "done">("confirm");
+  const [loading, setLoading] = React.useState(false);
+
+  const assign = async (category: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/invoices/${invoiceId}/category`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ finalCategory: category }),
+      });
+      if (!res.ok) throw new Error("failed");
+      setPhase("done");
+      onDone(`✅ הקטגוריה **${category}** שויכה בהצלחה לחשבונית.`);
+    } catch {
+      setPhase("done");
+      onDone("❌ שגיאה בשיוך הקטגוריה. אנא נסה שוב.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (phase === "done") return null;
+
+  if (phase === "confirm") {
+    return (
+      <div className="mt-2.5 rounded-xl border border-violet-500/25 bg-violet-500/8 p-3 space-y-2.5">
+        <p className="text-xs text-white/65">
+          קטגוריה מוצעת: <strong className="text-violet-300">{suggestedCategory}</strong>
+        </p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => assign(suggestedCategory)}
+            disabled={loading}
+            className="flex-1 h-8 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-all disabled:opacity-50 active:scale-95"
+          >
+            {loading ? "..." : "✓ אשר"}
+          </button>
+          <button
+            onClick={() => setPhase("pick")}
+            disabled={loading}
+            className="flex-1 h-8 rounded-lg border border-white/15 hover:bg-white/8 text-white/65 hover:text-white text-xs transition-all active:scale-95"
+          >
+            ✗ לא מאשר
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const all = categories.length > 0
+    ? [...categories.filter(c => c !== "אחר"), "אחר"]
+    : ["כללי ומנהלי", "תקשורת", "נסיעות והובלה", "ציוד משרדי", "שיווק ופרסום", "תוכנה ומנויים", "שכ״ד", "חשמל ואנרגיה", "מזון ואירוח", "אחר"];
+
+  return (
+    <div className="mt-2.5 rounded-xl border border-white/10 bg-black/25 p-3">
+      <p className="text-xs text-white/50 mb-2">בחר קטגוריה:</p>
+      <div className="space-y-0.5 max-h-44 overflow-y-auto">
+        {all.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => assign(cat)}
+            disabled={loading}
+            className={`w-full text-right text-xs px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 active:scale-95 ${
+              cat === "אחר"
+                ? "text-white/40 hover:text-white/70 hover:bg-white/5"
+                : "text-white/75 hover:text-white hover:bg-violet-500/20"
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function AIChat() {
   const [launcherOpen, setLauncherOpen] = useState(false);
@@ -68,8 +161,18 @@ export function AIChat() {
   const [input, setInput]                 = useState("");
   const [isStreaming, setIsStreaming]     = useState(false);
   const [showConvList, setShowConvList]   = useState(false);
+  const [categories, setCategories]       = useState<string[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    fetch(`${API_BASE}/categories`)
+      .then(r => r.json())
+      .then((data: { name: string }[]) => {
+        if (Array.isArray(data)) setCategories(data.map(c => c.name));
+      })
+      .catch(() => {});
+  }, []);
 
   const scrollBottom = () =>
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
@@ -169,6 +272,13 @@ export function AIChat() {
           } catch { /* skip malformed */ }
         }
       }
+      // After streaming ends, detect [[CAT_CONFIRM:...]] and attach to message
+      setMessages((p) => p.map((m) => {
+        if (m.id !== assistantId) return m;
+        const parsed = parseCatConfirm(m.content);
+        if (!parsed.confirm) return m;
+        return { ...m, content: parsed.text, catConfirm: parsed.confirm };
+      }));
     } catch {
       setMessages((p) =>
         p.map((m) => m.id === assistantId ? { ...m, content: "שגיאה בחיבור לשרת AI." } : m)
@@ -177,6 +287,11 @@ export function AIChat() {
       setIsStreaming(false);
       inputRef.current?.focus();
     }
+  };
+
+  const injectBotMessage = (content: string) => {
+    setMessages(p => [...p, { id: Date.now(), role: "assistant", content }]);
+    scrollBottom();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -445,21 +560,32 @@ export function AIChat() {
                 <div className="flex-1 overflow-y-auto p-4 space-y-3">
                   {messages.map((msg) => (
                     <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-start" : "justify-end"}`}>
-                      <div
-                        className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm leading-relaxed ${
-                          msg.role === "user"
-                            ? "bg-violet-600 text-white rounded-tr-sm"
-                            : "bg-white/8 border border-white/10 text-white/90 rounded-tl-sm"
-                        }`}
-                      >
-                        {msg.content === "" && isStreaming ? (
-                          <span className="inline-flex gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                            <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-                            <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "300ms" }} />
-                          </span>
-                        ) : (
-                          <span className="whitespace-pre-wrap">{renderContent(msg.content)}</span>
+                      <div className={`max-w-[85%] ${msg.role === "user" ? "" : "w-full"}`}>
+                        <div
+                          className={`rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                            msg.role === "user"
+                              ? "bg-violet-600 text-white rounded-tr-sm"
+                              : "bg-white/8 border border-white/10 text-white/90 rounded-tl-sm"
+                          }`}
+                        >
+                          {msg.content === "" && isStreaming ? (
+                            <span className="inline-flex gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "0ms" }} />
+                              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "150ms" }} />
+                              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                            </span>
+                          ) : (
+                            <span className="whitespace-pre-wrap">{renderContent(msg.content)}</span>
+                          )}
+                        </div>
+                        {msg.catConfirm && (
+                          <CategoryConfirmCard
+                            invoiceId={msg.catConfirm.invoiceId}
+                            suggestedCategory={msg.catConfirm.suggestedCategory}
+                            apiBase={API_BASE}
+                            categories={categories}
+                            onDone={injectBotMessage}
+                          />
                         )}
                       </div>
                     </div>
