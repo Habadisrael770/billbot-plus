@@ -1,0 +1,105 @@
+2026-05-07T13:23:00Z info: Deployment: 9472a886-15fb-42cc-98bc-658eb7c37242
+2026-05-07T13:23:00Z info: Build: 51824aae-37a0-491c-93d2-6b90507eb8b7
+2026-05-07T13:23:07Z info: Running Security Scan
+2026-05-07T13:23:54Z info: Security Scan Complete
+2026-05-07T13:24:26Z info: Installing packages
+--> pnpm install
+
+Scope: all 11 workspace projects
+
+
+   ╭─────────────────────────────────────────╮
+   │                                         │
+   │   Update available! 10.26.1 → 11.0.8.   │
+   │   Changelog: https://pnpm.io/v/11.0.8   │
+   │    To update, run: pnpm add -g pnpm     │
+   │                                         │
+   ╰─────────────────────────────────────────╯
+
+
+Lockfile is up to date, resolution step is skipped
+
+Already up to date
+
+. preinstall$ sh -c 'rm -f package-lock.json yarn.lock; case "$npm_config_user_agent" in pnpm/*) ;; *) echo "Use pnpm instead" >&2; exit 1 ;; esac'
+
+. preinstall: Done
+
+Done in 3.4s using pnpm v10.26.1
+
+2026-05-07T13:24:29Z info: Starting Build
+
+> @workspace/api-server@0.0.0 build /home/runner/workspace/artifacts/api-server
+> tsx ./build.ts
+
+
+building server...
+
+
+  dist/index.js  2.9mb ⚠️
+
+⚡ Done in 643ms
+
+
+> @workspace/invoice-dashboard@0.0.0 build /home/runner/workspace/artifacts/invoice-dashboard
+> vite build --config vite.config.ts
+
+
+vite v7.3.1 building client environment for production...
+
+transforming...
+
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+
+src/components/ui/label.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+
+src/components/ui/avatar.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+
+src/components/ui/dropdown-menu.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+
+src/components/ui/select.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+
+✓ 3175 modules transformed.
+
+rendering chunks...
+
+computing gzip size...
+
+dist/public/index.html                     1.08 kB │ gzip:   0.57 kB
+dist/public/assets/index-DBvvZPcg.css    181.21 kB │ gzip:  26.60 kB
+
+dist/public/assets/index-7IdSC9cm.js   1,375.13 kB │ gzip: 383.14 kB
+
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+
+✓ built in 6.76s
+
+
+> @workspace/loyalty-club@0.0.0 build /home/runner/workspace/artifacts/loyalty-club
+> vite build --config vite.config.ts
+
+
+vite v7.3.1 building client environment for production...
+
+transforming...
+
+src/components/ui/tooltip.tsx (2:0): Error when using sourcemap for reporting an error: Can't resolve original location of error.
+
+✓ 1783 modules transformed.
+
+rendering chunks...
+
+computing gzip size...
+
+dist/public/index.html                   0.79 kB │ gzip:   0.45 kB
+
+dist/public/assets/index-Ds3Db_Cm.css   96.93 kB │ gzip:  15.93 kB
+dist/public/assets/index-Cnta3ANp.js   416.60 kB │ gzip: 128.75 kB
+
+✓ built in 3.09s
+
+Removed all cached metadata files
