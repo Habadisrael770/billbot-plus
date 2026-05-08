@@ -70,6 +70,8 @@ const PLAN_LIMITS: Record<string, { invoices: number; emails: number; whatsapp: 
   business: { invoices: 999999,   emails: 10, whatsapp: 10, whatsappReceipts: 100, blockedVendors: 999999 },
 };
 
+const _PROFILE_BASE = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "") + "/api";
+
 function usePlanStats() {
   const [plan] = useState<string>(() => localStorage.getItem("bb_plan") ?? "business");
   const [totalInvoices, setTotalInvoices] = useState(0);
@@ -78,11 +80,11 @@ function usePlanStats() {
   const [outlookCount, setOutlookCount] = useState(0);
 
   useEffect(() => {
-    fetch("/api/invoices").then(r => r.json()).then((data: unknown[]) => {
+    fetch(`${_PROFILE_BASE}/invoices`).then(r => r.json()).then((data: unknown[]) => {
       if (Array.isArray(data)) setTotalInvoices(data.length);
     }).catch(() => {});
 
-    fetch("/api/vendors").then(r => r.json()).then((data: unknown[]) => {
+    fetch(`${_PROFILE_BASE}/vendors`).then(r => r.json()).then((data: unknown[]) => {
       if (Array.isArray(data)) {
         const blocked = (data as { isBlocked?: boolean }[]).filter(v => v.isBlocked).length;
         setBlockedVendors(blocked);

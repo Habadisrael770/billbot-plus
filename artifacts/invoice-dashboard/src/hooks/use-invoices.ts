@@ -37,7 +37,7 @@ export function useInvoiceSummaryByMonth(year: number, month: number) {
         suspected_duplicates: number;
       }>;
     },
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
   });
 }
 
