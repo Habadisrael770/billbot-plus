@@ -29,8 +29,8 @@ const pdfParse = require("pdf-parse") as (
 ) => Promise<{ text: string; numpages: number; info: Record<string, unknown> }>;
 
 // ─── Models ────────────────────────────────────────────────────────────────
-const VISION_MODEL = "google/gemini-flash-1.5";
-const TEXT_MODEL   = "google/gemini-flash-1.5";
+const VISION_MODEL = "google/gemini-2.0-flash-001";
+const TEXT_MODEL   = "google/gemini-2.0-flash-001";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 export type PdfType          = "text_pdf" | "scanned_pdf" | "encrypted_pdf" | "corrupted_pdf" | "not_pdf";
@@ -135,6 +135,7 @@ Critical rules:
 // ─── JSON extraction helper ─────────────────────────────────────────────────
 function extractJson(raw: string): Record<string, unknown> {
   const cleaned = raw
+    .replace(/\0/g, "")          // strip null bytes — PostgreSQL rejects 0x00 in UTF-8
     .replace(/```json\s*/gi, "")
     .replace(/```\s*/g, "")
     .trim();

@@ -555,6 +555,74 @@ function InvoiceCard({
   );
 }
 
+// ── Re-extract banner ─────────────────────────────────────────────────────────
+function ReExtractBanner({ totalUnprocessed, apiBase }: { totalUnprocessed: number; apiBase: string }) {
+  const [state, setState] = useState<"idle" | "running" | "done">("idle");
+  const [processed, setProcessed] = useState(0);
+  const [remaining, setRemaining] = useState(totalUnprocessed);
+  const runningRef = useRef(false);
+
+  const startExtraction = async () => {
+    if (runningRef.current) return;
+    runningRef.current = true;
+    setState("running");
+    let done = false;
+    let totalProcessed = 0;
+    while (!done) {
+      try {
+        const res = await fetch(`${apiBase}/invoices/re-extract?limit=20`, { method: "POST" });
+        const data = await res.json() as { processed: number; remaining: number };
+        totalProcessed += data.processed ?? 0;
+        setProcessed(totalProcessed);
+        setRemaining(data.remaining ?? 0);
+        if ((data.remaining ?? 0) === 0 || (data.processed ?? 0) === 0) {
+          done = true;
+        }
+      } catch {
+        done = true;
+      }
+    }
+    runningRef.current = false;
+    setState("done");
+  };
+
+  if (state === "done") return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-[14px] border border-amber-500/30 bg-amber-500/8 px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center gap-3"
+      dir="rtl"
+    >
+      <div className="flex-1 min-w-0">
+        <p className="text-[13px] font-semibold text-amber-400">
+          {state === "running"
+            ? `מעבד חשבוניות... (${processed} עובדו, ${remaining} נותרו)`
+            : `נמצאו ${remaining.toLocaleString()} חשבוניות ללא נתוני AI`}
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          {state === "running"
+            ? "מחלץ נתונים — שם ספק, סכום, תאריך..."
+            : "לחץ לעיבוד חשבוניות וחילוץ שם ספק, סכום ותאריך"}
+        </p>
+      </div>
+      <button
+        onClick={startExtraction}
+        disabled={state === "running"}
+        className="h-9 px-4 rounded-[10px] text-[12px] font-semibold whitespace-nowrap shrink-0 disabled:opacity-60 active:scale-95 transition-all flex items-center gap-2"
+        style={{ background: "linear-gradient(90deg,#f59e0b,#ef4444)", color: "#fff" }}
+      >
+        {state === "running" ? (
+          <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />מעבד...</>
+        ) : (
+          "⚡ עבד חשבוניות"
+        )}
+      </button>
+    </motion.div>
+  );
+}
+
 // ── Date Range Picker popup ───────────────────────────────────────────────────
 const DATE_PRESETS_LIST = [
   { key: "today", label: "היום"      },
@@ -672,12 +740,12 @@ export default function Dashboard() {
 
   // ── Date range state ──────────────────────────────────────────────────────
   const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>(() => ({
-    from: new Date(now.getFullYear(), now.getMonth(), 1),
-    to:   new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59),
+    from: new Date(2020, 0, 1),
+    to:   new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59),
   }));
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const datePickerBtnRef = useRef<HTMLButtonElement>(null);
-  const [activePreset, setActivePreset] = useState("month");
+  const [activePreset, setActivePreset] = useState("all");
   const [customFrom, setCustomFrom] = useState(() => format(new Date(now.getFullYear(), now.getMonth(), 1), "yyyy-MM-dd"));
   const [customTo,   setCustomTo]   = useState(() => format(new Date(now.getFullYear(), now.getMonth() + 1, 0), "yyyy-MM-dd"));
 
@@ -957,6 +1025,11 @@ export default function Dashboard() {
           onClick={() => goToExpenses("כפול")}
         />
       </div>
+
+      {/* ── Re-extraction banner (shows when unprocessed invoices exist) ── */}
+      {(invoices as InvoiceRow[] | undefined)?.some(i => !i.extractionStatus) && (
+        <ReExtractBanner totalUnprocessed={(invoices as InvoiceRow[]).filter(i => !i.extractionStatus).length} apiBase={API_BASE} />
+      )}
 
       {/* ── Optimize Account Widget ── */}
       <OptimizeWidget invoiceCount={invoices?.length ?? 0} />
@@ -1256,10 +1329,10 @@ export default function Dashboard() {
                               <Merge className="w-3.5 h-3.5 text-primary" />
                               מיזוג ספק
                             </DropdownMenuItem>
-                            {inv.filePath && (
+                            {inv.filePath && inv.filePath !== "manual" && (
                               <DropdownMenuItem
                                 className="focus:bg-elevated cursor-pointer rounded-lg text-sm gap-2"
-                                onClick={() => window.open(inv.filePath!, "_blank")}
+                                onClick={() => window.open(`${API_BASE}/invoices/${inv.id}/file`, "_blank")}
                               >
                                 <FileCheck className="w-3.5 h-3.5 text-purple" />
                                 צפה בקובץ

@@ -646,7 +646,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [gmailScanOpen, setGmailScanOpen] = useState(false);
   const [accountantOpen, setAccountantOpen] = useState(false);
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
   const { search, setSearch } = useSearch();
   const { theme, toggleTheme } = useTheme();
 
@@ -940,6 +940,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <GmailScanDialog
         isOpen={gmailScanOpen}
         onClose={() => setGmailScanOpen(false)}
+        onViewInvoices={() => {
+          setGmailScanOpen(false);
+          sessionStorage.setItem("bb_expense_source_filter", "gmail");
+          navigate("/expenses");
+        }}
       />
 
       {/* Send to Accountant Modal */}

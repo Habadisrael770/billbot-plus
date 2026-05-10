@@ -5,7 +5,7 @@ import multer from "multer";
 import * as XLSX from "xlsx";
 import { db } from "@workspace/db";
 import { invoicesTable, vendorsTable, invoiceLineItemsTable } from "@workspace/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, isNull } from "drizzle-orm";
 import {
   processInvoice,
   updateInvoiceStatus,
@@ -330,6 +330,127 @@ router.post(
     }
   }
 );
+
+/**
+ * POST /api/invoices/re-extract
+ * Background re-extraction for invoices that were saved without AI processing.
+ * Processes up to `limit` (default 20) invoices per call.
+ */
+router.post("/re-extract", async (req, res) => {
+  const limit = Math.min(Number(req.query["limit"] ?? req.body?.limit ?? 20), 50);
+  try {
+    // Process newest first, skip files clearly not on disk (old /tmp or missing paths)
+    const pending = await db
+      .select({
+        id:       invoicesTable.id,
+        filePath: invoicesTable.file_path,
+      })
+      .from(invoicesTable)
+      .where(isNull(invoicesTable.extraction_status))
+      .orderBy(sql`${invoicesTable.created_at} DESC`)
+      .limit(limit);
+
+    if (pending.length === 0) {
+      return res.json({ processed: 0, remaining: 0, message: "כל החשבוניות כבר עובדו" });
+    }
+
+    // Import services once
+    const { normalizeVendorName } = await import("../utils/normalizeVendorName.js");
+    const { findOrCreateVendor } = await import("../services/vendorService.js");
+    const { suggestCategory } = await import("../services/categoryService.js");
+    const { detectForeignSupplier } = await import("../utils/foreignSupplierDetector.js");
+
+    let processed = 0;
+    let failed = 0;
+    const errors: string[] = [];
+
+    // Process 5 in parallel for speed
+    const CONCURRENCY = 5;
+    for (let i = 0; i < pending.length; i += CONCURRENCY) {
+      const batch = pending.slice(i, i + CONCURRENCY);
+      await Promise.all(batch.map(async (inv) => {
+        try {
+          const fp = inv.filePath;
+          if (!fp || fp === "manual" || fp.startsWith("/tmp") || !fs.existsSync(fp)) {
+            await db.update(invoicesTable)
+              .set({ extraction_status: "failed", extraction_source: "failed" } as Record<string, unknown>)
+              .where(eq(invoicesTable.id, inv.id));
+            failed++;
+            return;
+          }
+
+          const aiResult = await extractInvoiceFromFile(fp);
+          const rawVendor = aiResult.vendor ?? "";
+          const normalizedVendor = normalizeVendorName(rawVendor);
+          let vendorId: string | null = null;
+          let canonicalName: string | null = null;
+
+          if (rawVendor.trim()) {
+            try {
+              const vr = await findOrCreateVendor(rawVendor, aiResult.tax_id ?? undefined);
+              vendorId = vr.vendorId;
+              canonicalName = vr.canonicalName;
+            } catch { /* non-fatal */ }
+          }
+
+          const categoryResult = await suggestCategory(canonicalName || rawVendor, aiResult.tax_id ?? undefined);
+          const foreignResult = detectForeignSupplier(canonicalName || rawVendor, aiResult.currency ?? null, aiResult.tax_id ?? null);
+          let vat = aiResult.vat;
+          if (foreignResult.is_foreign) vat = 0;
+
+          // Strip null bytes (0x00) – PostgreSQL rejects them in UTF-8 text columns
+          const s = (v: string | null | undefined): string | null =>
+            v ? v.replace(/\0/g, "").trim() || null : null;
+
+          await db.update(invoicesTable)
+            .set({
+              raw_vendor_name:        s(rawVendor),
+              normalized_vendor_name: s(normalizedVendor),
+              vendor_id:              vendorId,
+              tax_id:                 s(aiResult.tax_id),
+              invoice_number:         s(aiResult.invoice_number),
+              invoice_date:           s(aiResult.date),
+              subtotal:               aiResult.subtotal  != null ? String(aiResult.subtotal)  : null,
+              vat:                    vat                != null ? String(vat)                 : null,
+              total:                  aiResult.total     != null ? String(aiResult.total)      : null,
+              currency:               s(aiResult.currency) ?? "ILS",
+              document_type:          (s(aiResult.document_type) ?? "supplier_invoice") as "supplier_invoice" | "receipt" | "credit_note" | "other",
+              extraction_confidence:  String(aiResult.confidence ?? 0),
+              extraction_source:      s(aiResult.extraction_source),
+              extraction_status:      s(aiResult.extraction_status),
+              review_reason:          s(aiResult.review_reason),
+              pdf_type:               s(aiResult.pdf_type),
+              line_items_count:       aiResult.line_items_count   ?? 0,
+              suggested_category:     s(categoryResult.suggested_category),
+              final_category:         s(categoryResult.suggested_category),
+              is_foreign:             foreignResult.is_foreign,
+              supplier_country:       s(foreignResult.country),
+            } as Record<string, unknown>)
+            .where(eq(invoicesTable.id, inv.id));
+
+          processed++;
+        } catch (err: any) {
+          failed++;
+          console.error("[re-extract] FAIL:", JSON.stringify({
+            msg:    err?.message?.slice(0, 150),
+            cause:  err?.cause?.message?.slice(0, 150),
+            code:   err?.cause?.code,
+            detail: err?.cause?.detail?.slice(0, 150),
+          }));
+          errors.push((err?.cause?.message ?? err?.message ?? String(err)).slice(0, 300));
+        }
+      }));
+    }
+
+    const remaining = await db.execute(sql`SELECT COUNT(*)::int AS cnt FROM invoices WHERE extraction_status IS NULL`);
+    const remainingCount = (remaining.rows[0] as { cnt: number })?.cnt ?? 0;
+
+    return res.json({ processed, failed, remaining: remainingCount, errors: errors.slice(0, 3) });
+  } catch (err) {
+    console.error("re-extract error:", err);
+    return res.status(500).json({ error: String(err) });
+  }
+});
 
 /**
  * PATCH /api/invoices/:id/approve

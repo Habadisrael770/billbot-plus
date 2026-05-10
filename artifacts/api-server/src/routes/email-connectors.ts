@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { getAllGmailClients, getGmailStatus } from "../services/gmailOAuth.js";
 import { processInvoice } from "../services/invoiceProcessingService.js";
+import { extractInvoiceFromFile } from "../services/aiExtractService.js";
 import { scanImapForInvoices, listImapAccounts } from "../services/imapService.js";
 
 const router: IRouter = Router();
@@ -149,10 +150,41 @@ async function runGmailScan(
             const filePath = path.join(monthDir, filename);
             fs.writeFileSync(filePath, buffer);
 
+            // Run AI extraction on the saved file
+            let aiResult;
+            try {
+              aiResult = await extractInvoiceFromFile(filePath);
+            } catch {
+              aiResult = null;
+            }
+
+            const emailDateStr = emailDate.toISOString().split("T")[0];
             await processInvoice({
               filePath,
-              extracted: { date: emailDate.toISOString().split("T")[0] },
+              extracted: {
+                vendor:          aiResult?.vendor        ?? null,
+                tax_id:          aiResult?.tax_id        ?? null,
+                invoice_number:  aiResult?.invoice_number ?? null,
+                date:            aiResult?.date           ?? emailDateStr,
+                subtotal:        aiResult?.subtotal       ?? null,
+                vat:             aiResult?.vat            ?? null,
+                total:           aiResult?.total          ?? null,
+                currency:        aiResult?.currency       ?? "ILS",
+                document_type:   aiResult?.document_type  ?? "supplier_invoice",
+              },
+              extractionConfidence: aiResult?.confidence ?? 0,
               sourceType: "email",
+              documentType: (aiResult?.document_type as "supplier_invoice" | "receipt" | "credit_note" | "other") ?? "supplier_invoice",
+              extractionMeta: aiResult ? {
+                line_items:            aiResult.line_items,
+                line_items_count:      aiResult.line_items_count,
+                extraction_source:     aiResult.extraction_source,
+                extraction_status:     aiResult.extraction_status,
+                review_reason:         aiResult.review_reason,
+                pdf_type:              aiResult.pdf_type,
+                header_confidence:     aiResult.header_confidence,
+                line_items_confidence: aiResult.line_items_confidence,
+              } : undefined,
             });
             processed++;
           }
@@ -182,10 +214,39 @@ async function runGmailScan(
           const fname = `imap-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
           const filePath = path.join(monthDir, fname);
           fs.writeFileSync(filePath, att.buffer);
+          let imapAiResult;
+          try {
+            imapAiResult = await extractInvoiceFromFile(filePath);
+          } catch {
+            imapAiResult = null;
+          }
+          const imapDateStr = att.date.toISOString().split("T")[0];
           await processInvoice({
             filePath,
-            extracted: { date: att.date.toISOString().split("T")[0] },
+            extracted: {
+              vendor:          imapAiResult?.vendor         ?? null,
+              tax_id:          imapAiResult?.tax_id         ?? null,
+              invoice_number:  imapAiResult?.invoice_number ?? null,
+              date:            imapAiResult?.date           ?? imapDateStr,
+              subtotal:        imapAiResult?.subtotal       ?? null,
+              vat:             imapAiResult?.vat            ?? null,
+              total:           imapAiResult?.total          ?? null,
+              currency:        imapAiResult?.currency       ?? "ILS",
+              document_type:   imapAiResult?.document_type  ?? "supplier_invoice",
+            },
+            extractionConfidence: imapAiResult?.confidence ?? 0,
             sourceType: "email",
+            documentType: (imapAiResult?.document_type as "supplier_invoice" | "receipt" | "credit_note" | "other") ?? "supplier_invoice",
+            extractionMeta: imapAiResult ? {
+              line_items:            imapAiResult.line_items,
+              line_items_count:      imapAiResult.line_items_count,
+              extraction_source:     imapAiResult.extraction_source,
+              extraction_status:     imapAiResult.extraction_status,
+              review_reason:         imapAiResult.review_reason,
+              pdf_type:              imapAiResult.pdf_type,
+              header_confidence:     imapAiResult.header_confidence,
+              line_items_confidence: imapAiResult.line_items_confidence,
+            } : undefined,
           });
           processed++;
         } catch (err) {

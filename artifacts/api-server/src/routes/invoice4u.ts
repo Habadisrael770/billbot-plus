@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getBranches, getDocuments, getMonthlyReport, exportToCsv, checkApiActive, getUserToken } from "../services/invoice4uService.js";
+import { getBranches, getDocuments, getMonthlyReport, exportToCsv, checkApiActive } from "../services/invoice4uService.js";
 
 const router = Router();
 
@@ -11,24 +11,17 @@ router.get("/status", async (_req, res) => {
       return;
     }
 
-    // Verify the API key can produce a valid user token
-    try { await getUserToken(true); } catch (e) {
-      const isInvalid = (e as Error).message === "API_KEY_INVALID";
-      res.json({
-        connected: false,
-        apiActive: false,
-        error: isInvalid ? "API_KEY_INVALID" : (e as Error).message,
-      });
+    // Validate token with IsAuthenticated
+    const { active: apiActive, orgName, email } = await checkApiActive();
+    if (!apiActive) {
+      res.json({ connected: false, apiActive: false, error: "TOKEN_INVALID" });
       return;
     }
 
-    // Check document API activation
-    const { active: apiActive } = await checkApiActive();
-
-    // Get branches (works even when ApiActive=false for document access)
+    // Get branches
     const branches = await getBranches();
 
-    res.json({ connected: true, apiActive, branches });
+    res.json({ connected: true, apiActive: true, orgName, email, branches });
   } catch (e) {
     res.json({ connected: false, apiActive: false, error: (e as Error).message });
   }

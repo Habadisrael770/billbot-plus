@@ -1,39 +1,15 @@
 // Invoice4U API integration service
-// Correct auth flow: API key → VerifyLoginApiKey → User Token → use for ALL calls
+// Auth: INVOICE4U env var IS the token. Validate with IsAuthenticated.
 
 const API_BASE = "https://api.invoice4u.co.il/Services/ApiService.svc";
 
-function getApiKey(): string {
+function getToken(): string {
   const t = process.env.INVOICE4U;
   if (!t) throw new Error("INVOICE4U secret not configured");
   return t;
 }
 
-// ─── User Token cache ─────────────────────────────────────────────────────────
-let _userToken: string | null = null;
-let _tokenExpiry = 0;
-
-export async function getUserToken(force = false): Promise<string> {
-  if (!force && _userToken && Date.now() < _tokenExpiry) return _userToken;
-
-  const apiKey = getApiKey();
-  const res = await fetch(`${API_BASE}/VerifyLoginApiKey`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json; charset=utf-8" },
-    body: JSON.stringify({ apiKey }),
-  });
-  if (!res.ok) throw new Error(`VerifyLoginApiKey HTTP ${res.status}`);
-  const json = await res.json() as { d: string | null };
-  if (!json.d || json.d === "UnauthorizedUser" || json.d.length < 20) {
-    throw new Error("API_KEY_INVALID");
-  }
-
-  _userToken = json.d;
-  _tokenExpiry = Date.now() + 28 * 60 * 1000;
-  return _userToken;
-}
-
-async function callPost<T>(endpoint: string, body: Record<string, unknown>, retry = true): Promise<T> {
+async function callPost<T>(endpoint: string, body: Record<string, unknown>): Promise<T> {
   const res = await fetch(`${API_BASE}/${endpoint}`, {
     method: "POST",
     headers: { "Content-Type": "application/json; charset=utf-8" },
@@ -49,22 +25,6 @@ async function callPost<T>(endpoint: string, body: Record<string, unknown>, retr
 
   if (json.ExceptionType) throw new Error(`Invoice4U error: ${json.Message}`);
   return json.d;
-}
-
-// Wraps a call with auto-retry on stale token
-async function withToken<T>(fn: (token: string) => Promise<T>): Promise<T> {
-  const token = await getUserToken();
-  try {
-    return await fn(token);
-  } catch (e) {
-    const msg = (e as Error).message;
-    if (msg.includes("Unauthorized") || msg.includes("token")) {
-      // Retry with fresh token
-      const fresh = await getUserToken(true);
-      return await fn(fresh);
-    }
-    throw e;
-  }
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -120,37 +80,40 @@ function parseI4UDate(raw: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-// ─── Check API activation ─────────────────────────────────────────────────────
-// We detect if API document access is enabled by trying a small GetDocuments call.
-// UnauthorizedUser in Errors → not active. null → active (just empty account).
-export async function checkApiActive(): Promise<{ active: boolean; orgName?: string; email?: string }> {
-  return withToken(async (token) => {
-    type DocResult = { Response: I4UDocument[] | null; Errors: { Error: string }[] } | null;
-    const data = await callPost<DocResult>("GetDocuments", {
-      dr: { PageNumber: 1, PageSize: 1 },
-      token,
-    });
+// ─── IsAuthenticated — validate the token ────────────────────────────────────
+// Returns a full User object if valid (with ApiActive, CompanyName, Email etc.)
+interface I4UUser {
+  ApiActive?: boolean;
+  CompanyName?: string;
+  Email?: string;
+  Errors?: { Error: string }[];
+  OrganizationID?: number;
+}
 
-    if (!data) return { active: true };  // null = authorized, just empty
-    const wrapper = data as { Errors?: { Error: string }[] };
-    const hasAuthError = wrapper.Errors?.some(e => e.Error === "UnauthorizedUser");
-    return { active: !hasAuthError };
-  });
+export async function checkApiActive(): Promise<{ active: boolean; orgName?: string; email?: string }> {
+  const token = getToken();
+  const result = await callPost<I4UUser | null>("IsAuthenticated", { token });
+  if (!result || typeof result !== "object") return { active: false };
+  const hasErrors = result.Errors && result.Errors.length > 0;
+  if (hasErrors) return { active: false };
+  return {
+    active: true,
+    orgName: result.CompanyName ?? undefined,
+    email:   result.Email ?? undefined,
+  };
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export async function getBranches(): Promise<I4UBranch[]> {
-  return withToken(async (token) => {
-    // GetBranches can return array directly or CommonCollection wrapper
-    const raw = await callPost<I4UBranch[] | { Response?: I4UBranch[] } | null>(
-      "GetBranches", { token }
-    );
-    if (!raw) return [];
-    if (Array.isArray(raw)) return raw;
-    const wrapped = raw as { Response?: I4UBranch[] | null };
-    return wrapped.Response ?? [];
-  });
+  const token = getToken();
+  const raw = await callPost<I4UBranch[] | { Response?: I4UBranch[] } | null>(
+    "GetBranches", { token }
+  );
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  const wrapped = raw as { Response?: I4UBranch[] | null };
+  return wrapped.Response ?? [];
 }
 
 export async function getDocuments(opts: {
@@ -161,30 +124,29 @@ export async function getDocuments(opts: {
   pageNumber?: number;
   pageSize?: number;
 }): Promise<{ documents: I4UDocument[]; empty: boolean }> {
-  return withToken(async (token) => {
-    const dr: Record<string, unknown> = {
-      PageNumber: opts.pageNumber ?? 1,
-      PageSize:   opts.pageSize   ?? 200,
-    };
-    if (opts.dateFrom)  dr.DateFrom  = opts.dateFrom;
-    if (opts.dateTo)    dr.DateTo    = opts.dateTo;
-    if (opts.docTypeId) dr.DocTypeID = opts.docTypeId;
-    if (opts.branchId)  dr.BranchId  = opts.branchId;
+  const token = getToken();
+  const dr: Record<string, unknown> = {
+    PageNumber: opts.pageNumber ?? 1,
+    PageSize:   opts.pageSize   ?? 200,
+  };
+  if (opts.dateFrom)  dr.DateFrom  = opts.dateFrom;
+  if (opts.dateTo)    dr.DateTo    = opts.dateTo;
+  if (opts.docTypeId) dr.DocTypeID = opts.docTypeId;
+  if (opts.branchId)  dr.BranchId  = opts.branchId;
 
-    type DocResult = { Response: I4UDocument[] | null; Errors: { Error: string }[] } | null;
-    const data = await callPost<DocResult>("GetDocuments", { dr, token });
+  type DocResult = { Response: I4UDocument[] | null; Errors: { Error: string }[] } | null;
+  const data = await callPost<DocResult>("GetDocuments", { dr, token });
 
-    if (!data) return { documents: [], empty: true };
-    if (Array.isArray(data)) return { documents: data as I4UDocument[], empty: false };
+  if (!data) return { documents: [], empty: true };
+  if (Array.isArray(data)) return { documents: data as I4UDocument[], empty: false };
 
-    const wrapper = data as { Response?: I4UDocument[] | null; Errors?: { Error: string }[] };
-    const hasAuthError = wrapper.Errors?.some(e => e.Error === "UnauthorizedUser");
-    if (hasAuthError) {
-      throw new Error("UnauthorizedUser — API access not enabled in Invoice4U settings");
-    }
-    const docs = wrapper.Response ?? [];
-    return { documents: docs, empty: docs.length === 0 };
-  });
+  const wrapper = data as { Response?: I4UDocument[] | null; Errors?: { Error: string }[] };
+  const hasAuthError = wrapper.Errors?.some(e => e.Error === "UnauthorizedUser");
+  if (hasAuthError) {
+    throw new Error("UnauthorizedUser — API access not enabled in Invoice4U settings");
+  }
+  const docs = wrapper.Response ?? [];
+  return { documents: docs, empty: docs.length === 0 };
 }
 
 export async function getMonthlyReport(year: number): Promise<{
