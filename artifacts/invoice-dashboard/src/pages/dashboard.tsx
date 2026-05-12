@@ -556,11 +556,42 @@ function InvoiceCard({
 }
 
 // ── Re-extract banner ─────────────────────────────────────────────────────────
+type QueueStats = {
+  queued: number;
+  processing: number;
+  retrying: number;
+  completed: number;
+  failed: number;
+  poisoned: number;
+  pendingInvoicesWithoutJobs: number;
+};
+
 function ReExtractBanner({ totalUnprocessed, apiBase }: { totalUnprocessed: number; apiBase: string }) {
   const [state, setState] = useState<"idle" | "running" | "done">("idle");
   const [processed, setProcessed] = useState(0);
   const [remaining, setRemaining] = useState(totalUnprocessed);
+  const [stats, setStats] = useState<QueueStats | null>(null);
   const runningRef = useRef(false);
+
+  const refreshStats = async () => {
+    try {
+      const r = await fetch(`${apiBase}/invoices/extraction/queue-stats`);
+      if (r.ok) setStats(await r.json() as QueueStats);
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => { refreshStats(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const enqueuePending = async () => {
+    try {
+      await fetch(`${apiBase}/invoices/extraction/enqueue-pending`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 1000 }),
+      });
+      await refreshStats();
+    } catch { /* ignore */ }
+  };
 
   const startExtraction = async () => {
     if (runningRef.current) return;
@@ -568,15 +599,31 @@ function ReExtractBanner({ totalUnprocessed, apiBase }: { totalUnprocessed: numb
     setState("running");
     let done = false;
     let totalProcessed = 0;
+    let emptyRounds = 0;
     while (!done) {
       try {
-        const res = await fetch(`${apiBase}/invoices/re-extract?limit=20`, { method: "POST" });
-        const data = await res.json() as { processed: number; remaining: number };
+        // Make sure pending invoices are enqueued before the worker runs.
+        await fetch(`${apiBase}/invoices/extraction/enqueue-pending`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ limit: 200 }),
+        });
+        const res = await fetch(`${apiBase}/invoices/extraction/run-worker`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ limit: 20, concurrency: 3 }),
+        });
+        const data = await res.json() as { processed: number; completed: number; failed: number; poisoned: number };
         totalProcessed += data.processed ?? 0;
         setProcessed(totalProcessed);
-        setRemaining(data.remaining ?? 0);
-        if ((data.remaining ?? 0) === 0 || (data.processed ?? 0) === 0) {
-          done = true;
+        await refreshStats();
+        const s = stats;
+        if (s) setRemaining(s.queued + s.retrying + s.pendingInvoicesWithoutJobs);
+        if ((data.processed ?? 0) === 0) {
+          emptyRounds++;
+          if (emptyRounds >= 2) done = true;
+        } else {
+          emptyRounds = 0;
         }
       } catch {
         done = true;
@@ -606,19 +653,39 @@ function ReExtractBanner({ totalUnprocessed, apiBase }: { totalUnprocessed: numb
             ? "מחלץ נתונים — שם ספק, סכום, תאריך..."
             : "לחץ לעיבוד חשבוניות וחילוץ שם ספק, סכום ותאריך"}
         </p>
-      </div>
-      <button
-        onClick={startExtraction}
-        disabled={state === "running"}
-        className="h-9 px-4 rounded-[10px] text-[12px] font-semibold whitespace-nowrap shrink-0 disabled:opacity-60 active:scale-95 transition-all flex items-center gap-2"
-        style={{ background: "linear-gradient(90deg,#f59e0b,#ef4444)", color: "#fff" }}
-      >
-        {state === "running" ? (
-          <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />מעבד...</>
-        ) : (
-          "⚡ עבד חשבוניות"
+        {stats && (
+          <div className="text-[11px] text-muted-foreground mt-1 flex flex-wrap gap-x-3 gap-y-0.5" dir="ltr">
+            <span>queued: <b className="text-amber-300">{stats.queued}</b></span>
+            <span>processing: <b className="text-blue-300">{stats.processing}</b></span>
+            <span>retrying: <b className="text-orange-300">{stats.retrying}</b></span>
+            <span>completed: <b className="text-emerald-300">{stats.completed}</b></span>
+            <span>failed: <b className="text-rose-300">{stats.failed}</b></span>
+            <span>poisoned: <b className="text-red-400">{stats.poisoned}</b></span>
+            <span>pending(no-job): <b className="text-zinc-300">{stats.pendingInvoicesWithoutJobs}</b></span>
+          </div>
         )}
-      </button>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={enqueuePending}
+          disabled={state === "running"}
+          className="h-9 px-3 rounded-[10px] text-[12px] font-semibold whitespace-nowrap disabled:opacity-60 active:scale-95 transition-all border border-amber-500/40 text-amber-300 bg-amber-500/10"
+        >
+          הוסף לתור
+        </button>
+        <button
+          onClick={startExtraction}
+          disabled={state === "running"}
+          className="h-9 px-4 rounded-[10px] text-[12px] font-semibold whitespace-nowrap disabled:opacity-60 active:scale-95 transition-all flex items-center gap-2"
+          style={{ background: "linear-gradient(90deg,#f59e0b,#ef4444)", color: "#fff" }}
+        >
+          {state === "running" ? (
+            <><div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />מעבד...</>
+          ) : (
+            "⚡ הרץ עובד"
+          )}
+        </button>
+      </div>
     </motion.div>
   );
 }

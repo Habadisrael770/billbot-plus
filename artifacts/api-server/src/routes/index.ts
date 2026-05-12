@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import invoicesRouter from "./invoices";
+import invoiceExtractionRouter from "./invoiceExtraction.js";
 import vendorsRouter from "./vendors";
 import openrouterRouter from "./openrouter/index.js";
 import telegramRouter from "./telegram.js";
@@ -23,6 +24,7 @@ import automationsRouter from "./automations.js";
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use("/invoices/extraction", invoiceExtractionRouter);
 router.use("/invoices", invoicesRouter);
 router.use("/vendors", vendorsRouter);
 router.use("/openrouter", openrouterRouter);

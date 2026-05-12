@@ -1,0 +1,294 @@
+ROLE:
+You are a Senior Backend Architect + Staff Engineer. Your task is NOT to add new features. Your task is to harden the existing BillBOT+ invoice system into a reliable production-grade processing pipeline.
+
+CONTEXT:
+Project: BillBOT+
+Monorepo includes:
+- artifacts/api-server — Express + TypeScript API server
+- artifacts/invoice-dashboard — React + Vite dashboard
+- PostgreSQL via Drizzle ORM
+- Shared DB schema: lib/db/src/schema/invoices.ts
+- Gmail integration already exists
+- Invoice4u integration already works
+- AI extraction uses OpenRouter model google/gemini-2.0-flash-001
+- Current DB has 14,271 invoices
+- Extraction status:
+  - success: 3,648
+  - failed: 228
+  - pending/null: 10,339
+- Current issue: extraction is slow, fragile, rate-limited, and not durable enough.
+- Some failed files were stored in /tmp and disappeared.
+- DO NOT work on loyalty-club.
+- DO NOT add Telegram now.
+- DO NOT redesign UI now.
+- DO NOT add new product features.
+
+PRIMARY GOAL:
+Convert invoice extraction into a durable, resumable, idempotent job pipeline.
+
+HIGH-LEVEL REQUIREMENTS:
+1. Add a persistent extraction job queue.
+2. Each invoice extraction must be tracked as a job with lifecycle states.
+3. The system must resume after server restart without losing progress.
+4. Failed invoices must retry safely.
+5. Repeated failures must become “poisoned” and stop auto-retrying.
+6. Do not process the same invoice twice concurrently.
+7. Do not depend on /tmp for long-term file availability.
+8. Add visibility in API for queue status.
+9. Preserve all existing working behavior.
+10. Do not break Invoice4u, Gmail import, or dashboard.
+
+IMPORTANT:
+Before coding, inspect the actual existing files:
+- artifacts/api-server/src/routes/invoices.ts
+- artifacts/api-server/src/services/aiExtractService.ts
+- artifacts/api-server/src/routes/email-connectors.ts
+- artifacts/api-server/src/services/invoice4uService.ts
+- lib/db/src/schema/invoices.ts
+- artifacts/invoice-dashboard/src/pages/dashboard.tsx
+
+IMPLEMENTATION PLAN:
+
+PHASE 1 — DB SCHEMA HARDENING
+Update Drizzle schema in lib/db/src/schema/invoices.ts.
+
+Add table: invoice_extraction_jobs
+
+Fields:
+- id uuid primary key
+- invoice_id uuid or text matching existing invoice primary key type
+- status enum/text:
+  - queued
+  - processing
+  - retrying
+  - completed
+  - failed
+  - poisoned
+- priority integer default 100
+- attempts integer default 0
+- max_attempts integer default 3
+- last_error text nullable
+- last_error_code text nullable
+- locked_at timestamp nullable
+- locked_by text nullable
+- next_run_at timestamp nullable
+- started_at timestamp nullable
+- completed_at timestamp nullable
+- created_at timestamp default now
+- updated_at timestamp default now
+
+Add indexes:
+- status
+- next_run_at
+- invoice_id
+- locked_at
+- status + next_run_at
+
+Add uniqueness:
+- one active extraction job per invoice where possible.
+If partial unique indexes are difficult in Drizzle, enforce in code.
+
+Also add/verify useful fields on invoices table if missing:
+- extraction_status
+- extraction_attempts
+- extraction_error
+- extraction_confidence
+- extracted_at
+- file_storage_path or attachment_storage_path if available
+
+Do not destroy existing data.
+
+PHASE 2 — JOB QUEUE SERVICE
+Create:
+artifacts/api-server/src/services/invoiceExtractionQueueService.ts
+
+It must expose functions:
+- enqueuePendingInvoices(limit?: number)
+- enqueueInvoice(invoiceId: string, priority?: number)
+- claimNextJobs(workerId: string, limit: number)
+- markJobProcessing(jobId: string, workerId: string)
+- markJobCompleted(jobId: string, invoiceId: string)
+- markJobFailed(jobId: string, error: Error, retryable: boolean)
+- markJobPoisoned(jobId: string, error: Error)
+- getQueueStats()
+- resetStaleProcessingJobs(staleMinutes: number)
+
+Rules:
+- claim only jobs with status queued/retrying and next_run_at <= now
+- when claiming, set locked_by, locked_at, status=processing
+- prevent two workers from claiming same job
+- failed retryable jobs:
+  - attempts += 1
+  - if attempts < max_attempts → status=retrying, next_run_at = now + backoff
+  - if attempts >= max_attempts → status=poisoned
+- non-retryable jobs → failed or poisoned based on error type
+- backoff:
+  - attempt 1: 1 minute
+  - attempt 2: 5 minutes
+  - attempt 3: 15 minutes
+- stale processing jobs older than 30 minutes return to retrying
+
+PHASE 3 — WORKER SERVICE
+Create:
+artifacts/api-server/src/services/invoiceExtractionWorker.ts
+
+It must:
+- run batches safely
+- process N jobs at a time, configurable
+- call existing aiExtractService.ts
+- update invoice extraction_status:
+  - success
+  - partial
+  - failed
+- write extracted fields to existing invoice fields
+- write extraction errors clearly
+- never crash the whole worker because one invoice failed
+- log each step with invoice_id and job_id
+
+Config:
+- default concurrency: 3
+- batch size: 10
+- must respect OpenRouter rate limits
+- if provider returns 429/5xx, treat as retryable
+- if file missing, mark as failed with FILE_NOT_FOUND and do not retry forever
+
+PHASE 4 — FILE DURABILITY GUARD
+Audit current attachment handling.
+
+Problem:
+Some files were stored in /tmp and deleted.
+
+Required:
+- Do not rely on /tmp for any invoice that still needs extraction.
+- If the file exists only in /tmp and is gone, mark invoice/job with FILE_NOT_FOUND.
+- Add clear TODO/hook for re-fetching original attachment from Gmail by message_id/attachment_id if available.
+- If Gmail metadata exists, implement best-effort refetch.
+- Store recovered files in a persistent project storage path, not /tmp:
+  artifacts/api-server/storage/invoices/{invoice_id}/original.{ext}
+
+Add utility:
+artifacts/api-server/src/services/invoiceFileStorageService.ts
+
+Functions:
+- resolveInvoiceFile(invoice)
+- ensurePersistentInvoiceFile(invoice)
+- saveInvoiceAttachment(invoiceId, filename, buffer)
+- getPersistentInvoicePath(invoiceId)
+
+PHASE 5 — API ENDPOINTS
+Add endpoints in artifacts/api-server/src/routes/invoices.ts or new route file:
+
+POST /api/invoices/extraction/enqueue-pending
+Body:
+{
+  "limit": 500
+}
+
+Response:
+{
+  "enqueued": 123,
+  "skipped": 10
+}
+
+POST /api/invoices/extraction/run-worker
+Body:
+{
+  "limit": 50,
+  "concurrency": 3
+}
+
+Response:
+{
+  "processed": 50,
+  "completed": 42,
+  "failed": 5,
+  "poisoned": 3
+}
+
+GET /api/invoices/extraction/queue-stats
+
+Response:
+{
+  "queued": 1000,
+  "processing": 3,
+  "retrying": 20,
+  "completed": 3648,
+  "failed": 228,
+  "poisoned": 0,
+  "pendingInvoicesWithoutJobs": 10339
+}
+
+POST /api/invoices/extraction/reset-stale
+Body:
+{
+  "staleMinutes": 30
+}
+
+PHASE 6 — DASHBOARD MINIMAL VISIBILITY
+Do NOT redesign.
+
+Only add minimal support to existing ReExtractBanner or dashboard:
+- show queue stats
+- show queued / processing / retrying / completed / failed / poisoned
+- add button:
+  - “Enqueue Pending”
+  - “Run Worker Batch”
+- keep RTL
+- keep existing layout
+
+PHASE 7 — ERROR CODES
+Standardize errors:
+
+Use these codes:
+- FILE_NOT_FOUND
+- AI_RATE_LIMITED
+- AI_PROVIDER_ERROR
+- AI_INVALID_JSON
+- EXTRACTION_SCHEMA_INVALID
+- DB_UPDATE_FAILED
+- UNKNOWN_EXTRACTION_ERROR
+
+Every failed job must store:
+- last_error_code
+- last_error
+- attempts
+- next_run_at if retrying
+
+PHASE 8 — ACCEPTANCE CRITERIA
+The implementation is complete only if:
+
+1. Existing server starts without breaking.
+2. Existing Invoice4u status endpoint still works.
+3. Existing Gmail import route still works.
+4. Existing dashboard still loads.
+5. POST /api/invoices/extraction/enqueue-pending creates jobs for pending invoices.
+6. POST /api/invoices/extraction/run-worker processes jobs in batches.
+7. Re-running enqueue does not duplicate active jobs.
+8. Server restart does not lose queued jobs.
+9. Missing files become FILE_NOT_FOUND and do not retry forever.
+10. 429/5xx AI errors retry with backoff.
+11. After max attempts, job becomes poisoned.
+12. Queue stats endpoint returns correct counts.
+13. No usage of /tmp as durable storage.
+14. TypeScript compile errors introduced by this work must be fixed.
+15. Add clear logs for every job lifecycle transition.
+
+STRICT RULES:
+- Do not rewrite the entire project.
+- Do not change unrelated modules.
+- Do not introduce a new framework.
+- Do not add external queue services yet.
+- Do not add BullMQ/Redis unless absolutely necessary. Prefer DB-backed queue for this phase.
+- Do not remove existing extraction endpoint; adapt it or keep it as backward compatible.
+- Do not fake success.
+- If a piece of data is unavailable, mark it explicitly and continue safely.
+
+FINAL OUTPUT REQUIRED:
+After implementation, provide:
+1. Files changed
+2. DB changes
+3. New endpoints
+4. How to run migration
+5. How to test manually
+6. Known limitations
+7. Next recommended phase
