@@ -2,7 +2,7 @@ import { Router, type IRouter } from "express";
 import path from "path";
 import fs from "fs";
 import multer from "multer";
-import * as XLSX from "xlsx";
+import * as XLSX from "@e965/xlsx";
 import { db } from "@workspace/db";
 import { invoicesTable, vendorsTable, invoiceLineItemsTable } from "@workspace/db/schema";
 import { eq, sql, isNull } from "drizzle-orm";
