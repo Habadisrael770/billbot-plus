@@ -53,7 +53,7 @@ export function getGoogleLoginUrl(): string {
 }
 
 // ── Handle Google Login callback (basic scopes only) ───────────────────────
-export async function handleGoogleLoginCallback(code: string): Promise<string> {
+export async function handleGoogleLoginCallback(code: string): Promise<{ id: string; email: string }> {
   const oAuth2Client = getOAuth2Client();
   const { tokens }   = await oAuth2Client.getToken(code);
 
@@ -71,14 +71,12 @@ export async function handleGoogleLoginCallback(code: string): Promise<string> {
   }
 
   // Create/update user in users table
-  await upsertGoogleUser({
+  return upsertGoogleUser({
     email,
     name:      data.name    ?? null,
     avatarUrl: data.picture ?? null,
     googleId:  data.id      ?? null,
   });
-
-  return email;
 }
 
 // ── Gmail Scan URL (restricted scopes — requires verified app / test user) ──
@@ -92,7 +90,7 @@ export function getGmailAuthUrl(): string {
 }
 
 // ── Exchange code for tokens and store in DB ───────────────────────────────
-export async function handleGmailCallback(code: string): Promise<string> {
+export async function handleGmailCallback(code: string): Promise<{ id: string | null; email: string }> {
   const oAuth2Client = getOAuth2Client();
   const { tokens }   = await oAuth2Client.getToken(code);
 
@@ -111,13 +109,15 @@ export async function handleGmailCallback(code: string): Promise<string> {
   }
 
   // Upsert user in the users table (Google login = app login)
+  let userId: string | null = null;
   try {
-    await upsertGoogleUser({
+    const upserted = await upsertGoogleUser({
       email,
       name:      data.name    ?? null,
       avatarUrl: data.picture ?? null,
       googleId:  data.id      ?? null,
     });
+    userId = upserted.id;
   } catch (e) {
     console.warn("[gmailOAuth] upsertGoogleUser failed (non-fatal):", e);
   }
@@ -158,7 +158,7 @@ export async function handleGmailCallback(code: string): Promise<string> {
     });
   }
 
-  return email;
+  return { id: userId, email };
 }
 
 // ── Get a single Gmail client (first stored token) ────────────────────────

@@ -9,6 +9,11 @@ import crypto from "node:crypto";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
+import {
+  setSessionCookie,
+  clearSessionCookie,
+  requireAuth,
+} from "../middleware/auth.js";
 
 const router: IRouter = Router();
 
@@ -70,6 +75,7 @@ router.post("/register", async (req, res) => {
       lastLoginAt:  new Date(),
     }).returning();
 
+    setSessionCookie(res, user!.id);
     res.json({ ok: true, email: user!.email, name: user!.name });
   } catch (err) {
     console.error("[auth/register]", err);
@@ -108,11 +114,38 @@ router.post("/login", async (req, res) => {
       .set({ lastLoginAt: new Date(), updatedAt: new Date() })
       .where(eq(usersTable.id, user.id));
 
+    setSessionCookie(res, user.id);
     res.json({ ok: true, email: user.email, name: user.name });
   } catch (err) {
     console.error("[auth/login]", err);
     res.status(500).json({ error: "שגיאת שרת פנימית" });
   }
+});
+
+// ── Me ───────────────────────────────────────────────────────────────────────
+router.get("/me", requireAuth, async (req, res) => {
+  try {
+    const [user] = await db.select({
+      id: usersTable.id,
+      email: usersTable.email,
+      name: usersTable.name,
+      avatarUrl: usersTable.avatarUrl,
+    }).from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
+    if (!user) {
+      res.status(401).json({ error: "נדרשת התחברות" });
+      return;
+    }
+    res.json(user);
+  } catch (err) {
+    console.error("[auth/me]", err);
+    res.status(500).json({ error: "שגיאת שרת פנימית" });
+  }
+});
+
+// ── Logout ───────────────────────────────────────────────────────────────────
+router.post("/logout", (_req, res) => {
+  clearSessionCookie(res);
+  res.json({ ok: true });
 });
 
 // ── WhatsApp phone registration ──────────────────────────────────────────────
@@ -123,46 +156,42 @@ function normalizePhone(raw: string): string {
   return p;
 }
 
-router.get("/whatsapp-phone", async (req, res) => {
-  const email = (req.query.email as string | undefined)?.toLowerCase().trim();
-  if (!email) return res.status(400).json({ error: "נדרש email" });
+router.get("/whatsapp-phone", requireAuth, async (req, res) => {
   try {
     const [user] = await db.select({ whatsappPhone: usersTable.whatsappPhone })
-      .from(usersTable).where(eq(usersTable.email, email)).limit(1);
+      .from(usersTable).where(eq(usersTable.id, req.userId!)).limit(1);
     return res.json({ phone: user?.whatsappPhone ?? null });
   } catch (err) {
     return res.status(500).json({ error: String(err) });
   }
 });
 
-router.post("/whatsapp-phone", async (req, res) => {
-  const { email, phone } = req.body as { email?: string; phone?: string };
-  if (!email || !phone) return res.status(400).json({ error: "נדרשים email ו-phone" });
+router.post("/whatsapp-phone", requireAuth, async (req, res) => {
+  const { phone } = req.body as { phone?: string };
+  if (!phone) return res.status(400).json({ error: "נדרש phone" });
   const normalized = normalizePhone(phone);
   if (normalized.length < 10) return res.status(400).json({ error: "מספר טלפון לא תקין" });
   try {
     // Check if phone taken by another user
-    const existing = await db.select({ id: usersTable.id, email: usersTable.email })
+    const existing = await db.select({ id: usersTable.id })
       .from(usersTable).where(eq(usersTable.whatsappPhone, normalized)).limit(1);
-    if (existing.length > 0 && existing[0]!.email !== email.toLowerCase().trim()) {
+    if (existing.length > 0 && existing[0]!.id !== req.userId) {
       return res.status(409).json({ error: "מספר זה כבר רשום למשתמש אחר" });
     }
     await db.update(usersTable)
       .set({ whatsappPhone: normalized, updatedAt: new Date() })
-      .where(eq(usersTable.email, email.toLowerCase().trim()));
+      .where(eq(usersTable.id, req.userId!));
     return res.json({ ok: true, phone: normalized });
   } catch (err) {
     return res.status(500).json({ error: String(err) });
   }
 });
 
-router.delete("/whatsapp-phone", async (req, res) => {
-  const { email } = req.body as { email?: string };
-  if (!email) return res.status(400).json({ error: "נדרש email" });
+router.delete("/whatsapp-phone", requireAuth, async (req, res) => {
   try {
     await db.update(usersTable)
       .set({ whatsappPhone: null, updatedAt: new Date() })
-      .where(eq(usersTable.email, email.toLowerCase().trim()));
+      .where(eq(usersTable.id, req.userId!));
     return res.json({ ok: true });
   } catch (err) {
     return res.status(500).json({ error: String(err) });

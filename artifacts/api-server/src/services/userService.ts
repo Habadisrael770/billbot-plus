@@ -8,7 +8,7 @@ export async function upsertGoogleUser(params: {
   name?: string | null;
   avatarUrl?: string | null;
   googleId?: string | null;
-}): Promise<void> {
+}): Promise<{ id: string; email: string }> {
   const email = params.email.toLowerCase().trim();
 
   const existing = await db
@@ -28,13 +28,15 @@ export async function upsertGoogleUser(params: {
         updatedAt:   new Date(),
       })
       .where(eq(usersTable.email, email));
-  } else {
-    await db.insert(usersTable).values({
-      email,
-      name:        params.name      ?? null,
-      avatarUrl:   params.avatarUrl ?? null,
-      googleId:    params.googleId  ?? null,
-      lastLoginAt: new Date(),
-    });
+    return { id: existing[0]!.id, email };
   }
+
+  const [inserted] = await db.insert(usersTable).values({
+    email,
+    name:        params.name      ?? null,
+    avatarUrl:   params.avatarUrl ?? null,
+    googleId:    params.googleId  ?? null,
+    lastLoginAt: new Date(),
+  }).returning({ id: usersTable.id });
+  return { id: inserted!.id, email };
 }

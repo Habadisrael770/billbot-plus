@@ -66,11 +66,43 @@ function AppRouter() {
     localStorage.removeItem("bb_wizard_done");
     localStorage.removeItem("bb_onboarding_progress");
     localStorage.removeItem("bb_user");
+    // Also drop the server session so refresh truly returns to login
+    const API = `${import.meta.env.BASE_URL}api`.replace(/\/+/g, "/").replace(/\/$/, "");
+    fetch(`${API}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
     window.history.replaceState({}, "", window.location.pathname);
   }
 
-  const [loggedIn,  setLoggedIn]  = useState(() => !!localStorage.getItem("bb_user"));
+  // `loggedIn` starts as `null` while we verify the session cookie with the
+  // server. We no longer trust localStorage alone — the server's signed cookie
+  // is the source of truth for authentication.
+  const [loggedIn,  setLoggedIn]  = useState<boolean | null>(null);
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem("bb_wizard_done") === "1");
+
+  // ── Verify session against the server on mount ───────────────────────────
+  useEffect(() => {
+    const API = `${import.meta.env.BASE_URL}api`.replace(/\/+/g, "/").replace(/\/$/, "");
+    let cancelled = false;
+    fetch(`${API}/auth/me`, { credentials: "include" })
+      .then(async (res) => {
+        if (cancelled) return;
+        if (res.ok) {
+          const data = await res.json().catch(() => null) as { email?: string } | null;
+          if (data?.email) {
+            try { localStorage.setItem("bb_user", JSON.stringify({ email: data.email })); } catch {}
+          }
+          setLoggedIn(true);
+        } else {
+          // No valid session — make sure the local flag doesn't lie to us
+          try { localStorage.removeItem("bb_user"); } catch {}
+          setLoggedIn(false);
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setLoggedIn(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const handleLogin = (email: string) => {
     localStorage.setItem("bb_user", JSON.stringify({ email: email || "user" }));
@@ -149,13 +181,20 @@ function AppRouter() {
     return <PrivacyPolicy />;
   }
 
+  // Still checking the session — render nothing to avoid a login flash for
+  // already-authenticated users.
+  if (loggedIn === null) {
+    return <div style={{ minHeight: "100vh", background: "#11172e" }} />;
+  }
+
   if (!loggedIn) {
     return (
       <LoginPage
         onLogin={handleLogin}
         onSkip={() => {
-          localStorage.setItem("bb_user", JSON.stringify({ email: "guest" }));
-          setLoggedIn(true);
+          // Guest skip is intentionally disabled — the server requires a real
+          // authenticated session, so a guest flag would just lead to 401s.
+          // Intentional no-op.
         }}
       />
     );

@@ -20,30 +20,39 @@ import inboundEmailRouter from "./inbound-email.js";
 import twilioWhatsappRouter from "./twilio-whatsapp.js";
 import loyaltyRouter from "./loyalty.js";
 import automationsRouter from "./automations.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const router: IRouter = Router();
 
+// ── Public routes (no session required) ────────────────────────────────────
+// Health checks, auth endpoints, OAuth callbacks, and inbound webhooks must
+// remain reachable without a logged-in cookie. Public-API routes have their
+// own X-API-Key authentication.
 router.use(healthRouter);
-router.use("/invoices/extraction", invoiceExtractionRouter);
-router.use("/invoices", invoicesRouter);
-router.use("/vendors", vendorsRouter);
-router.use("/openrouter", openrouterRouter);
-router.use("/telegram", telegramRouter);
-router.use("/whatsapp", whatsappRouter);
-router.use("/email-connectors", emailConnectorsRouter);
-router.use("/external-api", externalApiRouter);
-router.use("/categories", categoriesRouter);
-router.use("/entities", entitiesRouter);
-router.use("/business-profile", businessProfileRouter);
-router.use("/gmail-auth", gmailAuthRouter);
-router.use("/public", publicRouter);
-router.use("/internal/api-keys", internalApiKeysRouter);
-router.use("/invoice4u", invoice4uRouter);
 router.use("/auth", authRouter);
-router.use("/imap-auth", imapAuthRouter);
-router.use("/inbound-email", inboundEmailRouter);
-router.use("/twilio-whatsapp", twilioWhatsappRouter);
-router.use("/loyalty", loyaltyRouter);
-router.use("/automations", automationsRouter);
+router.use("/gmail-auth", gmailAuthRouter);          // /login-url, /url, /callback are public; /status & /disconnect self-check session
+router.use("/public", publicRouter);                  // X-API-Key auth
+router.use("/inbound-email", inboundEmailRouter);     // POST / is an email provider webhook (handlers below need their own auth where mutating)
+router.use("/twilio-whatsapp", twilioWhatsappRouter); // Twilio signature webhook
+router.use("/telegram", telegramRouter);              // Telegram bot webhook
+router.use("/whatsapp", whatsappRouter);              // Meta WhatsApp webhook
+router.use("/loyalty", loyaltyRouter);                // Twilio webhook + member signup (own validation)
+
+// ── Authenticated routes (require valid session cookie) ────────────────────
+// Every protected mount goes through `requireAuth`, which rejects requests
+// with a 401 when no valid session cookie is present.
+router.use("/invoices/extraction", requireAuth, invoiceExtractionRouter);
+router.use("/invoices",            requireAuth, invoicesRouter);
+router.use("/vendors",             requireAuth, vendorsRouter);
+router.use("/openrouter",          requireAuth, openrouterRouter);
+router.use("/email-connectors",    requireAuth, emailConnectorsRouter);
+router.use("/external-api",        requireAuth, externalApiRouter);
+router.use("/categories",          requireAuth, categoriesRouter);
+router.use("/entities",            requireAuth, entitiesRouter);
+router.use("/business-profile",    requireAuth, businessProfileRouter);
+router.use("/internal/api-keys",   requireAuth, internalApiKeysRouter);
+router.use("/invoice4u",           requireAuth, invoice4uRouter);
+router.use("/imap-auth",           requireAuth, imapAuthRouter);
+router.use("/automations",         requireAuth, automationsRouter);
 
 export default router;

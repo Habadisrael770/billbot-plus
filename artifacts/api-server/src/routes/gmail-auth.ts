@@ -12,6 +12,7 @@ import {
   getGmailStatus,
   disconnectGmail,
 } from "../services/gmailOAuth.js";
+import { setSessionCookie, requireAuth } from "../middleware/auth.js";
 
 const router: IRouter = Router();
 
@@ -135,9 +136,14 @@ router.get("/callback", async (req, res) => {
   // Route to correct handler based on state param
   const isLoginFlow = state === "login";
   try {
-    const email = isLoginFlow
+    const result = isLoginFlow
       ? await handleGoogleLoginCallback(code)
       : await handleGmailCallback(code);
+    const email = result.email;
+    // Set session cookie so the browser is now authenticated.
+    if (result.id) {
+      setSessionCookie(res, result.id);
+    }
     const appBase = getAppBaseUrl(req);
     const emailEncoded = encodeURIComponent(email ?? "");
     const fallbackUrl = `${appBase}/?gmail=connected&email=${emailEncoded}`;
@@ -309,7 +315,9 @@ router.get("/callback", async (req, res) => {
 });
 
 // ── Status ─────────────────────────────────────────────────────────────────
-router.get("/status", async (_req, res) => {
+// Requires a logged-in session (DB-validated via requireAuth) so a stale signed
+// cookie for a deleted user cannot probe Gmail connection state.
+router.get("/status", requireAuth, async (_req, res) => {
   try {
     const status = await getGmailStatus();
     res.json(status);
@@ -319,7 +327,7 @@ router.get("/status", async (_req, res) => {
 });
 
 // ── Disconnect ─────────────────────────────────────────────────────────────
-router.post("/disconnect", async (_req, res) => {
+router.post("/disconnect", requireAuth, async (_req, res) => {
   try {
     await disconnectGmail();
     res.json({ ok: true });
