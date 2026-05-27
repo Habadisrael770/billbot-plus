@@ -21,12 +21,19 @@ import { db } from "@workspace/db";
 import { usersTable, invoicesTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { processInvoice } from "../services/invoiceProcessingService.js";
+import { requireAuth } from "../middleware/auth.js";
 
 const router: IRouter = Router();
 
-const INBOUND_DOMAIN = process.env.INBOUND_EMAIL_DOMAIN ?? "inbound.billbot.co.il";
-const ALLOWED_MIME   = ["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/gif", "image/tiff"];
-const MAX_FILE_SIZE  = 20 * 1024 * 1024; // 20 MB
+const INBOUND_DOMAIN  = process.env.INBOUND_EMAIL_DOMAIN ?? "inbound.billbot.co.il";
+const ALLOWED_MIME    = ["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/gif", "image/tiff"];
+const MAX_FILE_SIZE   = 20 * 1024 * 1024; // 20 MB
+
+// Shared secret that must be present in the webhook URL as ?secret=<value>.
+// Configure the same value in your email provider's webhook URL so only the
+// provider can successfully post inbound emails. Without a secret configured,
+// the endpoint refuses all incoming webhooks in production.
+const WEBHOOK_SECRET = process.env.INBOUND_EMAIL_WEBHOOK_SECRET ?? "";
 
 // Multer — store in memory, we'll move to disk after token lookup
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_FILE_SIZE } });
@@ -81,6 +88,30 @@ router.post(
   "/",
   upload.any(),
   async (req, res) => {
+    // ── Verify webhook secret ───────────────────────────────────────────────
+    // The secret must be embedded in the webhook URL (?secret=...) when
+    // configuring the provider. Requests without a matching secret are rejected
+    // to prevent forged invoice submission from arbitrary HTTP clients.
+    const isProduction = process.env.NODE_ENV === "production";
+    if (!WEBHOOK_SECRET && isProduction) {
+      console.error("[inbound-email] INBOUND_EMAIL_WEBHOOK_SECRET is not set — refusing webhook in production.");
+      res.sendStatus(403);
+      return;
+    }
+    if (WEBHOOK_SECRET) {
+      const providedSecret = (req.query.secret as string | undefined) ?? "";
+      const expected = Buffer.from(WEBHOOK_SECRET);
+      const provided  = Buffer.from(providedSecret);
+      const secretsMatch =
+        expected.length === provided.length &&
+        crypto.timingSafeEqual(expected, provided);
+      if (!secretsMatch) {
+        console.warn("[inbound-email] Rejected webhook: invalid or missing secret.");
+        res.sendStatus(403);
+        return;
+      }
+    }
+
     // Always respond 200 immediately so the mail provider doesn't retry
     res.sendStatus(200);
 
@@ -167,15 +198,16 @@ router.post(
 );
 
 // ── GET /api/inbound-email/address — get/generate forwarding address ──────────
-router.get("/address", async (req, res) => {
-  const email = (req.query.email as string | undefined)?.toLowerCase().trim();
-  if (!email) return res.status(400).json({ error: "נדרש email" });
+// Requires an authenticated session. Returns the forwarding address for the
+// currently logged-in user only — callers cannot look up another user's token.
+router.get("/address", requireAuth, async (req, res) => {
+  const userId = req.userId!;
 
   try {
     const [user] = await db
       .select({ forwardingToken: usersTable.forwardingToken })
       .from(usersTable)
-      .where(eq(usersTable.email, email))
+      .where(eq(usersTable.id, userId))
       .limit(1);
 
     if (!user) return res.status(404).json({ error: "משתמש לא נמצא" });
@@ -188,7 +220,7 @@ router.get("/address", async (req, res) => {
       await db
         .update(usersTable)
         .set({ forwardingToken: token, updatedAt: new Date() })
-        .where(eq(usersTable.email, email));
+        .where(eq(usersTable.id, userId));
     }
 
     return res.json({
@@ -202,16 +234,17 @@ router.get("/address", async (req, res) => {
 });
 
 // ── POST /api/inbound-email/regenerate — regenerate forwarding token ──────────
-router.post("/regenerate", async (req, res) => {
-  const { email } = req.body as { email?: string };
-  if (!email) return res.status(400).json({ error: "נדרש email" });
+// Requires an authenticated session. Rotates only the currently logged-in
+// user's token — callers cannot invalidate another user's forwarding address.
+router.post("/regenerate", requireAuth, async (req, res) => {
+  const userId = req.userId!;
 
   try {
     const token = crypto.randomBytes(5).toString("hex");
     await db
       .update(usersTable)
       .set({ forwardingToken: token, updatedAt: new Date() })
-      .where(eq(usersTable.email, email.toLowerCase().trim()));
+      .where(eq(usersTable.id, userId));
 
     const domain = INBOUND_DOMAIN;
     return res.json({ token, address: `invoices+${token}@${domain}`, domain });

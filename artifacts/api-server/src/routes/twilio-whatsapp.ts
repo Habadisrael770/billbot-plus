@@ -2,10 +2,18 @@ import { Router, type IRouter } from "express";
 import express from "express";
 import path from "path";
 import fs from "fs";
+import twilio from "twilio";
 import { processInvoice } from "../services/invoiceProcessingService.js";
 import { db } from "@workspace/db";
 import { usersTable, categoriesTable, invoicesTable } from "@workspace/db/schema";
 import { eq, ilike, desc } from "drizzle-orm";
+
+// Trusted hostnames from which Twilio serves media — credentials are only sent to these.
+const TWILIO_TRUSTED_HOSTS = new Set([
+  "api.twilio.com",
+  "media.twiliocdn.com",
+  "mcs.us1.twilio.com",
+]);
 
 const router: IRouter = Router();
 
@@ -134,6 +142,21 @@ async function sendTwilioReply(to: string, message: string): Promise<void> {
 }
 
 async function downloadTwilioMedia(mediaUrl: string): Promise<{ filePath: string; mimeType: string }> {
+  // Validate that the URL comes from a Twilio-owned hostname before attaching credentials.
+  // This prevents SSRF-based credential exfiltration when the webhook has not yet been
+  // signature-validated (defence-in-depth) or in the unlikely case validation is bypassed.
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(mediaUrl);
+  } catch {
+    throw new Error("Invalid media URL");
+  }
+  if (parsedUrl.protocol !== "https:") throw new Error("Media URL must use HTTPS");
+  const hostname = parsedUrl.hostname.toLowerCase();
+  if (!TWILIO_TRUSTED_HOSTS.has(hostname) && !hostname.endsWith(".twilio.com") && !hostname.endsWith(".twiliocdn.com")) {
+    throw new Error(`Refusing to fetch media from untrusted host: ${hostname}`);
+  }
+
   const { accountSid, authToken } = getTwilioCreds();
   const credentials = Buffer.from(`${accountSid}:${authToken}`).toString("base64");
   const res = await fetch(mediaUrl, { headers: { Authorization: `Basic ${credentials}` } });
@@ -315,14 +338,30 @@ function buildSummary(invs: Awaited<ReturnType<typeof getRecentInvoices>>, name:
 
 // ── Webhook ───────────────────────────────────────────────────────────────────
 router.post("/webhook", express.urlencoded({ extended: false }), async (req, res) => {
-  res.set("Content-Type", "text/xml");
-  res.send("<Response></Response>");
-
   const { accountSid, authToken } = getTwilioCreds();
   if (!accountSid || !authToken) {
     console.warn("Twilio WhatsApp: missing credentials");
+    res.set("Content-Type", "text/xml").status(503).send("<Response></Response>");
     return;
   }
+
+  // ── Validate Twilio signature ──────────────────────────────────────────────
+  // Reconstruct the full webhook URL that Twilio signed. Prefer an explicit
+  // env var so the public hostname is correct behind proxies/CDNs.
+  const twilioSignature = (req.headers["x-twilio-signature"] as string | undefined) ?? "";
+  const baseUrl = process.env.TWILIO_WEBHOOK_BASE_URL?.replace(/\/$/, "")
+    ?? `${req.protocol}://${req.headers.host}`;
+  const webhookUrl = `${baseUrl}${req.originalUrl}`;
+  const params = req.body as Record<string, string>;
+
+  if (!twilio.validateRequest(authToken, twilioSignature, webhookUrl, params)) {
+    console.warn(`[twilio-whatsapp] Rejected request with invalid signature for URL: ${webhookUrl}`);
+    res.set("Content-Type", "text/xml").status(403).send("<Response></Response>");
+    return;
+  }
+
+  res.set("Content-Type", "text/xml");
+  res.send("<Response></Response>");
 
   try {
     const body = req.body as {
