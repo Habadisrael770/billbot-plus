@@ -15,6 +15,7 @@ import {
 import { mergeVendorAlias } from "../services/vendorService.js";
 import { extractInvoiceFromFile } from "../services/aiExtractService.js";
 import { getGmailClient } from "../services/gmailOAuth.js";
+import { assertUploadsPath } from "../utils/assertUploadsPath.js";
 
 const router: IRouter = Router();
 
@@ -120,9 +121,12 @@ router.get("/:id/file", async (req, res) => {
 
     if (!inv) return res.status(404).json({ error: "Invoice not found" });
 
-    const absPath = path.isAbsolute(inv.filePath)
-      ? inv.filePath
-      : path.resolve(process.cwd(), inv.filePath);
+    let absPath: string;
+    try {
+      absPath = assertUploadsPath(inv.filePath);
+    } catch {
+      return res.status(403).json({ error: "Access denied" });
+    }
 
     if (!fs.existsSync(absPath)) {
       return res.status(404).json({ error: "File not found on disk" });
@@ -233,9 +237,21 @@ router.post("/process", async (req, res) => {
     return;
   }
 
+  // Security: reject any filePath that resolves outside the uploads directory.
+  // assertUploadsPath canonicalises the path (eliminating all ".." components)
+  // and uses path.relative() for containment — not startsWith() — so traversal
+  // via absolute paths or mixed separators is not possible.
+  let canonicalFilePath: string;
+  try {
+    canonicalFilePath = assertUploadsPath(filePath);
+  } catch {
+    res.status(400).json({ error: "Invalid file path" });
+    return;
+  }
+
   try {
     const result = await processInvoice({
-      filePath,
+      filePath: canonicalFilePath,
       extracted: extracted as Parameters<typeof processInvoice>[0]["extracted"],
       extractionConfidence,
       sourceType: (sourceType as "upload" | "camera" | "email") ?? "upload",
