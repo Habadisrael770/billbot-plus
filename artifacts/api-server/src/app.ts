@@ -4,6 +4,12 @@ import router from "./routes";
 
 const app: Express = express();
 
+// Trust the deployment proxy so req.protocol / req.hostname / req.get("host")
+// reflect the original request (e.g. billibot.net) instead of the internal
+// localhost forwarding hop. Critical for OAuth callbacks that need to redirect
+// the popup back to the same origin the user is on.
+app.set("trust proxy", true);
+
 // CORS allowlist for credentialed (cookie-bearing) requests. Reflecting an
 // arbitrary `Origin` header while sending `Access-Control-Allow-Credentials`
 // would let any site read authenticated responses, so we only permit:

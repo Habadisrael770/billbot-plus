@@ -17,9 +17,16 @@ import { setSessionCookie, requireAuth } from "../middleware/auth.js";
 const router: IRouter = Router();
 
 function getAppBaseUrl(req: Parameters<typeof router.get>[1] extends (req: infer R, ...args: any[]) => any ? R : never): string {
+  // Prefer the host the user is actually on (billibot.net in production,
+  // *.replit.dev in workspace) — that way the OAuth popup returns to the same
+  // origin that opened it, and its session cookie is readable. Trust-proxy is
+  // set on the app so this is the original public host, not the internal hop.
+  const host = req.get("host");
+  if (host) return `${req.protocol}://${host}`;
+  // Fallback for code paths without a request object.
   const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(",")[0];
   if (domain) return `https://${domain}`;
-  return `${req.protocol}://${req.get("host")}`;
+  return "http://localhost:8080";
 }
 
 // ── Google Login URL (basic scopes — works for any Google account, no 403) ──
