@@ -77,6 +77,7 @@ function AppRouter() {
   // is the source of truth for authentication.
   const [loggedIn,  setLoggedIn]  = useState<boolean | null>(null);
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem("bb_wizard_done") === "1");
+  const [location] = useLocation();
 
   // ── Verify session against the server on mount ───────────────────────────
   useEffect(() => {
@@ -199,8 +200,6 @@ function AppRouter() {
       />
     );
   }
-
-  const [location] = useLocation();
 
   return (
     <>
