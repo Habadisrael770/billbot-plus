@@ -33,11 +33,8 @@ channel = "stable-25_05"
 
 [userenv.shared]
 BILLBOT_PUBLIC_BASE_URL = "https://dc086eb1-7bde-429c-a879-eb80b41757d1-00-2j2cz2s8jqfl2.riker.replit.dev"
-BILLBOT_PUBLIC_API_KEY = "bbp_99ff9a5afc5726ba6c31b3bd4c5cffadfae79b192944c2beed0a8a92457a406d"
 BILLBOT_GMAIL_SCAN_ENDPOINT = "https://dc086eb1-7bde-429c-a879-eb80b41757d1-00-2j2cz2s8jqfl2.riker.replit.dev/api/public/gmail-scan"
 BILLBOT_INVOICES_ENDPOINT = "https://dc086eb1-7bde-429c-a879-eb80b41757d1-00-2j2cz2s8jqfl2.riker.replit.dev/api/public/invoices"
 BILLBOT_SUMMARY_ENDPOINT = "https://dc086eb1-7bde-429c-a879-eb80b41757d1-00-2j2cz2s8jqfl2.riker.replit.dev/api/public/summary"
 TWILIO_WHATSAPP_NUMBER = "whatsapp:+14155238886"
 GOOGLE_REDIRECT_URI = "https://billibot.net/api/gmail-auth/callback"
-BILIBOT_ACCESSE_TOKEN = "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcGlmZmU6Ly9yZXBsaXQuY29tL2RlcGxveW1lbnQvOTQ3MmE4ODYtMTVmYi00MmNjLTk4YmMtNjU4ZWI3YzM3MjQyIiwidXNlcklkIjo1MzQzMjI4NCwiZGVwbG95bWVudElkIjoiOTQ3MmE4ODYtMTVmYi00MmNjLTk4YmMtNjU4ZWI3YzM3MjQyIiwianRpIjoiSGhaNzYwSDhzc1JKekR2a2tNT2g3IiwiaWF0IjoxNzc5OTE5NjEzLCJleHAiOjE5Mzc1OTk2MTN9.ud6q4CPo-dkJisWn61tl-xdBH0Ms4b4Vhuk5KxuYyi_w9iKfsZYMoqgsfZNXt0BACAyDFzsJvWFqD4U8JyhTfA"
-"Query parameter_BILLIBOT" = "?project-protection-bypass=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcGlmZmU6Ly9yZXBsaXQuY29tL2RlcGxveW1lbnQvOTQ3MmE4ODYtMTVmYi00MmNjLTk4YmMtNjU4ZWI3YzM3MjQyIiwidXNlcklkIjo1MzQzMjI4NCwiZGVwbG95bWVudElkIjoiOTQ3MmE4ODYtMTVmYi00MmNjLTk4YmMtNjU4ZWI3YzM3MjQyIiwianRpIjoiSGhaNzYwSDhzc1JKekR2a2tNT2g3IiwiaWF0IjoxNzc5OTE5NjEzLCJleHAiOjE5Mzc1OTk2MTN9.ud6q4CPo-dkJisWn61tl-xdBH0Ms4b4Vhuk5KxuYyi_w9iKfsZYMoqgsfZNXt0BACAyDFzsJvWFqD4U8JyhTfA"
