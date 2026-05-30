@@ -192,10 +192,20 @@ function AppRouter() {
     return (
       <LoginPage
         onLogin={handleLogin}
-        onSkip={() => {
-          // Guest skip is intentionally disabled — the server requires a real
-          // authenticated session, so a guest flag would just lead to 401s.
-          // Intentional no-op.
+        onSkip={async () => {
+          // Guest entry: ask the server to create a guest account and set the
+          // session cookie, so the gated API routes work instead of returning 401.
+          try {
+            const API = `${import.meta.env.BASE_URL}api`.replace(/\/+/g, "/").replace(/\/$/, "");
+            const res = await fetch(`${API}/auth/guest`, {
+              method: "POST",
+              credentials: "include",
+            });
+            const data = await res.json().catch(() => null) as { email?: string } | null;
+            if (res.ok) handleLogin(data?.email ?? "אורח");
+          } catch {
+            // Network error — stay on the login screen.
+          }
         }}
       />
     );
