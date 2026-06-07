@@ -20,9 +20,29 @@ import inboundEmailRouter from "./inbound-email.js";
 import twilioWhatsappRouter from "./twilio-whatsapp.js";
 import loyaltyRouter from "./loyalty.js";
 import automationsRouter from "./automations.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, readSessionUserId } from "../middleware/auth.js";
+import { createHermesRouter, type ResolvedUser } from "../hermes/routes.js";
+import { db } from "@workspace/db";
+import { usersTable } from "@workspace/db/schema";
+import { eq } from "drizzle-orm";
 
 const router: IRouter = Router();
+
+// ── Hermes AI chat — resolves the logged-in user from the session cookie ────
+// Admin (infinite credits) is granted to the email in HERMES_ADMIN_EMAIL, if set.
+async function resolveHermesUser(req: Parameters<typeof readSessionUserId>[0]): Promise<ResolvedUser | null> {
+  const userId = readSessionUserId(req);
+  if (!userId) return null;
+  const [user] = await db
+    .select({ id: usersTable.id, email: usersTable.email })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  if (!user) return null;
+  const adminEmail = process.env.HERMES_ADMIN_EMAIL?.trim().toLowerCase();
+  const isAdmin = !!adminEmail && user.email.toLowerCase() === adminEmail;
+  return { id: user.id, isAdmin };
+}
 
 // ── Public routes (no session required) ────────────────────────────────────
 // Health checks, auth endpoints, OAuth callbacks, and inbound webhooks must
@@ -37,6 +57,7 @@ router.use("/twilio-whatsapp", twilioWhatsappRouter); // Twilio signature webhoo
 router.use("/telegram", telegramRouter);              // Telegram bot webhook
 router.use("/whatsapp", whatsappRouter);              // Meta WhatsApp webhook
 router.use("/loyalty", loyaltyRouter);                // Twilio webhook + member signup (own validation)
+router.use("/hermes", createHermesRouter(resolveHermesUser)); // /health public; others self-guard via resolveUser
 
 // ── Authenticated routes (require valid session cookie) ────────────────────
 // Every protected mount goes through `requireAuth`, which rejects requests

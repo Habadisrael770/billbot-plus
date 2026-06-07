@@ -1,0 +1,1 @@
+- [Hermes kit integration](hermes-kit.md) — plug-and-play AI chat + credit ledger wired into api-server/invoice-dashboard; adaptation decisions and gotchas.

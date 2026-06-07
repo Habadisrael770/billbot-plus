@@ -29,6 +29,7 @@ import {
   Plus,
   ChevronRight,
   ScanLine,
+  Sparkles,
 } from "lucide-react";
 import { UploadInvoiceModal } from "@/components/upload-invoice-modal";
 import { GmailScanDialog } from "@/components/gmail-scan-dialog";
@@ -52,6 +53,7 @@ const PRIMARY_NAV = [
   { href: "/export",                     icon: SendHorizonal,   label: 'ייצוא לרו"ח', desc: "שליחת דוחות לרואה חשבון",   color: "text-violet-400", bg: "rgba(139,92,246,0.08)",  border: "rgba(139,92,246,0.25)"  },
   { href: "/integrations",               icon: Zap,             label: "אינטגרציות",   desc: "Gmail, Telegram, API",       color: "text-rose-400",   bg: "rgba(244,63,94,0.08)",   border: "rgba(244,63,94,0.25)"   },
   { href: "/settings?tab=automations",   icon: Bot,             label: "אוטומציות",    desc: "שליחה אוטומטית ותזמונים",   color: "text-emerald-400", bg: "rgba(52,211,153,0.08)", border: "rgba(52,211,153,0.25)"  },
+  { href: "/hermes",                      icon: Sparkles,        label: "הרמס AI",      desc: "עוזר חכם לחשבוניות",        color: "text-fuchsia-400", bg: "rgba(217,70,239,0.08)", border: "rgba(217,70,239,0.25)"  },
 ];
 
 const SECONDARY_NAV = [

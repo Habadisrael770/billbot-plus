@@ -19,6 +19,7 @@ import HelpPage from "@/pages/help";
 import IntegrationsPage from "@/pages/integrations";
 import { AIChat } from "@/components/ai-chat";
 import PrivacyPolicy from "@/pages/privacy";
+import HermesChat from "@/pages/hermes-chat";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -232,6 +233,7 @@ function AppRouter() {
             <Route path="/help" component={HelpPage} />
             <Route path="/profile" component={Profile} />
             <Route path="/settings" component={SettingsPage} />
+            <Route path="/hermes" component={HermesChat} />
             <Route path="/privacy" component={PrivacyPolicy} />
             <Route component={NotFound} />
           </Switch>
