@@ -1,1 +1,2 @@
 - [Hermes kit integration](hermes-kit.md) — plug-and-play AI chat + credit ledger wired into api-server/invoice-dashboard; adaptation decisions and gotchas.
+- [Dashboard large-dataset render freeze](dashboard-large-dataset-render.md) — invoice-dashboard freezes on mobile with many invoices; lists render all rows (mobile+desktop both mounted); fix = client render-cap pagination.

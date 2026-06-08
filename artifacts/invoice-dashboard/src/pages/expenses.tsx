@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format, parseISO, isValid } from "date-fns";
 import {
@@ -199,6 +199,12 @@ export default function ExpensesPage() {
   }, [invoices, statusFilter, categoryFilter, sourceFilter, search]);
 
   const activeFiltersCount = (statusFilter !== "הכל" ? 1 : 0) + (categoryFilter !== "הכל" ? 1 : 0) + (sourceFilter !== "הכל" ? 1 : 0);
+
+  // ── Pagination — render in batches so large datasets don't freeze the UI ──
+  const PAGE_SIZE = 50;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [statusFilter, categoryFilter, sourceFilter, search]);
+  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
 
   // ── totals ──
   const totalAmt = filtered.reduce((s, i) => s + Number(i.total || 0), 0);
@@ -541,8 +547,9 @@ export default function ExpensesPage() {
               לא נמצאו הוצאות
             </div>
           ) : (
+            <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filtered.map((inv, idx) => {
+              {visible.map((inv, idx) => {
                 const statusInfo = STATUS_MAP[inv.status] ?? STATUS_MAP["pending_review"];
                 const srcKey = (inv.sourceType ?? "upload").toLowerCase();
                 const srcInfo = SOURCE_LABELS[srcKey] ?? SOURCE_LABELS.upload;
@@ -616,6 +623,15 @@ export default function ExpensesPage() {
                 );
               })}
             </div>
+            {filtered.length > visibleCount && (
+              <button
+                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                className="mt-4 w-full h-11 rounded-[10px] border border-border bg-card text-[13px] font-semibold text-foreground hover:bg-elevated active:scale-95 transition-all"
+              >
+                טען עוד ({(filtered.length - visibleCount).toLocaleString("he-IL")} נותרו)
+              </button>
+            )}
+            </>
           )}
         </motion.div>
       )}
@@ -664,7 +680,7 @@ export default function ExpensesPage() {
                   </td>
                 </tr>
               )}
-              {filtered.map((inv, idx) => {
+              {visible.map((inv, idx) => {
                 const isSelected = selected.has(inv.id);
                 const statusInfo = STATUS_MAP[inv.status] ?? STATUS_MAP["pending_review"];
                 const pct = vatPct(inv.total ?? null, inv.vat ?? null);
@@ -787,6 +803,18 @@ export default function ExpensesPage() {
                   </motion.tr>
                 );
               })}
+              {filtered.length > visibleCount && (
+                <tr>
+                  <td colSpan={10} className="py-4 text-center">
+                    <button
+                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                      className="h-10 px-5 rounded-[10px] border border-border bg-card text-[13px] font-semibold text-foreground hover:bg-elevated active:scale-95 transition-all"
+                    >
+                      טען עוד ({(filtered.length - visibleCount).toLocaleString("he-IL")} נותרו)
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

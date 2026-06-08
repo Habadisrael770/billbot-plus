@@ -904,6 +904,15 @@ export default function Dashboard() {
     return result;
   }, [dateFilteredInvoices, filter, search]);
 
+  // ── Pagination — render in batches so large datasets don't freeze the UI ──
+  const PAGE_SIZE = 50;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [filter, search, dateRange]);
+  const visibleInvoices = useMemo(
+    () => filteredInvoices.slice(0, visibleCount) as InvoiceRow[],
+    [filteredInvoices, visibleCount],
+  );
+
   const openMerge = useCallback((inv: InvoiceRow) =>
     setMergeDialog({ isOpen: true, invoiceId: inv.id, rawVendorName: inv.rawVendorName ?? null }),
   []);
@@ -1204,7 +1213,7 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="p-4 space-y-3">
-              {filteredInvoices.map((inv) => (
+              {visibleInvoices.map((inv) => (
                 <InvoiceCard
                   key={inv.id}
                   inv={inv}
@@ -1215,6 +1224,14 @@ export default function Dashboard() {
                   onChangeCategory={(cat) => updateCategory(inv.id, cat)}
                 />
               ))}
+              {filteredInvoices.length > visibleCount && (
+                <button
+                  onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                  className="w-full h-11 rounded-[10px] border border-border bg-card text-[13px] font-semibold text-foreground hover:bg-elevated active:scale-95 transition-all"
+                >
+                  טען עוד ({(filteredInvoices.length - visibleCount).toLocaleString("he-IL")} נותרו)
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1256,7 +1273,7 @@ export default function Dashboard() {
                   </td>
                 </tr>
               ) : (
-                filteredInvoices.map((inv) => {
+                visibleInvoices.map((inv) => {
                   const vatNum = inv.total && inv.vat && Number(inv.total) > 0
                     ? Math.round((Number(inv.vat) / Number(inv.total)) * 100)
                     : null;
@@ -1411,6 +1428,18 @@ export default function Dashboard() {
                     </tr>
                   );
                 })
+              )}
+              {!isLoading && filteredInvoices.length > visibleCount && (
+                <tr>
+                  <td colSpan={9} className="py-4 text-center">
+                    <button
+                      onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                      className="h-10 px-5 rounded-[10px] border border-border bg-card text-[13px] font-semibold text-foreground hover:bg-elevated active:scale-95 transition-all"
+                    >
+                      טען עוד ({(filteredInvoices.length - visibleCount).toLocaleString("he-IL")} נותרו)
+                    </button>
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
