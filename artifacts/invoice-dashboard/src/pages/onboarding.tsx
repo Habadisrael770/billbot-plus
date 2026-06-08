@@ -98,6 +98,24 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
     }
   }, []);
 
+  // Detect an already-connected Gmail (e.g. the verified Replit integration)
+  // so the user doesn't have to go through the restricted OAuth popup at all.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/gmail-auth/status`, { credentials: "include" });
+        if (!res.ok) return;
+        const data = await res.json() as { connected?: boolean; email?: string | null };
+        if (!cancelled && data.connected) {
+          setGmailConnected(true);
+          setGmailEmail(data.email ?? "");
+        }
+      } catch { /* not connected yet — leave as is */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const validateStep1 = () => {
     const e: typeof errors = {};
     if (bizName.trim().length < 2) e.bizName = "חובה שם עסק (מינימום 2 תווים)";
@@ -152,7 +170,26 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
 
   const handleConnectGmail = async () => {
     setConnecting(true);
+    // Safety net: never let the spinner hang forever (e.g. user leaves the
+    // Google window open on a block/consent page). Auto-clear after 2 minutes.
+    const safety = setTimeout(() => setConnecting(false), 120000);
     try {
+      // If Gmail is already connected (verified Replit integration), skip the
+      // restricted OAuth popup that Google may block on unverified apps.
+      try {
+        const st = await fetch(`${API_BASE}/gmail-auth/status`, { credentials: "include" });
+        if (st.ok) {
+          const sd = await st.json() as { connected?: boolean; email?: string | null };
+          if (sd.connected) {
+            setGmailConnected(true);
+            setGmailEmail(sd.email ?? "");
+            setConnecting(false);
+            clearTimeout(safety);
+            return;
+          }
+        }
+      } catch { /* fall through to OAuth */ }
+
       const res  = await fetch(`${API_BASE}/gmail-auth/url`);
       const data = await res.json() as { url?: string };
       if (data.url) {
@@ -162,8 +199,9 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
         setGmailConnected(true);
         setGmailEmail("demo@billbot.co.il");
         setConnecting(false);
+        clearTimeout(safety);
       }
-    } catch { setConnecting(false); }
+    } catch { setConnecting(false); clearTimeout(safety); }
   };
 
   const finish = async () => {
