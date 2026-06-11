@@ -12,3 +12,9 @@ id = "ECXUzmYOVowS_NNd6XWIo"
 uri = "file://BillBOT_Design_System.md"
 type = "text"
 title = "BillBOT+ Design System — מסמך מלא"
+
+[[outputs]]
+id = "IvnErABWPOdYXKJv29hqR"
+uri = "file://REVIEW_PROMPT.md"
+type = "text"
+title = "BillBOT+ — Code Review Prompt (לקלוד / GPT Codex)"
