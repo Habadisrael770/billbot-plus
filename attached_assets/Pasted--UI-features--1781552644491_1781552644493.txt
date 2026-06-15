@@ -1,0 +1,63 @@
+זה ממצא **קריטי** — אסור להמשיך כאילו לא קרה. UI שמבטיח features שלא קיימים = הטעיית לקוחות (ואם זה ילקוחות שלך ב-B1, זו בעיה משפטית/תדמיתית).
+
+תגיד לו:
+
+```
+This is a serious finding - thank you for the honest audit.
+
+PRIORITY ORDER (revised):
+
+1. FINISH (d) Checkout first - it's mid-flight, don't context-switch.
+
+2. THEN, before (e)/(f), fix the feature list honesty problem:
+
+   A) QUICK WIN - implement now (1 file, AndroidManifest.xml):
+      Add permissions for: camera, location, microphone, nfc, bluetooth
+      These become REAL when permission is added - even if the UI 
+      doesn't actively use them, the website CAN use these APIs 
+      once permission exists. This is genuine value.
+
+   B) FIX deepLinks bug:
+      It's currently unconditional/always-on but shown as a toggle.
+      Either: remove the toggle (always-on, no user choice needed)
+      OR: make it actually conditional in the manifest template.
+      Pick whichever is less code - probably remove the toggle 
+      and add a note "Deep linking included by default".
+
+   C) RECATEGORIZE the feature list into 3 groups with honest labels:
+      
+      "✅ Active Now" (real, working):
+      - App Sharing, Haptic Feedback, Sound Effects (website-dependent,
+        add a small note: "works if your website supports it")
+      - Camera, Geolocation, Microphone, NFC, Bluetooth 
+        (after permission fix in A)
+      - Deep Linking (always included)
+      
+      "🚧 Coming Soon" (real roadmap, not selectable yet - show grayed 
+      with "Coming Soon" badge, don't let user "select" them):
+      - Push Notifications, Biometric Auth, Analytics, 
+        In-App Purchase, Custom Branding (splash)
+      
+      "❌ REMOVE entirely" (not feasible in TWA, misleading to promise):
+      - Bottom Navigation, Offline Support, Dark Mode, 
+        Multi-Language, Battery Saver
+      
+      For "Coming Soon" - these become real backlog items for 
+      Phase 2 (most need Firebase project setup - that's a 
+      separate infrastructure task).
+
+3. AFTER this fix, continue with (e) Splash screen and 
+   (f) Platform dropdown - but note: if Custom Branding/Splash 
+   is "Coming Soon", should (e) Splash Screen upload also move 
+   to Coming Soon, or is splash screen actually different/simpler 
+   to implement than the other "Coming Soon" items? 
+   
+   Quick check: can splash screen just be a static image shown 
+   during TWA load (splashScreenFadeOutDuration in twa-manifest)? 
+   If yes - that's ALREADY supported by Bubblewrap/TWA natively 
+   and just needs the upload UI + passing the URL to the manifest. 
+   If so, keep (e) as planned - it's a real feature, not "coming soon".
+
+Finish (d) first. Then give me the plan for 2A+2B+2C together 
+(small, low-risk changes) before touching (e)/(f).
+```
