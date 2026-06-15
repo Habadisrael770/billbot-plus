@@ -88,7 +88,7 @@ export function GmailScanDialog({ isOpen, onClose, onViewInvoices }: Props) {
       const imapData = await imapRes.json();
       setStatus({ ...data, imapAccounts: imapData.accounts ?? [], imapConnected: (imapData.accounts ?? []).length > 0 });
     } catch {
-      setStatus({ connected: false, email: null, credentialsConfigured: false, imapAccounts: [], imapConnected: false });
+      setStatus({ connected: false, email: null, emails: [], credentialsConfigured: false, imapAccounts: [], imapConnected: false });
     } finally {
       setLoadingStatus(false);
     }
@@ -239,6 +239,7 @@ export function GmailScanDialog({ isOpen, onClose, onViewInvoices }: Props) {
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";
+      let gotDone = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -257,6 +258,7 @@ export function GmailScanDialog({ isOpen, onClose, onViewInvoices }: Props) {
             setProgress(Number(event.pct) || 0);
             setStageMsg(String(event.msg || ""));
           } else if (event.type === "done") {
+            gotDone = true;
             setProgress(100);
             await new Promise(r => setTimeout(r, 500));
             setScanResult({
@@ -272,6 +274,17 @@ export function GmailScanDialog({ isOpen, onClose, onViewInvoices }: Props) {
             throw new Error(String(event.error || "שגיאה בסריקה"));
           }
         }
+      }
+
+      // Stream closed without a "done" event — guard against infinite spinner
+      if (!gotDone) {
+        setPhase("idle");
+        setProgress(0);
+        toast({
+          title: "הסריקה הסתיימה ללא תוצאה",
+          description: "השרת סגר את החיבור לפני שליחת תוצאה. נסה שוב.",
+          variant: "destructive",
+        });
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") return;

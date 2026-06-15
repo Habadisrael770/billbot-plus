@@ -34,8 +34,8 @@ async function buildSystemPrompt(): Promise<string> {
     const recent = await db
       .select({
         id: invoicesTable.id,
-        vendor: invoicesTable.vendor_name,
-        amount: invoicesTable.total_amount,
+        vendor: invoicesTable.raw_vendor_name,
+        amount: invoicesTable.total,
         currency: invoicesTable.currency,
         date: invoicesTable.invoice_date,
         category: invoicesTable.final_category,

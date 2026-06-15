@@ -48,7 +48,7 @@ type PlanId = "free" | "starter" | "business";
 
 const SLIDE_VARIANTS = {
   initial: (d: number) => ({ opacity: 0, x: d > 0 ? 32 : -32 }),
-  animate: { opacity: 1, x: 0, transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] as number[] } },
+  animate: { opacity: 1, x: 0, transition: { duration: 0.28, ease: [0.4, 0, 0.2, 1] as [number, number, number, number] } },
   exit:    (d: number) => ({ opacity: 0, x: d > 0 ? -32 : 32, transition: { duration: 0.2 } }),
 };
 
@@ -149,21 +149,36 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
       a.href = url; a.target = "_top"; a.rel = "noopener";
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
     } else {
-      // Poll for OAuth result in localStorage (written by callback page)
+      const finish = (email?: string) => {
+        clearInterval(interval);
+        window.removeEventListener("message", onMsg);
+        if (email !== undefined) {
+          setGmailConnected(true);
+          setGmailEmail(email);
+        }
+        setConnecting(false);
+      };
+
+      // Primary: listen for postMessage from the OAuth callback page
+      const onMsg = (e: MessageEvent) => {
+        if (e.data?.type === "GMAIL_CONNECTED") finish(e.data.email ?? "");
+      };
+      window.addEventListener("message", onMsg);
+
+      // Fallback: poll localStorage (written by callback page when opener is unavailable)
       const interval = setInterval(() => {
         try {
           const raw = localStorage.getItem("bb_oauth_result");
-          if (!raw) return;
-          const result = JSON.parse(raw) as { type: string; email: string; ts: number };
-          if (result.type === "GMAIL_CONNECTED" && Date.now() - result.ts < 30000) {
-            clearInterval(interval);
-            localStorage.removeItem("bb_oauth_result");
-            setGmailConnected(true);
-            setGmailEmail(result.email ?? "");
-            setConnecting(false);
+          if (raw) {
+            const result = JSON.parse(raw) as { type: string; email: string; ts: number };
+            if (result.type === "GMAIL_CONNECTED" && Date.now() - result.ts < 30000) {
+              localStorage.removeItem("bb_oauth_result");
+              finish(result.email ?? "");
+              return;
+            }
           }
         } catch {}
-        if (popup.closed) { clearInterval(interval); setConnecting(false); }
+        if (popup.closed) finish(undefined);
       }, 500);
     }
   };

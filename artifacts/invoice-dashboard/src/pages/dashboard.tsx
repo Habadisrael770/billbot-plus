@@ -707,7 +707,7 @@ function DateRangePicker({
   activePreset: string; customFrom: string; customTo: string;
   onPreset: (k: string) => void; onCustomChange: (from: string, to: string) => void;
   onCustomApply: () => void; onClose: () => void;
-  anchorRef?: React.RefObject<HTMLButtonElement>;
+  anchorRef?: React.RefObject<HTMLButtonElement | null>;
 }) {
   const [top, setTop] = useState(60);
   const [right, setRight] = useState(16);
@@ -1329,7 +1329,8 @@ export default function Dashboard() {
                               <Tag className="w-3 h-3 text-muted-foreground opacity-0 group-hover/cat:opacity-100 transition-opacity" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent className="bg-card border-border rounded-xl max-h-60 overflow-y-auto" style={{ boxShadow: "var(--shadow-dropdown)" }} dir="rtl">
+                          <DropdownMenuContent className="bg-card border-border rounded-xl max-h-60 overflow-y-auto" style={{ boxShadow: "var(--shadow-dropdown)" }}>
+                            <div dir="rtl">
                             <DropdownMenuLabel className="text-xs text-muted-foreground">שנה קטגוריה</DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-border" />
                             {CATEGORIES.map((c) => (
@@ -1341,6 +1342,7 @@ export default function Dashboard() {
                                 {c}
                               </DropdownMenuItem>
                             ))}
+                            </div>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>
@@ -1383,7 +1385,8 @@ export default function Dashboard() {
                               <MoreHorizontal className="h-3.5 w-3.5" />
                             </button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="center" className="bg-card border-border rounded-xl" style={{ boxShadow: "var(--shadow-dropdown)" }} dir="rtl">
+                          <DropdownMenuContent align="center" className="bg-card border-border rounded-xl" style={{ boxShadow: "var(--shadow-dropdown)" }}>
+                            <div dir="rtl">
                             <DropdownMenuLabel className="text-xs text-muted-foreground">פעולות</DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-border" />
                             {inv.status === "pending_review" && (
@@ -1422,6 +1425,7 @@ export default function Dashboard() {
                                 צפה בקובץ
                               </DropdownMenuItem>
                             )}
+                            </div>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>

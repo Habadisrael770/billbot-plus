@@ -52,9 +52,9 @@ router.post("/", async (req, res) => {
       .insert(categoriesTable)
       .values({ name: name.trim(), color: color || "#6366f1" })
       .returning();
-    res.json(cat);
+    return res.json(cat);
   } catch {
-    res.status(500).json({ error: "Failed to create category" });
+    return res.status(500).json({ error: "Failed to create category" });
   }
 });
 
@@ -84,9 +84,9 @@ router.delete("/:id", async (req, res) => {
     if (!cat) return res.status(404).json({ error: "Not found" });
     if (!cat.is_deletable) return res.status(403).json({ error: "Cannot delete default category" });
     await db.delete(categoriesTable).where(eq(categoriesTable.id, id));
-    res.json({ ok: true });
+    return res.json({ ok: true });
   } catch {
-    res.status(500).json({ error: "Failed to delete category" });
+    return res.status(500).json({ error: "Failed to delete category" });
   }
 });
 

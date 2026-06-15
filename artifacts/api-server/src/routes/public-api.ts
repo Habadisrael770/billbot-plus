@@ -16,13 +16,10 @@
 
 import { Router, type IRouter, type Request, type Response, type NextFunction } from "express";
 import crypto from "crypto";
-import path from "path";
-import fs from "fs";
 import { db } from "@workspace/db";
 import { invoicesTable, vendorsTable } from "@workspace/db/schema";
 import { sql, gte, and, lte } from "drizzle-orm";
-import { getGmailClient } from "../services/gmailOAuth.js";
-import { processInvoice } from "../services/invoiceProcessingService.js";
+import { runGmailScan } from "./email-connectors.js";
 
 // ─── DB bootstrap: create table if not exists ───────────────────────────────
 async function ensureApiKeysTable() {
@@ -98,104 +95,26 @@ export const publicRouter: IRouter = Router();
 
 /**
  * POST /api/public/gmail-scan
- * Scans Gmail for the last 3 months, processes new invoices, returns counts.
+ * Scans Gmail + IMAP for the last N months, processes new invoices, returns counts.
  * Body: {} (optional: { monthsBack: 1-6 })
+ * Delegates to the same engine as the SSE scan endpoint.
  */
 publicRouter.post("/gmail-scan", requireApiKey, async (req, res) => {
   try {
     const monthsBack = Math.min(Math.max(Number(req.body?.monthsBack) || 3, 1), 6);
-    const { client: gmail } = await getGmailClient();
-
-    const from = new Date();
-    from.setMonth(from.getMonth() - monthsBack);
-    const afterStr = `${from.getFullYear()}/${String(from.getMonth() + 1).padStart(2, "0")}/${String(from.getDate()).padStart(2, "0")}`;
-
-    const SEARCH_QUERIES = [
-      `has:attachment filename:pdf חשבונית after:${afterStr}`,
-      `has:attachment filename:pdf invoice after:${afterStr}`,
-      `has:attachment filename:pdf receipt after:${afterStr}`,
-      `has:attachment filename:pdf קבלה after:${afterStr}`,
-      `has:attachment (filename:jpg OR filename:png) חשבונית after:${afterStr}`,
-    ];
-
-    const messageIds = new Set<string>();
-    for (const q of SEARCH_QUERIES) {
-      let pageToken: string | undefined;
-      do {
-        const listRes = await gmail.users.messages.list({
-          userId: "me",
-          q,
-          maxResults: 100,
-          pageToken,
-        });
-        for (const msg of listRes.data.messages ?? []) {
-          if (msg.id) messageIds.add(msg.id);
-        }
-        pageToken = listRes.data.nextPageToken ?? undefined;
-      } while (pageToken && messageIds.size < 300);
-    }
-
-    let processed = 0;
-    let skipped = 0;
-    const errors: string[] = [];
-
-    const monthDir = (() => {
-      const now = new Date();
-      const d = path.resolve(process.cwd(), "uploads", `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
-      if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-      return d;
-    })();
-
-    for (const msgId of messageIds) {
-      try {
-        const msg = await gmail.users.messages.get({ userId: "me", id: msgId, format: "full" });
-        const parts = flattenParts(msg.data.payload?.parts ?? []);
-        const attachments = parts.filter((p) => {
-          const fn = p.filename ?? "";
-          const mime = p.mimeType ?? "";
-          return p.body?.attachmentId && (
-            mime === "application/pdf" || mime === "image/jpeg" || mime === "image/png" ||
-            fn.endsWith(".pdf") || fn.endsWith(".jpg") || fn.endsWith(".png")
-          );
-        });
-
-        if (!attachments.length) { skipped++; continue; }
-
-        const emailDate = msg.data.internalDate
-          ? new Date(Number(msg.data.internalDate))
-          : new Date();
-
-        for (const part of attachments) {
-          const attachRes = await gmail.users.messages.attachments.get({
-            userId: "me", messageId: msgId, id: part.body!.attachmentId!,
-          });
-          const data = attachRes.data.data;
-          if (!data) continue;
-
-          const buffer = Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
-          const extMap: Record<string, string> = { "application/pdf": ".pdf", "image/jpeg": ".jpg", "image/png": ".png" };
-          const ext = extMap[part.mimeType ?? ""] || ".pdf";
-          const filename = `public-api-${Date.now()}-${crypto.randomBytes(4).toString("hex")}${ext}`;
-          const filePath = path.join(monthDir, filename);
-          fs.writeFileSync(filePath, buffer);
-
-          await processInvoice({ filePath, extracted: { date: emailDate.toISOString().split("T")[0] }, sourceType: "email" });
-          processed++;
-        }
-      } catch (err) {
-        const msg = String(err);
-        if (msg.includes("VENDOR_BLOCKED:")) skipped++;
-        else errors.push(msg.slice(0, 120));
-      }
-    }
-
+    const sinceDate = new Date();
+    sinceDate.setMonth(sinceDate.getMonth() - monthsBack);
+    const result = await runGmailScan(
+      { sinceDate: sinceDate.toISOString().split("T")[0] },
+      () => {},
+    );
     res.json({
       ok: true,
       scanned_months: monthsBack,
-      found_emails: messageIds.size,
-      processed,
-      skipped,
-      errors: errors.slice(0, 5),
+      found_emails: result.found,
+      processed: result.processed,
+      skipped: result.skipped,
+      errors: result.errors,
       triggered_at: new Date().toISOString(),
     });
   } catch (err) {
@@ -362,18 +281,3 @@ internalApiKeysRouter.delete("/:id", async (req, res) => {
   }
 });
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-interface GmailPart {
-  filename?: string | null;
-  mimeType?: string | null;
-  body?: { attachmentId?: string | null } | null;
-  parts?: GmailPart[] | null;
-}
-function flattenParts(parts: GmailPart[]): GmailPart[] {
-  const result: GmailPart[] = [];
-  for (const p of parts) {
-    result.push(p);
-    if (p.parts) result.push(...flattenParts(p.parts));
-  }
-  return result;
-}

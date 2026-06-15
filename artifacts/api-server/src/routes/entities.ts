@@ -38,9 +38,9 @@ router.post("/", async (req, res) => {
         registration_type: registration_type || null,
       })
       .returning();
-    res.json(entity);
+    return res.json(entity);
   } catch {
-    res.status(500).json({ error: "Failed to create entity" });
+    return res.status(500).json({ error: "Failed to create entity" });
   }
 });
 
@@ -66,9 +66,9 @@ router.delete("/:id", async (req, res) => {
     if (!entity) return res.status(404).json({ error: "Not found" });
     if (entity.is_default) return res.status(403).json({ error: "Cannot delete default entity" });
     await db.delete(entitiesTable).where(eq(entitiesTable.id, id));
-    res.json({ ok: true });
+    return res.json({ ok: true });
   } catch {
-    res.status(500).json({ error: "Failed to delete entity" });
+    return res.status(500).json({ error: "Failed to delete entity" });
   }
 });
 

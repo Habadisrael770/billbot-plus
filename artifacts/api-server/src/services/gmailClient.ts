@@ -36,7 +36,7 @@ async function getAccessToken(): Promise<string> {
     }
   )
     .then((res) => res.json())
-    .then((data) => data.items?.[0]);
+    .then((data: { items?: { settings?: { access_token?: string; oauth?: { credentials?: { access_token?: string } }; expires_at?: string } }[] }) => data.items?.[0]);
 
   const accessToken =
     connectionSettings?.settings?.access_token ||

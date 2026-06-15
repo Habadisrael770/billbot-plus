@@ -233,7 +233,7 @@ function AppRouter() {
             <Route path="/help" component={HelpPage} />
             <Route path="/profile" component={Profile} />
             <Route path="/settings" component={SettingsPage} />
-            <Route path="/hermes" component={HermesChat} />
+            <Route path="/hermes" component={() => <HermesChat />} />
             <Route path="/privacy" component={PrivacyPolicy} />
             <Route component={NotFound} />
           </Switch>

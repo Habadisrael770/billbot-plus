@@ -34,7 +34,7 @@ router.get("/gmail/status", async (_req, res) => {
 });
 
 // ── Helper: run the actual scan logic, calling onProgress as work proceeds ──
-async function runGmailScan(
+export async function runGmailScan(
   body: { yearsBack?: number; sinceDate?: string },
   onProgress: (pct: number, msg: string, extra?: object) => void,
 ): Promise<{ found: number; processed: number; skipped: number; errors: string[]; yearsScanned: number; accounts_scanned: number }> {
@@ -109,20 +109,27 @@ async function runGmailScan(
       await Promise.all(batchIds.map(async (msgId) => {
         try {
           const msg = await gmail.users.messages.get({ userId: "me", id: msgId, format: "full" });
-          const parts = msg.data.payload?.parts ?? [];
-          const allParts = flattenParts(parts);
+          const payloadParts = msg.data.payload?.parts ?? [];
+          const allParts = flattenParts(payloadParts);
 
-          const attachmentParts = allParts.filter((p) => {
-            const fn = p.filename ?? "";
+          // Single-part MIME: no parts array — the attachment lives in payload.body directly
+          const payload = msg.data.payload;
+          if (allParts.length === 0 && payload?.body?.data) {
+            allParts.push(payload as GmailPart);
+          }
+
+          const isDocPart = (p: GmailPart) => {
+            const fn = (p.filename ?? "").toLowerCase();
             const mime = p.mimeType ?? "";
             return (
-              p.body?.attachmentId &&
               (mime === "application/pdf" || mime === "image/jpeg" ||
-               mime === "image/jpg"  || mime === "image/png" ||
-               fn.endsWith(".pdf")   || fn.endsWith(".jpg") ||
-               fn.endsWith(".jpeg")  || fn.endsWith(".png"))
+               mime === "image/jpg"       || mime === "image/png" ||
+               fn.endsWith(".pdf")        || fn.endsWith(".jpg") ||
+               fn.endsWith(".jpeg")       || fn.endsWith(".png")) &&
+              (!!p.body?.attachmentId || !!p.body?.data)
             );
-          });
+          };
+          const attachmentParts = allParts.filter(isDocPart);
 
           if (attachmentParts.length === 0) { skipped++; return; }
 
@@ -131,20 +138,25 @@ async function runGmailScan(
             : new Date();
 
           for (const part of attachmentParts) {
-            const attachId = part.body!.attachmentId!;
-            const attachRes = await gmail.users.messages.attachments.get({
-              userId: "me", messageId: msgId, id: attachId,
-            });
-            const data = attachRes.data.data;
-            if (!data) continue;
-
-            const buffer = Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+            let buffer: Buffer;
+            if (part.body!.attachmentId) {
+              const attachRes = await gmail.users.messages.attachments.get({
+                userId: "me", messageId: msgId, id: part.body!.attachmentId,
+              });
+              const data = attachRes.data.data;
+              if (!data) continue;
+              buffer = Buffer.from(data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+            } else if (part.body!.data) {
+              buffer = Buffer.from(part.body!.data.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+            } else {
+              continue;
+            }
             const mime = part.mimeType ?? "application/pdf";
             const extMap: Record<string, string> = {
               "application/pdf": ".pdf", "image/jpeg": ".jpg",
               "image/jpg": ".jpg",       "image/png":  ".png",
             };
-            const ext = extMap[mime] || path.extname(part.filename ?? ".pdf");
+            const ext = extMap[mime] || path.extname(part.filename ?? ".pdf").toLowerCase();
             const monthDir = getMonthUploadsDir();
             const filename = `gmail-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
             const filePath = path.join(monthDir, filename);
@@ -170,7 +182,6 @@ async function runGmailScan(
                 vat:             aiResult?.vat            ?? null,
                 total:           aiResult?.total          ?? null,
                 currency:        aiResult?.currency       ?? "ILS",
-                document_type:   aiResult?.document_type  ?? "supplier_invoice",
               },
               extractionConfidence: aiResult?.confidence ?? 0,
               sourceType: "email",
@@ -232,7 +243,6 @@ async function runGmailScan(
               vat:             imapAiResult?.vat            ?? null,
               total:           imapAiResult?.total          ?? null,
               currency:        imapAiResult?.currency       ?? "ILS",
-              document_type:   imapAiResult?.document_type  ?? "supplier_invoice",
             },
             extractionConfidence: imapAiResult?.confidence ?? 0,
             sourceType: "email",
