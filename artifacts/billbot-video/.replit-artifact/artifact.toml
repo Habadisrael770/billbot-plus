@@ -1,0 +1,31 @@
+kind = "video"
+previewPath = "/billbot-video/"
+title = "BillBOT+ — סרטון פרומו"
+version = "1.0.0"
+id = "artifacts/billbot-video"
+router = "path"
+
+[[integratedSkills]]
+name = "video-js"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/billbot-video/" ]
+localPort = 22657
+
+[services.development]
+run = "pnpm --filter @workspace/billbot-video run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/billbot-video", "run", "build" ]
+publicDir = "artifacts/billbot-video/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22657"
+BASE_PATH = "/billbot-video/"

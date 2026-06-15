@@ -18,3 +18,9 @@ id = "IvnErABWPOdYXKJv29hqR"
 uri = "file://REVIEW_PROMPT.md"
 type = "text"
 title = "BillBOT+ — Code Review Prompt (לקלוד / GPT Codex)"
+
+[[outputs]]
+id = "QFzePZFIc0ivufLDEniHj"
+uri = "file://artifacts/billbot-video/public/audio/bg_music.mp3"
+type = "audio"
+title = "background music"
