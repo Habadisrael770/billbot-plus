@@ -33,7 +33,7 @@ export function Scene1() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, type: 'spring', bounce: 0.4 }}
         >
-          BillBOT+
+          BILLIBOT+
         </motion.h1>
       </div>
 

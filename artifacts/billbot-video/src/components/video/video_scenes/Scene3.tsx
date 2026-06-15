@@ -1,61 +1,76 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-function GmailIcon({ glow }: { glow: string }) {
+function GmailIcon() {
   return (
-    <svg viewBox="0 0 48 48" width="62%" height="62%" style={{ filter: `drop-shadow(0 0 6px ${glow}) drop-shadow(0 0 12px ${glow}80)` }}>
-      <path fill="#FF6B6B" d="M6 16h36l-18 13z"/>
-      <path fill="none" stroke="#FF6B6B" strokeWidth="2.5" d="M6 16v24h6V22.5L24 32l12-9.5V40h6V16"/>
+    <svg viewBox="0 0 48 48" width="62%" height="62%">
+      <path fill="#4285F4" d="M6 40V16l18 13z"/>
+      <path fill="#34A853" d="M42 40V16L24 29z"/>
+      <path fill="#FBBC05" d="M6 40h6V22.5L6 16z"/>
+      <path fill="#EA4335" d="M42 40h-6V22.5L42 16z"/>
+      <path fill="#C5221F" d="M6 16l18 13 18-13H6z"/>
+      <path fill="#EA4335" d="M6 16l18 13 18-13H6z"/>
     </svg>
   );
 }
 
-function DriveIcon({ glow }: { glow: string }) {
+function DriveIcon() {
   return (
-    <svg viewBox="0 0 48 48" width="62%" height="62%" style={{ filter: `drop-shadow(0 0 6px ${glow}) drop-shadow(0 0 12px ${glow}80)` }}>
-      <path fill="none" stroke="#FFD93D" strokeWidth="2.5" strokeLinejoin="round" d="M17 6L6 25l5 9 11-19z"/>
-      <path fill="none" stroke="#4FC3F7" strokeWidth="2.5" strokeLinejoin="round" d="M31 6H17l11 19h14z"/>
-      <path fill="none" stroke="#69F0AE" strokeWidth="2.5" strokeLinejoin="round" d="M11 34l5 8h16l5-8z"/>
+    <svg viewBox="0 0 48 48" width="62%" height="62%">
+      <path fill="#FFC107" d="M17 6L6 25l5 9 11-19z"/>
+      <path fill="#1976D2" d="M31 6H17l11 19h14z"/>
+      <path fill="#4CAF50" d="M11 34l5 8h16l5-8H11z"/>
     </svg>
   );
 }
 
-function OutlookIcon({ glow }: { glow: string }) {
+function OutlookIcon() {
   return (
-    <svg viewBox="0 0 48 48" width="62%" height="62%" style={{ filter: `drop-shadow(0 0 6px ${glow}) drop-shadow(0 0 12px ${glow}80)` }}>
-      <rect fill="none" stroke="#50D9FF" strokeWidth="2" x="20" y="12" width="18" height="20" rx="2"/>
-      <path d="M20 12l9 9 9-9" stroke="#50D9FF" strokeWidth="2" fill="none"/>
-      <ellipse fill="none" stroke="#50D9FF" strokeWidth="2" cx="16" cy="24" rx="8" ry="10"/>
+    <svg viewBox="0 0 48 48" width="62%" height="62%">
+      <rect fill="#0078D4" x="4" y="6" width="22" height="36" rx="3"/>
+      <rect fill="#28A8E8" x="22" y="10" width="22" height="28" rx="3"/>
+      <rect fill="#0078D4" x="22" y="22" width="22" height="4"/>
+      <path fill="#fff" d="M22 10h22v4L31 20l-9-6z"/>
+      <ellipse fill="#fff" cx="15" cy="24" rx="7" ry="9"/>
+      <ellipse fill="#0078D4" cx="15" cy="24" rx="4.5" ry="6.5"/>
     </svg>
   );
 }
 
-function WhatsAppIcon({ glow }: { glow: string }) {
+function WhatsAppIcon() {
   return (
-    <svg viewBox="0 0 48 48" width="62%" height="62%" style={{ filter: `drop-shadow(0 0 6px ${glow}) drop-shadow(0 0 12px ${glow}80)` }}>
-      <circle fill="none" stroke="#4ADE80" strokeWidth="2.5" cx="24" cy="24" r="18"/>
-      <path fill="none" stroke="#4ADE80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-        d="M16 31l1.5-4.5A10 10 0 1124 34a10 10 0 01-5.2-1.5z"/>
-      <path fill="#4ADE80" d="M20 22c.3-.5 1-.6 1.4-.1l1 1.2c.3.4.2.9-.1 1.2l-.5.5c.5 1 1.2 1.7 2.2 2.2l.5-.5c.3-.3.8-.4 1.2-.1l1.2 1c.5.4.4 1.1-.1 1.4-1.5 1-4 .4-5.5-1.1C19.8 26.2 19 23.5 20 22z"/>
+    <svg viewBox="0 0 48 48" width="62%" height="62%">
+      <circle fill="#25D366" cx="24" cy="24" r="20"/>
+      <path fill="#fff" d="M34.5 13.5A14.5 14.5 0 0010.7 31.3l-2.2 8 8.3-2.2A14.5 14.5 0 1034.5 13.5zm-10.5 22a12 12 0 01-6.1-1.7l-.4-.3-4.4 1.2 1.2-4.3-.3-.5A12 12 0 1124 35.5z"/>
+      <path fill="#25D366" d="M19.8 17.3c-.4-.9-.8-.9-1.2-.9h-1c-.3 0-.9.1-1.3.6-.5.5-1.8 1.7-1.8 4.2s1.8 4.8 2.1 5.1c.3.4 3.5 5.6 8.6 7.6 4.3 1.7 5.1 1.4 6 1.3.9-.1 2.9-1.2 3.3-2.3.4-1.2.4-2.2.3-2.4-.1-.2-.4-.3-.9-.6s-2.9-1.4-3.3-1.6c-.4-.2-.8-.2-1.1.2-.3.4-1.2 1.6-1.5 1.9-.3.3-.5.4-.9.1-.4-.2-1.8-.7-3.4-2.1-1.3-1.1-2.1-2.5-2.4-2.9-.2-.4 0-.6.2-.8l.7-.8c.2-.3.3-.5.4-.8.1-.3 0-.6-.1-.8l-1.7-4z"/>
     </svg>
   );
 }
 
-function TelegramIcon({ glow }: { glow: string }) {
+function TelegramIcon() {
   return (
-    <svg viewBox="0 0 48 48" width="62%" height="62%" style={{ filter: `drop-shadow(0 0 6px ${glow}) drop-shadow(0 0 12px ${glow}80)` }}>
-      <circle fill="none" stroke="#38BDF8" strokeWidth="2.5" cx="24" cy="24" r="18"/>
-      <path fill="#38BDF8" d="M33.5 15.5l-3.8 18.4c-.28 1.24-1 1.55-2.03.97l-5.6-4.12-2.7 2.6c-.3.3-.55.55-1.12.55l.4-5.68 10.3-9.3c.45-.4-.1-.62-.7-.23l-12.74 8.02-5.48-1.71c-1.2-.37-1.21-1.18.25-1.75l21.36-8.24c.98-.38 1.85.24 1.56 1.55z"/>
+    <svg viewBox="0 0 48 48" width="62%" height="62%">
+      <defs>
+        <linearGradient id="tgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#2AABEE"/>
+          <stop offset="100%" stopColor="#229ED9"/>
+        </linearGradient>
+      </defs>
+      <circle fill="url(#tgGrad)" cx="24" cy="24" r="20"/>
+      <path fill="#fff" fillOpacity=".6" d="M14.1 30.2l1.3-6.2 10.5-9.4-13.1 7.9z"/>
+      <path fill="#fff" d="M14.1 30.2l9.9-3.1 4.5 3.4z"/>
+      <path fill="#fff" fillOpacity=".8" d="M28.5 30.5l-4.5-3.4 7.6-12.4z"/>
+      <path fill="#fff" d="M15.4 24l-1.3 6.2 14-16.5z"/>
     </svg>
   );
 }
 
 const inputSources = [
-  { id: 'gmail',    label: 'Gmail',    color: '#FF6B6B', neon: '#ff4444', Icon: GmailIcon },
-  { id: 'drive',    label: 'Drive',    color: '#FFD93D', neon: '#ffd700', Icon: DriveIcon },
-  { id: 'outlook',  label: 'Outlook',  color: '#50D9FF', neon: '#00cfff', Icon: OutlookIcon },
-  { id: 'whatsapp', label: 'WhatsApp', color: '#4ADE80', neon: '#00e676', Icon: WhatsAppIcon },
-  { id: 'telegram', label: 'Telegram', color: '#38BDF8', neon: '#29b6f6', Icon: TelegramIcon },
+  { id: 'gmail',    label: 'Gmail',    color: '#EA4335', glow: '#ea433560', Icon: GmailIcon },
+  { id: 'drive',    label: 'Drive',    color: '#FFC107', glow: '#ffc10750', Icon: DriveIcon },
+  { id: 'outlook',  label: 'Outlook',  color: '#0078D4', glow: '#0078d460', Icon: OutlookIcon },
+  { id: 'whatsapp', label: 'WhatsApp', color: '#25D366', glow: '#25d36660', Icon: WhatsAppIcon },
+  { id: 'telegram', label: 'Telegram', color: '#2AABEE', glow: '#2aabee60', Icon: TelegramIcon },
 ];
 
 const invoices = [
@@ -100,7 +115,7 @@ export function Scene3() {
         animate={phase >= 1 ? { opacity: 1, y: 0 } : { opacity: 0, y: -50 }}
         transition={{ duration: 0.8, type: 'spring', bounce: 0.3 }}
       >
-        <span className="text-[#4361ee] font-black drop-shadow-[0_0_15px_rgba(67,97,238,0.5)]">BillBOT+</span> סורק, מארגן ומנתח אוטומטית
+        <span className="text-[#4361ee] font-black drop-shadow-[0_0_15px_rgba(67,97,238,0.5)]">BILLIBOT+</span> סורק, מארגן ומנתח אוטומטית
       </motion.h2>
 
       {/* PHASE 2: Input Sources */}
@@ -187,7 +202,7 @@ export function Scene3() {
       >
         <div className="bg-[#4361ee]/20 border-b border-[#4361ee]/30 p-[1.5vw] flex items-center gap-[1vw]">
           <div className="w-[3vw] h-[3vw] bg-[#4361ee] rounded-full flex items-center justify-center text-[1.5vw]">🤖</div>
-          <div className="text-white font-bold text-[1.4vw]">BillBOT AI</div>
+          <div className="text-white font-bold text-[1.4vw]">BILLIBOT AI</div>
         </div>
 
         <div className="p-[2vw] flex flex-col gap-[2vh]">
