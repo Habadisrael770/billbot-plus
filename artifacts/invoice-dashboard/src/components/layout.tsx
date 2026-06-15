@@ -574,10 +574,13 @@ function PersonalAreaDropdown() {
   const [, navigate] = useLocation();
   const user = readBbUser();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     localStorage.removeItem("bb_user");
-    navigate("/");
-    window.location.reload();
+    localStorage.removeItem("bb_wizard_done");
+    localStorage.removeItem("bb_onboarding_progress");
+    const API = `${import.meta.env.BASE_URL}api`.replace(/\/+/g, "/").replace(/\/$/, "");
+    await fetch(`${API}/auth/logout`, { method: "POST", credentials: "include" }).catch(() => {});
+    window.location.href = `${import.meta.env.BASE_URL}login`.replace(/\/+/g, "/");
   };
 
   return (
