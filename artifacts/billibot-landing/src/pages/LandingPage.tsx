@@ -26,7 +26,7 @@ function VideoSection() {
     <section
       ref={ref}
       style={{
-        padding: "100px 1.5rem 0",
+        padding: "100px 0 0",
         background: "linear-gradient(180deg, #080e1e 0%, #0d1224 100%)",
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(30px)",
@@ -35,12 +35,9 @@ function VideoSection() {
     >
       <div
         style={{
-          maxWidth: 960,
-          margin: "0 auto",
-          borderRadius: 20,
+          width: "100%",
           overflow: "hidden",
-          border: "1px solid rgba(67,97,238,0.25)",
-          boxShadow: "0 0 60px rgba(67,97,238,0.2), 0 0 120px rgba(45,212,191,0.08)",
+          boxShadow: "0 0 80px rgba(67,97,238,0.18), 0 0 160px rgba(45,212,191,0.07)",
           background: "#080e1e",
           aspectRatio: "16/9",
           position: "relative",
