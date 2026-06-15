@@ -137,16 +137,36 @@ export function GmailScanDialog({ isOpen, onClose, onViewInvoices }: Props) {
       return;
     }
     setConnectingGmail(true);
+    let popup: Window | null = null;
     try {
       const res = await fetch(`${API_BASE}/gmail-auth/url`);
-      const { url } = await res.json();
+      const { url } = await res.json() as { url?: string };
       if (!url) throw new Error("no url");
-      openUrlSafely(url, "gmail-connect");
+      popup = openUrlSafely(url, "gmail-connect");
     } catch {
       toast({ title: "שגיאה", description: "לא ניתן לפתוח חיבור Gmail", variant: "destructive" });
-    } finally {
       setConnectingGmail(false);
+      return;
     }
+    if (!popup) { setConnectingGmail(false); return; }
+    const safetyTimer = setTimeout(() => setConnectingGmail(false), 120_000);
+    const poll = setInterval(() => {
+      if (popup!.closed) {
+        clearInterval(poll);
+        clearTimeout(safetyTimer);
+        setConnectingGmail(false);
+        loadStatus();
+      }
+    }, 600);
+    const onMsg = (e: MessageEvent) => {
+      if (e.data?.type === "GMAIL_CONNECTED" || e.data?.type === "GMAIL_ERROR") {
+        clearInterval(poll);
+        clearTimeout(safetyTimer);
+        setConnectingGmail(false);
+        window.removeEventListener("message", onMsg);
+      }
+    };
+    window.addEventListener("message", onMsg);
   };
 
   const handleImapConnect = async () => {

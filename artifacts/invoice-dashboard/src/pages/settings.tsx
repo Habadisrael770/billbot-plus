@@ -302,6 +302,7 @@ export default function Settings() {
   const [isScanningOutlook, setIsScanningOutlook] = useState(false);
   const [gmailStatus, setGmailStatus] = useState<GmailOAuthStatus | null>(null);
   const [isLoadingGmail, setIsLoadingGmail] = useState(true);
+  const [isConnectingGmail, setIsConnectingGmail] = useState(false);
   const [telegramStatus, setTelegramStatus] = useState<TelegramStatus | null>(null);
   const [whatsAppStatus, setWhatsAppStatus] = useState<WhatsAppStatus | null>(null);
   const [isSettingUpWebhook, setIsSettingUpWebhook] = useState(false);
@@ -497,25 +498,51 @@ export default function Settings() {
   }, []);
 
   const connectGmail = async () => {
+    setIsConnectingGmail(true);
     try {
+      try {
+        const st = await fetch(`${API_BASE}/gmail-auth/status`, { credentials: "include" });
+        if (st.ok) {
+          const sd = await st.json() as GmailOAuthStatus;
+          if (sd.connected) { setGmailStatus(sd); return; }
+        }
+      } catch {}
       const res = await fetch(`${API_BASE}/gmail-auth/url`);
       const data = await res.json() as { url?: string; error?: string };
-      if (data.url) {
-        // Open popup; if blocked use _top to escape iframe
-        const w = 520, h = 640;
-        const left = Math.max(0, (window.screen.width  - w) / 2);
-        const top  = Math.max(0, (window.screen.height - h) / 2);
-        const popup = window.open(data.url, "gmail-settings", `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`);
-        if (!popup) {
-          const a = document.createElement("a");
-          a.href = data.url; a.target = "_top"; a.rel = "noopener";
-          document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        }
-      } else {
+      if (!data.url) {
         toast({ title: "שגיאה", description: data.error ?? "לא ניתן לקבל כתובת חיבור", variant: "destructive" });
+        setIsConnectingGmail(false);
+        return;
       }
+      const w = 520, h = 640;
+      const left = Math.max(0, (window.screen.width  - w) / 2);
+      const top  = Math.max(0, (window.screen.height - h) / 2);
+      const popup = window.open(data.url, "gmail-settings", `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`);
+      if (!popup) {
+        const a = document.createElement("a");
+        a.href = data.url; a.target = "_top"; a.rel = "noopener";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setIsConnectingGmail(false);
+        return;
+      }
+      const safetyTimer = setTimeout(() => setIsConnectingGmail(false), 120_000);
+      const poll = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(poll); clearTimeout(safetyTimer);
+          setIsConnectingGmail(false); fetchGmailStatus();
+        }
+      }, 600);
+      const onMsg = (e: MessageEvent) => {
+        if (e.data?.type === "GMAIL_CONNECTED" || e.data?.type === "GMAIL_ERROR") {
+          clearInterval(poll); clearTimeout(safetyTimer);
+          setIsConnectingGmail(false);
+          window.removeEventListener("message", onMsg);
+        }
+      };
+      window.addEventListener("message", onMsg);
     } catch {
       toast({ title: "שגיאה", description: "לא ניתן להתחבר לשרת", variant: "destructive" });
+      setIsConnectingGmail(false);
     }
   };
 
@@ -1386,11 +1413,13 @@ export default function Settings() {
                     <Button
                       size="sm"
                       onClick={connectGmail}
-                      disabled={!gmailStatus?.credentialsConfigured || isLoadingGmail}
+                      disabled={!gmailStatus?.credentialsConfigured || isLoadingGmail || isConnectingGmail}
                       className="w-full rounded-xl bg-white text-black hover:bg-white/90 gap-2 text-xs font-semibold"
                     >
-                      <span className="text-sm font-bold text-red-500 leading-none">G</span>
-                      {gmailStatus?.credentialsConfigured ? "התחבר עם Google" : "נדרשת הגדרת OAuth"}
+                      {isConnectingGmail
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <span className="text-sm font-bold text-red-500 leading-none">G</span>}
+                      {isConnectingGmail ? "מתחבר..." : gmailStatus?.credentialsConfigured ? "התחבר עם Google" : "נדרשת הגדרת OAuth"}
                     </Button>
                     {/* Refresh */}
                     <Button

@@ -1,0 +1,32 @@
+ממצאים שעליהם מבוסס הטקסט
+תהליך ה־Login הנוכחי כולל בפועל את gmail.readonly, ולא רק הרשאות זיהוי בסיסיות. בנוסף, callback ההתחברות שומר Gmail tokens כאשר ההרשאה התקבלה.
+
+תהליך Gmail הייעודי מבקש גם gmail.readonly וגם gmail.send. כתובת ה־OAuth המוגבלת נוצרת ללא בדיקת session בתוך ה־route עצמו.
+
+מנגנון Replit connector כבר ממומש ומשתמש ב־deployment identity כדי לקבל access token. לאחר מכן הוא בונה Gmail client חדש מהטוקן. החיבור כבר נוסף ל־getAllGmailClients(), אבל שגיאות החיבור נבלעות ב־catch ריק.
+
+ה־onboarding שנמצא בענף הנוכחי עדיין פותח popup וממתין ל־localStorage או ל־popup.closed, ללא timeout. דף האינטגרציות פותח popup בלי lifecycle מלא. גם דף ההגדרות פותח popup ללא timeout או polling מסודר. דיאלוג הסריקה מאפס את מצב ה־connecting מיד ב־finally, גם אם תהליך OAuth עדיין מתנהל.
+
+כתובות ה־Production הציבוריות מצביעות כרגע ל־riker.replit.dev. ה־health route מוגדר רק כ־/healthz. הוא מותקן תחת /api, ולכן הנתיב המלא הוא /api/healthz.
+
+רשימת ה־artifacts ב־.replit אינה כוללת את dashboard ואת loyalty club. עם זאת, לשניהם יש הגדרות build ו־routing מלאות ב־artifact.toml.
+
+בדיקות שבוצעו במהלך הניתוח
+
+✅ git status --short --branch — נמצא branch בשם work עם working tree נקי.
+
+✅ git log --oneline --decorate -12 — נמצא HEAD בשם c3dfc56.
+
+✅ git show --stat --oneline b313d79 — ה־commit המדווח לא נמצא במאגר הזמין.
+
+✅ rg -n -C 4 'GMAIL_SCOPES|LOGIN_SCOPES|getRedirectUri|getGmailAuthUrl|getAllGmailClients|gmail-auth/status|gmail-auth/url|window\\.open|popup\\.closed|setConnecting|healthz' artifacts/api-server/src artifacts/invoice-dashboard/src — נבדקו מסלולי OAuth, popup ו־health.
+
+✅ PORT=19180 BASE_PATH=/ pnpm --filter @workspace/invoice-dashboard run build — ה־build עבר ויצר index-DafGHl0v.js.
+
+⚠️ pnpm --filter @workspace/invoice-dashboard run build — ללא PORT ה־build אינו מתחיל, משום ש־Vite config דורש את משתנה הסביבה.
+
+❌ pnpm --filter @workspace/invoice-dashboard run typecheck — נכשל בגלל project references ושגיאות TypeScript קיימות.
+
+❌ pnpm --filter @workspace/api-server run typecheck — נכשל בגלל project references ושגיאות TypeScript קיימות.
+
+✅ git status --short — לא בוצעו שינויי קוד במסגרת הניתוח, ולכן לא נוצר commit ולא נפתח Pull Request.

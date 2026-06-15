@@ -260,6 +260,7 @@ function GmailCard() {
   const { toast } = useToast();
   const [status, setStatus] = useState<GmailOAuthStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<{ processed: number; found: number } | null>(null);
 
@@ -277,27 +278,52 @@ function GmailCard() {
 
   useEffect(() => { fetchStatus(); }, [fetchStatus]);
 
-  const openUrlSafely = (url: string) => {
-    // Try popup; if blocked navigate top frame to escape Replit iframe (avoids 403)
-    const w = 520, h = 640;
-    const left = Math.max(0, (window.screen.width  - w) / 2);
-    const top  = Math.max(0, (window.screen.height - h) / 2);
-    const popup = window.open(url, "gmail-oauth", `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`);
-    if (!popup) {
-      const a = document.createElement("a");
-      a.href = url; a.target = "_top"; a.rel = "noopener";
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    }
-  };
-
   const connect = async () => {
+    setConnecting(true);
     try {
+      try {
+        const st = await fetch(`${API_BASE}/gmail-auth/status`, { credentials: "include" });
+        if (st.ok) {
+          const sd = await st.json() as GmailOAuthStatus;
+          if (sd.connected) { setStatus(sd); return; }
+        }
+      } catch {}
       const res = await fetch(`${API_BASE}/gmail-auth/url`);
       const data = await res.json() as { url?: string; error?: string };
-      if (data.url) openUrlSafely(data.url);
-      else toast({ title: "שגיאה", description: data.error, variant: "destructive" });
+      if (!data.url) {
+        toast({ title: "שגיאה", description: data.error, variant: "destructive" });
+        setConnecting(false);
+        return;
+      }
+      const w = 520, h = 640;
+      const left = Math.max(0, (window.screen.width  - w) / 2);
+      const top  = Math.max(0, (window.screen.height - h) / 2);
+      const popup = window.open(data.url, "gmail-oauth", `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`);
+      if (!popup) {
+        const a = document.createElement("a");
+        a.href = data.url; a.target = "_top"; a.rel = "noopener";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setConnecting(false);
+        return;
+      }
+      const safetyTimer = setTimeout(() => setConnecting(false), 120_000);
+      const poll = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(poll); clearTimeout(safetyTimer);
+          setConnecting(false); fetchStatus();
+        }
+      }, 600);
+      const onMsg = (e: MessageEvent) => {
+        if (e.data?.type === "GMAIL_CONNECTED" || e.data?.type === "GMAIL_ERROR") {
+          clearInterval(poll); clearTimeout(safetyTimer);
+          setConnecting(false);
+          window.removeEventListener("message", onMsg);
+        }
+      };
+      window.addEventListener("message", onMsg);
     } catch {
       toast({ title: "שגיאת רשת", variant: "destructive" });
+      setConnecting(false);
     }
   };
 
@@ -388,11 +414,11 @@ function GmailCard() {
           )}
           <button
             onClick={connect}
-            disabled={!status?.credentialsConfigured}
+            disabled={!status?.credentialsConfigured || connecting}
             className="flex items-center gap-1.5 h-8 px-4 rounded-xl bg-primary text-white text-xs font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
-            <Mail className="w-3.5 h-3.5" />
-            חבר Gmail
+            {connecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Mail className="w-3.5 h-3.5" />}
+            {connecting ? "מתחבר..." : "חבר Gmail"}
           </button>
         </div>
       )}
