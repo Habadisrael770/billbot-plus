@@ -1,4 +1,8 @@
-// Gmail OAuth2 service — full read permissions (gmail.readonly + userinfo.email)
+// Google / Gmail OAuth2 service — two separate flows:
+//   1. Google Login  (/gmail-auth/login-url)  — basic scopes only (openid + userinfo).
+//      Works for ANY Google account, no app verification needed, no test-user list.
+//   2. Gmail Scan    (/gmail-auth/url)         — restricted scopes (gmail.readonly +
+//      gmail.send). Requires verified app OR test-user entry in Google Console.
 // Requires: GMAIL_CLIENT_ID (or GOOGLE_ID), GMAIL_CLIENT_SECRET env vars
 import { google } from "googleapis";
 import { db } from "@workspace/db";
