@@ -1,23 +1,29 @@
 #!/usr/bin/env bash
-# Run this from the Replit Shell tab to push to GitHub
+# Run this from the Replit Shell tab to force-push to GitHub.
+# This OVERWRITES the remote master branch with local history.
 # Usage: bash push-to-github.sh
 set -e
 
 if [ -z "$GITHUB_PERSONAL_ACCESS_TOKEN" ]; then
-  echo "ERROR: GITHUB_PERSONAL_ACCESS_TOKEN is not set."
-  echo "Make sure it is saved in Replit Secrets."
+  echo "ERROR: GITHUB_PERSONAL_ACCESS_TOKEN is not set in Replit Secrets."
   exit 1
 fi
 
-REMOTE_URL="https://habadisrael770:${GITHUB_PERSONAL_ACCESS_TOKEN}@github.com/habadisrael770/billbot-plus.git"
+echo "WARNING: This will OVERWRITE the remote master branch on GitHub."
+echo "Any commits that exist only on GitHub will be lost."
+read -r -p "Continue? (yes/no): " confirm
+if [ "$confirm" != "yes" ]; then
+  echo "Aborted."
+  exit 0
+fi
 
-echo "Fetching remote..."
-git fetch "$REMOTE_URL" master
+# Set origin to authenticated URL (token not printed to terminal)
+git remote set-url origin "https://habadisrael770:${GITHUB_PERSONAL_ACCESS_TOKEN}@github.com/habadisrael770/billbot-plus.git"
 
-echo "Merging remote changes (keeping our local changes)..."
-git merge FETCH_HEAD --no-edit -m "Merge: sync remote before push"
+echo "Force-pushing master to GitHub..."
+git push origin master --force
 
-echo "Pushing to GitHub..."
-git push "$REMOTE_URL" master
+# Reset origin URL to non-authenticated form so token is not stored in .git/config
+git remote set-url origin "https://github.com/habadisrael770/billbot-plus.git"
 
-echo "Done! Code is now on GitHub."
+echo "Done! Code is now on GitHub: https://github.com/habadisrael770/billbot-plus"
