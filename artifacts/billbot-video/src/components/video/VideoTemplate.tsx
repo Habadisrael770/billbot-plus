@@ -101,11 +101,20 @@ export default function VideoTemplate({
 
       {/* Grid overlay */}
       <div
-        className="absolute inset-0 opacity-5 z-0"
+        className="absolute inset-0 z-0"
         style={{
           backgroundImage:
-            'linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
+            'linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px)',
+          backgroundSize: '50px 50px',
+        }}
+      />
+      {/* Grid dot accent at intersections */}
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          backgroundImage:
+            'radial-gradient(circle, rgba(67,97,238,0.35) 1px, transparent 1px)',
+          backgroundSize: '50px 50px',
         }}
       />
 
