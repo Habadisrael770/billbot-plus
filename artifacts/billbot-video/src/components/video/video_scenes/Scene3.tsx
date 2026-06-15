@@ -1,74 +1,61 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-function GmailIcon() {
+function GmailIcon({ glow }: { glow: string }) {
   return (
-    <svg viewBox="0 0 48 48" width="60%" height="60%">
-      <path fill="#EA4335" d="M6 40h6V22.5L24 32l12-9.5V40h6V16l-18 13L6 16z"/>
-      <path fill="#FBBC05" d="M6 16v4l12 9V22.5z" opacity="0"/>
-      <path fill="#FFFFFF" d="M6 40h6V22.5L24 32l12-9.5V40h6V16L24 29 6 16z"/>
-      <path fill="#EA4335" d="M6 16l18 13 18-13H6z"/>
-      <path fill="#C5221F" d="M6 16v4l12 9v-6.5z" opacity="0"/>
-      <rect fill="#EA4335" x="0" y="14" width="48" height="4" opacity="0"/>
-      <g>
-        <path fill="#4285F4" d="M6 40V16l18 13z" opacity="0"/>
-        <path fill="#34A853" d="M42 40V16L24 29z" opacity="0"/>
-        <path fill="#FBBC05" d="M6 16v4l18 9V16z" opacity="0"/>
-        <path fill="#EA4335" d="M42 16v4L24 29V16z" opacity="0"/>
-      </g>
-      <path fill="none" stroke="#EA4335" strokeWidth="0" d="M6 14h36v22H6z"/>
-      <path fill="#FFFFFF" d="M6 16v24h6V22.5L24 32l12-9.5V40h6V16L24 29z"/>
-      <path fill="#EA4335" d="M6 16h36l-18 13z"/>
+    <svg viewBox="0 0 48 48" width="62%" height="62%" style={{ filter: `drop-shadow(0 0 6px ${glow}) drop-shadow(0 0 12px ${glow}80)` }}>
+      <path fill="#FF6B6B" d="M6 16h36l-18 13z"/>
+      <path fill="none" stroke="#FF6B6B" strokeWidth="2.5" d="M6 16v24h6V22.5L24 32l12-9.5V40h6V16"/>
     </svg>
   );
 }
 
-function DriveIcon() {
+function DriveIcon({ glow }: { glow: string }) {
   return (
-    <svg viewBox="0 0 48 48" width="60%" height="60%">
-      <path fill="#FFC107" d="M17 6L6 25l5 9 11-19z"/>
-      <path fill="#1976D2" d="M31 6H17l11 19h14z"/>
-      <path fill="#4CAF50" d="M11 34l5 8h16l5-8z"/>
+    <svg viewBox="0 0 48 48" width="62%" height="62%" style={{ filter: `drop-shadow(0 0 6px ${glow}) drop-shadow(0 0 12px ${glow}80)` }}>
+      <path fill="none" stroke="#FFD93D" strokeWidth="2.5" strokeLinejoin="round" d="M17 6L6 25l5 9 11-19z"/>
+      <path fill="none" stroke="#4FC3F7" strokeWidth="2.5" strokeLinejoin="round" d="M31 6H17l11 19h14z"/>
+      <path fill="none" stroke="#69F0AE" strokeWidth="2.5" strokeLinejoin="round" d="M11 34l5 8h16l5-8z"/>
     </svg>
   );
 }
 
-function OutlookIcon() {
+function OutlookIcon({ glow }: { glow: string }) {
   return (
-    <svg viewBox="0 0 48 48" width="60%" height="60%">
-      <rect fill="#0078D4" x="6" y="6" width="36" height="36" rx="4"/>
-      <rect fill="#50D9FF" x="20" y="14" width="18" height="20" rx="2"/>
-      <path d="M20 14l9 9 9-9" stroke="#FFFFFF" strokeWidth="1.5" fill="none"/>
-      <ellipse fill="#FFFFFF" cx="17" cy="24" rx="8" ry="10"/>
-      <ellipse fill="#0078D4" cx="17" cy="24" rx="5" ry="7"/>
+    <svg viewBox="0 0 48 48" width="62%" height="62%" style={{ filter: `drop-shadow(0 0 6px ${glow}) drop-shadow(0 0 12px ${glow}80)` }}>
+      <rect fill="none" stroke="#50D9FF" strokeWidth="2" x="20" y="12" width="18" height="20" rx="2"/>
+      <path d="M20 12l9 9 9-9" stroke="#50D9FF" strokeWidth="2" fill="none"/>
+      <ellipse fill="none" stroke="#50D9FF" strokeWidth="2" cx="16" cy="24" rx="8" ry="10"/>
     </svg>
   );
 }
 
-function WhatsAppIcon() {
+function WhatsAppIcon({ glow }: { glow: string }) {
   return (
-    <svg viewBox="0 0 48 48" width="60%" height="60%">
-      <circle fill="#25D366" cx="24" cy="24" r="18"/>
-      <path fill="#FFFFFF" d="M24 12c-6.627 0-12 5.373-12 12 0 2.11.546 4.09 1.5 5.82L12 37l7.41-1.47A11.94 11.94 0 0024 36c6.627 0 12-5.373 12-12S30.627 12 24 12zm5.95 16.9c-.25.7-1.47 1.37-2.03 1.43-.52.06-1.02.26-3.44-.72-2.9-1.15-4.74-4.1-4.88-4.3-.14-.2-1.13-1.5-1.13-2.87 0-1.36.72-2.03 1-2.3.25-.26.55-.32.73-.32.18 0 .37.003.53.01.17.01.4-.06.62.48.24.57.8 1.97.87 2.11.07.14.11.3.02.48-.09.18-.13.3-.26.46-.13.16-.28.36-.4.48-.13.13-.27.27-.11.52.15.25.69 1.13 1.47 1.83 1.01.9 1.86 1.18 2.12 1.31.26.13.41.11.56-.07.15-.18.64-.75.81-1.01.17-.26.34-.21.57-.13.23.08 1.46.69 1.71.81.25.13.42.19.48.3.06.1.06.58-.18 1.28z"/>
+    <svg viewBox="0 0 48 48" width="62%" height="62%" style={{ filter: `drop-shadow(0 0 6px ${glow}) drop-shadow(0 0 12px ${glow}80)` }}>
+      <circle fill="none" stroke="#4ADE80" strokeWidth="2.5" cx="24" cy="24" r="18"/>
+      <path fill="none" stroke="#4ADE80" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+        d="M16 31l1.5-4.5A10 10 0 1124 34a10 10 0 01-5.2-1.5z"/>
+      <path fill="#4ADE80" d="M20 22c.3-.5 1-.6 1.4-.1l1 1.2c.3.4.2.9-.1 1.2l-.5.5c.5 1 1.2 1.7 2.2 2.2l.5-.5c.3-.3.8-.4 1.2-.1l1.2 1c.5.4.4 1.1-.1 1.4-1.5 1-4 .4-5.5-1.1C19.8 26.2 19 23.5 20 22z"/>
     </svg>
   );
 }
 
-function TelegramIcon() {
+function TelegramIcon({ glow }: { glow: string }) {
   return (
-    <svg viewBox="0 0 48 48" width="60%" height="60%">
-      <circle fill="#29B6F6" cx="24" cy="24" r="18"/>
-      <path fill="#FFFFFF" d="M33.5 15.5l-3.8 18.4c-.28 1.24-1 1.55-2.03.97l-5.6-4.12-2.7 2.6c-.3.3-.55.55-1.12.55l.4-5.68 10.3-9.3c.45-.4-.1-.62-.7-.23l-12.74 8.02-5.48-1.71c-1.2-.37-1.21-1.18.25-1.75l21.36-8.24c.98-.38 1.85.24 1.56 1.55z"/>
+    <svg viewBox="0 0 48 48" width="62%" height="62%" style={{ filter: `drop-shadow(0 0 6px ${glow}) drop-shadow(0 0 12px ${glow}80)` }}>
+      <circle fill="none" stroke="#38BDF8" strokeWidth="2.5" cx="24" cy="24" r="18"/>
+      <path fill="#38BDF8" d="M33.5 15.5l-3.8 18.4c-.28 1.24-1 1.55-2.03.97l-5.6-4.12-2.7 2.6c-.3.3-.55.55-1.12.55l.4-5.68 10.3-9.3c.45-.4-.1-.62-.7-.23l-12.74 8.02-5.48-1.71c-1.2-.37-1.21-1.18.25-1.75l21.36-8.24c.98-.38 1.85.24 1.56 1.55z"/>
     </svg>
   );
 }
 
 const inputSources = [
-  { id: 'gmail', label: 'Gmail', color: '#EA4335', Icon: GmailIcon },
-  { id: 'drive', label: 'Drive', color: '#1976D2', Icon: DriveIcon },
-  { id: 'outlook', label: 'Outlook', color: '#0078D4', Icon: OutlookIcon },
-  { id: 'whatsapp', label: 'WhatsApp', color: '#25D366', Icon: WhatsAppIcon },
-  { id: 'telegram', label: 'Telegram', color: '#29B6F6', Icon: TelegramIcon },
+  { id: 'gmail',    label: 'Gmail',    color: '#FF6B6B', neon: '#ff4444', Icon: GmailIcon },
+  { id: 'drive',    label: 'Drive',    color: '#FFD93D', neon: '#ffd700', Icon: DriveIcon },
+  { id: 'outlook',  label: 'Outlook',  color: '#50D9FF', neon: '#00cfff', Icon: OutlookIcon },
+  { id: 'whatsapp', label: 'WhatsApp', color: '#4ADE80', neon: '#00e676', Icon: WhatsAppIcon },
+  { id: 'telegram', label: 'Telegram', color: '#38BDF8', neon: '#29b6f6', Icon: TelegramIcon },
 ];
 
 const invoices = [
@@ -126,13 +113,25 @@ export function Scene3() {
             animate={phase >= 2 ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.5, y: 20 }}
             transition={{ duration: 0.5, delay: phase >= 2 ? i * 0.1 : 0, type: 'spring' }}
           >
-            <div 
-              className="w-[4.5vw] h-[4.5vw] rounded-2xl flex items-center justify-center shadow-lg bg-white"
-              style={{ boxShadow: `0 10px 25px -5px ${source.color}80` }}
+            <motion.div 
+              className="w-[4.5vw] h-[4.5vw] rounded-2xl flex items-center justify-center"
+              style={{
+                background: `radial-gradient(circle at 50% 50%, ${source.color}15 0%, #0d1224 70%)`,
+                border: `1.5px solid ${source.color}60`,
+                boxShadow: `0 0 12px ${source.neon}50, 0 0 28px ${source.neon}25, inset 0 0 12px ${source.neon}10`,
+              }}
+              animate={phase >= 2 ? {
+                boxShadow: [
+                  `0 0 10px ${source.neon}40, 0 0 24px ${source.neon}20, inset 0 0 10px ${source.neon}08`,
+                  `0 0 18px ${source.neon}70, 0 0 40px ${source.neon}35, inset 0 0 16px ${source.neon}15`,
+                  `0 0 10px ${source.neon}40, 0 0 24px ${source.neon}20, inset 0 0 10px ${source.neon}08`,
+                ],
+              } : {}}
+              transition={{ duration: 2.5, delay: i * 0.15, repeat: Infinity, ease: 'easeInOut' }}
             >
-              <source.Icon />
-            </div>
-            <span className="text-white/80 text-[1.2vw] font-medium">{source.label}</span>
+              <source.Icon glow={source.neon} />
+            </motion.div>
+            <span className="text-[1.2vw] font-semibold" style={{ color: source.color, textShadow: `0 0 8px ${source.neon}80` }}>{source.label}</span>
           </motion.div>
         ))}
       </div>
