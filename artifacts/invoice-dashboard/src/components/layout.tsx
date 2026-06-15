@@ -232,7 +232,7 @@ function MobileSidebar({
         </div>
 
         <div className="flex items-center gap-2">
-          <span dir="ltr" className="text-[18px] font-black text-white tracking-tight">BillBOT+</span>
+          <span dir="ltr" className="text-[18px] font-black text-white tracking-tight">BILLIBOT+</span>
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md text-white ${
             hubPlan === "business" ? "bg-violet-500"
             : hubPlan === "starter" ? "bg-teal"
@@ -744,7 +744,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <Menu className="w-[18px] h-[18px]" />
               </button>
 
-              {/* BillBOT+ logo — mobile only, compact */}
+              {/* BILLIBOT+ logo — mobile only, compact */}
               <Link href="/" className="md:hidden">
                 <span dir="ltr" className="text-[22px] font-black tracking-tight leading-none select-none cursor-pointer active:opacity-70 transition-opacity">
                   <span className="text-foreground">Bill</span><span className="text-foreground">BOT</span><span className="bg-gradient-to-r from-violet-500 to-blue-500 bg-clip-text text-transparent">+</span>
@@ -814,7 +814,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <span className="absolute top-1 right-1 w-2 h-2 bg-warning rounded-full" />
               </button>
               <div className="hidden sm:flex items-center gap-1.5 pr-3 border-r border-border mr-1">
-                <span dir="ltr" className="text-[17px] font-black text-primary">BillBOT<span className="bg-gradient-to-r from-violet-500 to-blue-500 bg-clip-text text-transparent">+</span></span>
+                <span dir="ltr" className="text-[17px] font-black text-primary">BILLIBOT<span className="bg-gradient-to-r from-violet-500 to-blue-500 bg-clip-text text-transparent">+</span></span>
               </div>
             </div>
           </header>

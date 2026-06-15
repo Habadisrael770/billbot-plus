@@ -29,7 +29,7 @@ export default function PrivacyPolicy() {
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-white">מדיניות פרטיות</h1>
           <p className="text-muted-foreground text-sm">
-            Privacy Policy — BillBOT+ | עדכון אחרון: מאי 2026
+            Privacy Policy — BILLIBOT+ | עדכון אחרון: מאי 2026
           </p>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs text-primary">
             <Shield className="w-3 h-3" />
@@ -44,7 +44,7 @@ export default function PrivacyPolicy() {
               1. מה השירות עושה
             </h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              BillBOT+ ("האפליקציה", "השירות", "אנחנו") היא מערכת אוטומטית לניהול וסיווג חשבוניות
+              BILLIBOT+ ("האפליקציה", "השירות", "אנחנו") היא מערכת אוטומטית לניהול וסיווג חשבוניות
               עסקיות. האפליקציה מאפשרת קליטת חשבוניות ממקורות שונים — העלאה ישירה, סריקת מייל, 
               העברת מייל אוטומטית, WhatsApp, וטלגרם — ומפעילה עיבוד AI לחילוץ נתונים ולסיווג.
             </p>
@@ -197,7 +197,7 @@ export default function PrivacyPolicy() {
             <section className="rounded-2xl border border-white/8 bg-card/30 p-6 space-y-3">
               <h3 className="text-base font-semibold text-white">1. Service Description</h3>
               <p>
-                BillBOT+ is an automated invoice management and categorization system for small
+                BILLIBOT+ is an automated invoice management and categorization system for small
                 businesses and freelancers. It processes invoices received via direct upload, Gmail
                 scanning, email forwarding, WhatsApp, and Telegram using AI-powered extraction.
               </p>
@@ -281,7 +281,7 @@ export default function PrivacyPolicy() {
             </section>
 
             <p className="text-xs text-muted-foreground text-center pt-4">
-              Last updated: May 2026 · BillBOT+ · Contact: privacy@billbot.co.il
+              Last updated: May 2026 · BILLIBOT+ · Contact: privacy@billbot.co.il
             </p>
           </div>
         </div>

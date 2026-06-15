@@ -248,7 +248,7 @@ export default function Onboarding({ onComplete }: { onComplete: () => void }) {
         {/* ── Header ── */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <div className="flex items-center gap-2">
-            <span dir="ltr" className="text-[15px] font-black text-primary">BillBOT+</span>
+            <span dir="ltr" className="text-[15px] font-black text-primary">BILLIBOT+</span>
             <span className="text-muted-foreground text-[11px]">— הגדרה ראשונית</span>
           </div>
 

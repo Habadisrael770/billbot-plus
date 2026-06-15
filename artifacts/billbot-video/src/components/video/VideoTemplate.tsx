@@ -5,18 +5,21 @@ import { Scene1 } from './video_scenes/Scene1';
 import { Scene2 } from './video_scenes/Scene2';
 import { Scene3 } from './video_scenes/Scene3';
 import { Scene4 } from './video_scenes/Scene4';
+import { Scene5 } from './video_scenes/Scene5';
 
 export const SCENE_DURATIONS: Record<string, number> = {
   intro: 5000,
   problem: 5000,
   solution: 5000,
-  cta: 5000,
+  accountant: 6000,
+  cta: 4000,
 };
 
 const SCENE_COMPONENTS: Record<string, React.ComponentType> = {
   intro: Scene1,
   problem: Scene2,
   solution: Scene3,
+  accountant: Scene5,
   cta: Scene4,
 };
 

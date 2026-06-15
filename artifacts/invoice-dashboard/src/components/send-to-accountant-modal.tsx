@@ -85,7 +85,7 @@ async function printPDF(from: string, to: string) {
 
   const html = `<!DOCTYPE html>
 <html dir="rtl" lang="he">
-<head><meta charset="UTF-8"><title>דוח חשבוניות BillBOT+</title>
+<head><meta charset="UTF-8"><title>דוח חשבוניות BILLIBOT+</title>
 <style>
   body{font-family:Arial,sans-serif;direction:rtl;margin:20px;color:#111}
   h1{color:#4361ee;font-size:22px;margin-bottom:4px}
@@ -98,13 +98,13 @@ async function printPDF(from: string, to: string) {
 </style>
 </head>
 <body>
-  <h1>דוח חשבוניות BillBOT+</h1>
+  <h1>דוח חשבוניות BILLIBOT+</h1>
   <div class="sub">הופק: ${new Date().toLocaleDateString("he-IL")} · ${invoices.length} חשבוניות</div>
   <table>
     <thead><tr><th>#</th><th>מס׳ חשבונית</th><th>תאריך</th><th>ספק</th><th>סכום</th><th>קטגוריה</th><th>סטטוס</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
-  <div class="footer">נוצר אוטומטית ע"י BillBOT+ — מערכת ניהול חשבוניות חכמה</div>
+  <div class="footer">נוצר אוטומטית ע"י BILLIBOT+ — מערכת ניהול חשבוניות חכמה</div>
   <script>window.onload=()=>window.print()</script>
 </body></html>`;
 

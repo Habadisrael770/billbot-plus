@@ -735,7 +735,7 @@ export function GmailScanDialog({ isOpen, onClose, onViewInvoices }: Props) {
                 </button>
 
                 <p className="text-center text-[11px] text-white/25 pb-1">
-                  BillBOT+ סורק רק קבצי PDF ותמונות של חשבוניות
+                  BILLIBOT+ סורק רק קבצי PDF ותמונות של חשבוניות
                 </p>
               </div>
             </motion.div>

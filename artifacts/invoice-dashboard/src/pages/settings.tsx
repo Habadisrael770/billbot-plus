@@ -336,7 +336,7 @@ export default function Settings() {
   const [autoSaving, setAutoSaving] = useState(false);
   const [autoSendingId, setAutoSendingId] = useState<string | null>(null);
   const [newAutoName,     setNewAutoName]     = useState("");
-  const [newAutoMsg,      setNewAutoMsg]      = useState("שלום {{שם}},\n\nלקראת סוף חודש {{חודש}} — האם העברת אליי את כל החשבוניות? 📋\n\nBillBOT+ 🤖");
+  const [newAutoMsg,      setNewAutoMsg]      = useState("שלום {{שם}},\n\nלקראת סוף חודש {{חודש}} — האם העברת אליי את כל החשבוניות? 📋\n\nBILLIBOT+ 🤖");
   const [newAutoChannels, setNewAutoChannels] = useState<string[]>(["email"]);
   const [newAutoIsRecurring, setNewAutoIsRecurring] = useState(true);
   const [newAutoSchedule, setNewAutoSchedule] = useState("end_of_month");
@@ -403,7 +403,7 @@ export default function Settings() {
       setAutomations((p) => [...p, created]);
       setShowNewAutoForm(false);
       setNewAutoName("");
-      setNewAutoMsg("שלום {{שם}},\n\nלקראת סוף חודש {{חודש}} — האם העברת אליי את כל החשבוניות? 📋\n\nBillBOT+ 🤖");
+      setNewAutoMsg("שלום {{שם}},\n\nלקראת סוף חודש {{חודש}} — האם העברת אליי את כל החשבוניות? 📋\n\nBILLIBOT+ 🤖");
       setNewAutoChannels(["email"]);
       setNewAutoIsRecurring(true);
       setNewAutoSchedule("end_of_month");
@@ -1044,9 +1044,9 @@ export default function Settings() {
                   <Bell className="w-4 h-4 text-white/60" />
                 </button>
 
-                {/* Center: BillBOT+ logo */}
+                {/* Center: BILLIBOT+ logo */}
                 <div className="flex items-center gap-2">
-                  <span dir="ltr" className="text-[18px] font-black text-white tracking-tight">BillBOT+</span>
+                  <span dir="ltr" className="text-[18px] font-black text-white tracking-tight">BILLIBOT+</span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                     hubPlan === "business" ? "bg-violet-500 text-white"
                     : hubPlan === "starter" ? "bg-teal text-white"
@@ -1524,7 +1524,7 @@ export default function Settings() {
                   {/* Step 1 */}
                   {fwdStep === 1 && (
                     <div className="space-y-3">
-                      <p className="text-xs font-semibold text-white">שלב 1 מתוך 4 — העתק את כתובת ה-BillBOT+</p>
+                      <p className="text-xs font-semibold text-white">שלב 1 מתוך 4 — העתק את כתובת ה-BILLIBOT+</p>
                       {fwdAddress ? (
                         <div className="rounded-lg bg-black/30 border border-violet-500/20 p-3">
                           <p className="text-[10px] text-muted-foreground mb-1">הכתובת לשכפול:</p>
@@ -1584,7 +1584,7 @@ export default function Settings() {
                         <p className="font-medium text-white">אפשרות א׳ — העבר הכל (הכי פשוט):</p>
                         <ol className="space-y-1 list-decimal list-inside">
                           <li>לחץ <span className="text-white font-mono bg-white/10 px-1 rounded">הוסף כתובת העברה</span></li>
-                          <li>הדבק את כתובת ה-BillBOT+ שהעתקת</li>
+                          <li>הדבק את כתובת ה-BILLIBOT+ שהעתקת</li>
                           <li>אשר דרך המייל שישלח לכתובת זו</li>
                         </ol>
                         <hr className="border-white/10 my-2" />
@@ -1592,7 +1592,7 @@ export default function Settings() {
                         <ol className="space-y-1 list-decimal list-inside">
                           <li>לחץ <span className="text-white font-mono bg-white/10 px-1 rounded">צור כלל חדש</span> בהגדרות Gmail</li>
                           <li>בשדה "כולל קבצים מצורפים" — סמן V</li>
-                          <li>בחר "העבר אל" → הדבק כתובת BillBOT+</li>
+                          <li>בחר "העבר אל" → הדבק כתובת BILLIBOT+</li>
                           <li>צור את הכלל</li>
                         </ol>
                       </div>
@@ -1608,7 +1608,7 @@ export default function Settings() {
                     <div className="space-y-3">
                       <p className="text-xs font-semibold text-white">שלב 4 מתוך 4 — אישור והרצה</p>
                       <div className="rounded-lg bg-emerald-500/5 border border-emerald-500/20 p-3 space-y-2 text-xs">
-                        <p className="text-emerald-400 font-medium">✅ זהו! כעת כל חשבונית שתגיע למייל תועבר אוטומטית ל-BillBOT+</p>
+                        <p className="text-emerald-400 font-medium">✅ זהו! כעת כל חשבונית שתגיע למייל תועבר אוטומטית ל-BILLIBOT+</p>
                         <ul className="text-emerald-300/70 space-y-1 list-disc list-inside mt-2">
                           <li>הגדרה חד-פעמית — עובדת מאחורי הקלעים לצמיתות</li>
                           <li>תומך ב-PDF, JPG, PNG</li>
@@ -2331,7 +2331,7 @@ export default function Settings() {
               {/* Info hint */}
               <div className="flex items-start gap-2 rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3 text-xs text-blue-300/80 leading-relaxed">
                 <Info className="w-3.5 h-3.5 shrink-0 mt-0.5 text-blue-400" />
-                <span>פרטים אלו עוזרים ל-BillBOT+ לסווג חשבוניות אוטומטית ולהפריד בין הוצאות עסקיות לאישיות.</span>
+                <span>פרטים אלו עוזרים ל-BILLIBOT+ לסווג חשבוניות אוטומטית ולהפריד בין הוצאות עסקיות לאישיות.</span>
               </div>
 
               {/* Tax IDs */}

@@ -32,12 +32,12 @@ const FAQ_ITEMS: FAQItem[] = [
     a: 'לחץ על כפתור "העלה חשבונית" בכותרת בכל עמוד. ניתן להעלות קובץ PDF, JPG או PNG, לצלם ישירות מהמצלמה, או לשלוח תמונה דרך הבוט של טלגרם.',
   },
   {
-    q: "כיצד BillBOT+ מזהה כפילויות?",
+    q: "כיצד BILLIBOT+ מזהה כפילויות?",
     a: "המערכת מחשבת חתימה (hash) ייחודית לכל קובץ וגם בודקת התאמה לפי ספק + סכום + תאריך. חשבונית שמופיעה פעמיים תסומן אוטומטית כ״חשד לכפילות״ ותחכה לאישורך.",
   },
   {
     q: "כיצד מחברים Gmail?",
-    a: 'עבור להגדרות ← אינטגרציות ← Gmail. לחץ "חבר חשבון" ואשר את ההרשאות. לאחר החיבור, BillBOT+ יסרוק אוטומטית מיילים חדשים ויחלץ מהם חשבוניות.',
+    a: 'עבור להגדרות ← אינטגרציות ← Gmail. לחץ "חבר חשבון" ואשר את ההרשאות. לאחר החיבור, BILLIBOT+ יסרוק אוטומטית מיילים חדשים ויחלץ מהם חשבוניות.',
   },
   {
     q: "מה ניתן לשלוח לרואה חשבון?",
@@ -113,7 +113,7 @@ export default function HelpPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          subject: `פנייה מ-${contactForm.name}: תמיכה BillBOT+`,
+          subject: `פנייה מ-${contactForm.name}: תמיכה BILLIBOT+`,
           body: `שם: ${contactForm.name}\nמייל: ${contactForm.email}\n\n${contactForm.message}`,
           from_name: contactForm.name,
           from_email: contactForm.email,

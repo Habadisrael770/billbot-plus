@@ -336,7 +336,7 @@ export function AIChat() {
               </div>
             </motion.button>
 
-            {/* AI BillBOT button */}
+            {/* AI BILLIBOT button */}
             <motion.button
               key="ai"
               initial={{ opacity: 0, y: 16, scale: 0.85 }}
@@ -354,7 +354,7 @@ export function AIChat() {
                   : "0 8px 20px rgba(0,0,0,0.25)",
               }}
             >
-              <span>BillBOT AI</span>
+              <span>BILLIBOT AI</span>
               <div className="w-7 h-7 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
                 {hasAccess
                   ? <Sparkles className="w-4 h-4 text-white" />
@@ -451,7 +451,7 @@ export function AIChat() {
                   <Sparkles className="w-4 h-4" style={{ color: "#2dd4bf" }} />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-white">יועץ BillBOT+</p>
+                  <p className="text-sm font-semibold text-white">יועץ BILLIBOT+</p>
                   <p className="text-xs" style={{ color: "#2dd4bf" }}>
                     {isPaid
                       ? "AI חכם · זוכר שיחות"

@@ -258,7 +258,7 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
           {/* Logo */}
           <div className="flex justify-center">
             <span dir="ltr" className="text-[36px] font-black tracking-tight select-none">
-              <span style={{ color: "#f8fafc" }}>BillBOT</span>
+              <span style={{ color: "#f8fafc" }}>BILLIBOT</span>
               <span style={{ background: "linear-gradient(135deg, #34d399 0%, #22d3ee 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>+</span>
             </span>
           </div>
@@ -272,7 +272,7 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
             </h1>
             <p className="text-[13px]" style={{ color: "#8899bb" }}>
               {mode === "login"    ? "התחבר לחשבון שלך"
-               : mode === "register" ? "צור חשבון חדש ב-BillBOT+"
+               : mode === "register" ? "צור חשבון חדש ב-BILLIBOT+"
                : "נשלח קישור לאיפוס סיסמה לאימייל שלך"}
             </p>
           </div>

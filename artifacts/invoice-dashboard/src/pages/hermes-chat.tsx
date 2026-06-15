@@ -1,5 +1,5 @@
 /**
- * HermesChat — Hermes Starter Kit (BillBOT+ adaptation)
+ * HermesChat — Hermes Starter Kit (BILLIBOT+ adaptation)
  *
  * Standalone RTL Hebrew chat page. Authenticates via the app's session cookie
  * (bb_sid) — every request uses `credentials: "include"`, so no auth header is
@@ -39,9 +39,9 @@ interface HermesChatProps {
 export default function HermesChat({
   isAdmin = false,
   title = "הרמס AI",
-  subtitle = "העוזר החכם של BillBOT+",
+  subtitle = "העוזר החכם של BILLIBOT+",
   placeholder = "כתבו הודעה…",
-  emptyText = "שאלו אותי כל דבר על חשבוניות, הוצאות, ספקים ואוטומציות ב-BillBOT+.",
+  emptyText = "שאלו אותי כל דבר על חשבוניות, הוצאות, ספקים ואוטומציות ב-BILLIBOT+.",
   noCreditsText = "נגמרו הקרדיטים. פנו למנהל המערכת.",
   offlineText = "הרמס לא מחובר כרגע. בודקים את החיבור לשרת…",
   thinkingText = "חושב…",
