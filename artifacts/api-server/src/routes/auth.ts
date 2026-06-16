@@ -8,7 +8,7 @@ import { Router, type IRouter } from "express";
 import crypto from "node:crypto";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import {
   setSessionCookie,
   clearSessionCookie,
@@ -218,6 +218,24 @@ router.delete("/whatsapp-phone", requireAuth, async (req, res) => {
       .set({ whatsappPhone: null, updatedAt: new Date() })
       .where(eq(usersTable.id, req.userId!));
     return res.json({ ok: true });
+  } catch (err) {
+    return res.status(500).json({ error: String(err) });
+  }
+});
+
+// ── Temporary data nuke (token-protected, no session required) ───────────────
+router.post("/nuke-data", async (req, res) => {
+  const token = req.headers["x-reset-token"] as string | undefined;
+  const expected = process.env.ADMIN_RESET_TOKEN ?? "";
+  if (!expected || token !== expected) return res.status(403).json({ error: "Forbidden" });
+  try {
+    await db.execute(sql`DELETE FROM invoice_line_items`);
+    await db.execute(sql`DELETE FROM invoice_extraction_jobs`);
+    await db.execute(sql`DELETE FROM invoices`);
+    await db.execute(sql`DELETE FROM vendor_aliases`);
+    await db.execute(sql`DELETE FROM vendors`);
+    await db.execute(sql`DELETE FROM gmail_tokens`);
+    return res.json({ ok: true, cleared: true });
   } catch (err) {
     return res.status(500).json({ error: String(err) });
   }
