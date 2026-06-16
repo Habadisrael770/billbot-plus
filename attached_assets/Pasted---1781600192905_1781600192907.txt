@@ -1,0 +1,44 @@
+המשכתי לחקור ותיקנתי עוד שכבה חשובה של הבאגים. עכשיו המערכת במצב הרבה יותר תקין לסריקת מיילים, זיהוי קבצי חשבוניות, חילוץ סכומים/תאריכים ושמירה למסד דרך הצינור המרכזי.
+
+**מה תוקן**
+- ניתקתי את Google Login מהרשאות Gmail, כדי שהתחברות רגילה לא תיחסם בגלל `gmail.readonly`.
+- שיפרתי את סריקת Gmail/IMAP:
+  - תמיכה בקבצים מצורפים גם כשהם root part / inline data.
+  - תמיכה ב־PDF/JPG/PNG/JPEG.
+  - אם AI extraction נכשל, הקובץ לא נשמר כחשבונית ריקה.
+  - אם חשבון Gmail אחד נכשל, זה לא מפיל את כל הסריקה.
+- תיקנתי parsing של סכומים:
+  - `1,234.50` כבר לא הופך בטעות ל־`1.234`.
+  - `1.234,50`, `5,50`, `ILS 2,000` נתמכים.
+- תיקנתי parsing של תאריכים:
+  - `15/06/2026` ו־`15.06.26` מומרים ל־`2026-06-15`.
+- תיקנתי את `/api/invoices/scan-email`:
+  - כבר לא מכניס רשומה ישירות עם `file_path=""` ו־`file_sha256=""`.
+  - עכשיו יוצר קובץ טקסט מסודר ומעביר דרך `processInvoice`, כולל hash, deduplication וסטטוס אחיד.
+- תיקנתי ספירת כפילויות:
+  - המערכת יצרה `exact_duplicate` / `probable_duplicate`, אבל חלק מהדוחות חיפשו `duplicate`.
+  - עכשיו הסיכומים ו־Twilio מזהים כל סטטוס שאינו `unique`.
+- תיקנתי build על Windows:
+  - `pnpm-workspace.yaml` חסם native packages של `esbuild`, `rollup`, `tailwindcss oxide`, `lightningcss`.
+  - הסרתי את החסימות הרלוונטיות ל־Windows x64.
+  - החלפתי `preinstall` שהיה תלוי ב־`sh` בסקריפט Node cross-platform: [scripts/ensure-pnpm.cjs](C:/Users/PC/Desktop/AMIGO%20HOTEL/billbot-plus/scripts/ensure-pnpm.cjs).
+
+**קבצים מרכזיים שנוספו**
+- [invoiceValueUtils.ts](C:/Users/PC/Desktop/AMIGO%20HOTEL/billbot-plus/artifacts/api-server/src/services/invoiceValueUtils.ts)
+- [invoice-value-utils.node.test.mjs](C:/Users/PC/Desktop/AMIGO%20HOTEL/billbot-plus/artifacts/api-server/test/invoice-value-utils.node.test.mjs)
+- [mailScanUtils.ts](C:/Users/PC/Desktop/AMIGO%20HOTEL/billbot-plus/artifacts/api-server/src/services/mailScanUtils.ts)
+- [ensure-pnpm.cjs](C:/Users/PC/Desktop/AMIGO%20HOTEL/billbot-plus/scripts/ensure-pnpm.cjs)
+
+**בדיקות שעברו**
+- `node --test test/*.node.test.mjs`  
+  עבר: 6/6
+- `node node_modules/typescript/bin/tsc --build`  
+  עבר
+- Dashboard build עבר:
+  - bundle חדש: `assets/index-z8Mng1br.js`
+- API build עבר:
+  - נוצר `dist/index.js`
+- `git diff --check` עבר, עם אזהרות CRLF בלבד.
+
+**מה לא נבדק בפועל**
+לא בדקתי חיבור Gmail אמיתי בפרודקשן מול `billibot.net`, כי זה דורש credentials/connector פעיל וסביבה חיה. הקוד עכשיו נבנה ועובר בדיקות, אבל בדיקת end-to-end אמיתית צריכה לרוץ על Replit עם ה־Gmail connector/IMAP מחובר.

@@ -74,6 +74,7 @@ export async function runGmailScan(
   const errors: string[] = [];
 
   for (const { client: gmail, email: accountEmail } of allClients) {
+   try {
     const messageIds = new Set<string>();
     const MAX_PER_QUERY = 100;
 
@@ -170,6 +171,13 @@ export async function runGmailScan(
               aiResult = null;
             }
 
+            // Skip — don't persist a blank record when AI extraction failed
+            if (!aiResult) {
+              try { fs.unlinkSync(filePath); } catch { /* ignore */ }
+              skipped++;
+              continue;
+            }
+
             const emailDateStr = emailDate.toISOString().split("T")[0];
             await processInvoice({
               filePath,
@@ -206,6 +214,10 @@ export async function runGmailScan(
         }
       }));
     }
+   } catch (err) {
+     // One account failing should not abort the rest of the scan
+     errors.push(`[${accountEmail}] account error: ${String(err)}`);
+   }
   }
 
   // ── IMAP scan (App Password accounts) ─────────────────────────────────────
