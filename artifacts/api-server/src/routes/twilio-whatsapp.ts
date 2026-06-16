@@ -763,7 +763,7 @@ router.post("/webhook", express.urlencoded({ extended: false }), async (req, res
       const currency = savedInv?.currency ?? "ILS";
       const isForeign = false; // runtime: detected inside processInvoice pipeline
 
-      const isDuplicate = result.duplicateStatus === "duplicate";
+      const isDuplicate = result.duplicateStatus !== "unique";
       const amountNum2  = parseFloat(amount || "0");
       const amountMissing = isNaN(amountNum2) || amountNum2 === 0;
       const catMissing    = !category || category === "לא סווג";

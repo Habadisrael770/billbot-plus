@@ -258,7 +258,7 @@ router.post("/webhook", async (req, res) => {
 
     const vendor   = result.canonicalVendorName || "לא זוהה";
     const category = categoryHint || result.suggestedCategory || "לא סווג";
-    const dupWarn = result.duplicateStatus === "duplicate"
+    const dupWarn = result.duplicateStatus !== "unique"
       ? "\n\n⚠️ *שים לב:* ייתכן כפילות עם חשבונית קיימת!"
       : "";
 

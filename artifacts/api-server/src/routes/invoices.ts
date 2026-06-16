@@ -634,44 +634,64 @@ router.post("/scan-email", emlUpload.single("file"), async (req, res) => {
     const rawText = (emailText + "\n" + fileContent).trim();
 
     if (!rawText) {
-      res.status(400).json({ error: "לא סופק תוכן מייל" });
-      return;
+      return res.status(400).json({ error: "לא סופק תוכן מייל" });
     }
 
-    // --- Simple regex extraction ---
+    // --- Regex extraction ---
     const amountMatch = rawText.match(/(?:סכום|total|amount|סה"כ)[^\d]*([\d,]+(?:\.\d{1,2})?)/i);
     const vatMatch    = rawText.match(/(?:מע"מ|vat|tax)[^\d]*([\d,]+(?:\.\d{1,2})?)/i);
     const dateMatch   = rawText.match(/(\d{1,2}[\/\-.]\d{1,2}[\/\-.]\d{2,4})/);
     const invNumMatch = rawText.match(/(?:חשבונית|invoice|inv)[^\d#]*[#]?\s*(\w+[-\w]*)/i);
     const vendorMatch = rawText.match(/(?:from|מאת|שולח):?\s*([A-Za-z\u0590-\u05FF][\w\u0590-\u05FF\s&.'-]{2,40})/i);
 
-    const total   = amountMatch ? parseFloat(amountMatch[1]!.replace(/,/g, "")) : null;
-    const vat     = vatMatch    ? parseFloat(vatMatch[1]!.replace(/,/g, ""))    : null;
-    const rawDate = dateMatch   ? dateMatch[1]                                  : null;
-    const invNum  = invNumMatch ? invNumMatch[1]!.trim()                         : null;
-    const vendor  = vendorMatch ? vendorMatch[1]!.trim()                         : "מייל — לא זוהה ספק";
+    // Parse amount: handle both 1,234.50 (en) and 1.234,50 (eu)
+    function parseLocalAmount(s: string | undefined): number | null {
+      if (!s) return null;
+      // European: 1.234,50 → comma is decimal
+      if (/^\d{1,3}(\.\d{3})+(,\d{1,2})?$/.test(s)) return parseFloat(s.replace(/\./g, "").replace(",", "."));
+      // English: 1,234.50 → comma is thousand sep
+      return parseFloat(s.replace(/,/g, ""));
+    }
 
-    // Save as a new invoice entry
-    const [inserted] = await db.insert(invoicesTable).values({
-      raw_vendor_name: vendor,
-      invoice_number: invNum,
-      invoice_date: rawDate,
-      total: total ? String(total) : undefined,
-      vat: vat ? String(vat) : undefined,
-      subtotal: total && vat ? String(total - vat) : undefined,
-      currency: "ILS",
-      status: "pending_review",
-      duplicate_status: "unique",
-      source_type: "email",
-      document_type: "supplier_invoice",
-      file_path: "",
-      file_sha256: "",
-    }).returning({ id: invoicesTable.id });
+    // Normalize date dd/mm/yyyy or dd.mm.yy → yyyy-mm-dd
+    function normalizeDate(s: string | null): string | null {
+      if (!s) return null;
+      const parts = s.split(/[\/\-.]/);
+      if (parts.length !== 3) return s;
+      let [d, m, y] = parts as [string, string, string];
+      if (y!.length === 2) y = (parseInt(y!) < 50 ? "20" : "19") + y;
+      if (parseInt(d!) > 12) return `${y}-${m!.padStart(2,"0")}-${d!.padStart(2,"0")}`;
+      return `${y}-${d!.padStart(2,"0")}-${m!.padStart(2,"0")}`;
+    }
 
-    res.json({ success: true, count: 1, id: inserted?.id, vendor, total });
+    const total   = parseLocalAmount(amountMatch?.[1]);
+    const vat     = parseLocalAmount(vatMatch?.[1]);
+    const invDate = normalizeDate(dateMatch?.[1] ?? null);
+    const invNum  = invNumMatch?.[1]?.trim() ?? null;
+    const vendor  = vendorMatch?.[1]?.trim() ?? "מייל — לא זוהה ספק";
+
+    // Skip saving if no meaningful data extracted
+    if (!total && !vendor.startsWith("מייל")) {
+      return res.json({ success: false, count: 0, reason: "no_data" });
+    }
+
+    // Write to a real file so processInvoice can hash + dedup
+    const txtName = `email-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`;
+    const txtPath = path.join(UPLOADS_DIR, txtName);
+    fs.writeFileSync(txtPath, rawText, "utf-8");
+
+    const result = await processInvoice({
+      filePath: txtPath,
+      extracted: { vendor, invoice_number: invNum, date: invDate, total, vat, subtotal: total && vat ? total - vat : null, currency: "ILS" },
+      extractionConfidence: 0.5,
+      sourceType: "email",
+      documentType: "supplier_invoice",
+    });
+
+    return res.json({ success: true, count: 1, id: result.invoiceId, vendor, total });
   } catch (err) {
     console.error("scan-email error:", err);
-    res.status(500).json({ error: "שגיאה בעיבוד המייל" });
+    return res.status(500).json({ error: "שגיאה בעיבוד המייל" });
   }
 });
 

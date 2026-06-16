@@ -142,7 +142,7 @@ router.post("/webhook", async (req, res) => {
     const vendor = result.canonicalVendorName || "לא זוהה";
     const totalStr = extracted.total != null ? `\n💰 סכום: ₪${extracted.total}` : "";
     const dupWarn =
-      result.duplicateStatus === "duplicate"
+      result.duplicateStatus !== "unique"
         ? "\n\n⚠️ <b>שים לב:</b> ייתכן כפילות עם חשבונית קיימת!"
         : "";
 

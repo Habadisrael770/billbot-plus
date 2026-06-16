@@ -210,7 +210,7 @@ publicRouter.get("/summary", requireApiKey, async (req, res) => {
         COALESCE(SUM(vat::numeric),      0)::numeric                        AS total_vat,
         COALESCE(SUM(subtotal::numeric), 0)::numeric                        AS total_subtotal,
         COUNT(*) FILTER (WHERE status = 'pending_review')::int              AS pending_review,
-        COUNT(*) FILTER (WHERE duplicate_status IN ('duplicate','probable_duplicate'))::int AS duplicates,
+        COUNT(*) FILTER (WHERE duplicate_status != 'unique')::int AS duplicates,
         COUNT(*) FILTER (WHERE is_foreign = true)::int                      AS foreign_invoices
       FROM invoices
       WHERE invoice_date >= ${fromStr}::date
