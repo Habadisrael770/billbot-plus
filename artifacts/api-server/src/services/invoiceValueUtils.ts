@@ -67,30 +67,24 @@ export function parseDate(raw: string | null | undefined): string | null {
   if (parts.length !== 3) return null;
 
   let [a, b, c] = parts as [string, string, string];
-
-  // Detect which part is the year (length 4 or the largest value)
   let d: string, m: string, y: string;
 
-  if (c!.length === 4 || parseInt(c!) > 31) {
-    // Format: dd/mm/yyyy
-    [d, m, y] = [a!, b!, c!];
-  } else if (a!.length === 4 || parseInt(a!) > 31) {
-    // Format: yyyy/mm/dd
+  // Identify year by length-4 first (unambiguous), then by position convention
+  if (a!.length === 4) {
+    // yyyy/mm/dd
     [y, m, d] = [a!, b!, c!];
-  } else {
-    // Ambiguous short year: dd/mm/yy (Israeli standard assumed)
+  } else if (c!.length === 4) {
+    // dd/mm/yyyy or mm/dd/yyyy — Israeli convention: dd/mm/yyyy
     [d, m, y] = [a!, b!, c!];
-    y = (parseInt(y) < 50 ? "20" : "19") + y;
+  } else {
+    // All parts are 1-2 digits: dd/mm/yy (Israeli standard assumed)
+    [d, m, y] = [a!, b!, c!];
+    const yi = parseInt(y!, 10);
+    y = (yi < 50 ? "20" : "19") + y!.padStart(2, "0");
   }
 
-  // Swap d/m if day value is clearly wrong
-  if (parseInt(d!) > 31 || parseInt(m!) > 12) {
-    // Try swapping
-    [d, m] = [m!, d!];
-  }
-
-  const di = parseInt(d!);
-  const mi = parseInt(m!);
+  const di = parseInt(d!, 10);
+  const mi = parseInt(m!, 10);
   if (di < 1 || di > 31 || mi < 1 || mi > 12) return null;
 
   return `${y}-${m!.padStart(2, "0")}-${d!.padStart(2, "0")}`;
