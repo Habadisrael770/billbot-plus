@@ -88,9 +88,9 @@ function AppRouter() {
       .then(async (res) => {
         if (cancelled) return;
         if (res.ok) {
-          const data = await res.json().catch(() => null) as { email?: string } | null;
+          const data = await res.json().catch(() => null) as { email?: string; name?: string | null } | null;
           if (data?.email) {
-            try { localStorage.setItem("bb_user", JSON.stringify({ email: data.email })); } catch {}
+            try { localStorage.setItem("bb_user", JSON.stringify({ email: data.email, name: data.name ?? null })); } catch {}
           }
           setLoggedIn(true);
         } else {
@@ -106,9 +106,20 @@ function AppRouter() {
     return () => { cancelled = true; };
   }, []);
 
-  const handleLogin = (email: string) => {
-    localStorage.setItem("bb_user", JSON.stringify({ email: email || "user" }));
+  const handleLogin = (email: string, name?: string | null) => {
+    localStorage.setItem("bb_user", JSON.stringify({ email: email || "user", name: name ?? null }));
     setLoggedIn(true);
+    // Re-fetch /me in background to ensure name/avatar are accurate
+    const API = `${import.meta.env.BASE_URL}api`.replace(/\/+/g, "/").replace(/\/$/, "");
+    fetch(`${API}/auth/me`, { credentials: "include" })
+      .then(async (r) => {
+        if (!r.ok) return;
+        const d = await r.json().catch(() => null) as { email?: string; name?: string | null } | null;
+        if (d?.email) {
+          try { localStorage.setItem("bb_user", JSON.stringify({ email: d.email, name: d.name ?? null })); } catch {}
+        }
+      })
+      .catch(() => {});
   };
 
   // Handle Google OAuth completion.
@@ -141,13 +152,14 @@ function AppRouter() {
     const params = new URLSearchParams(window.location.search);
     const gmail = params.get("gmail");
     const email = params.get("email") ?? "";
+    const name  = params.get("name") ?? null;
 
     // ── Case 1: popup (opener present — Chrome ≤87 or Firefox)
     if (gmail === "connected" && window.opener) {
       // Set localStorage first so opener's "storage" event fires immediately
-      try { localStorage.setItem("bb_user", JSON.stringify({ email })); } catch {}
+      try { localStorage.setItem("bb_user", JSON.stringify({ email, name })); } catch {}
       window.history.replaceState({}, "", window.location.pathname);
-      try { window.opener.postMessage({ type: "GMAIL_CONNECTED", email }, "*"); } catch {}
+      try { window.opener.postMessage({ type: "GMAIL_CONNECTED", email, name }, "*"); } catch {}
       setTimeout(() => window.close(), 600);
       return;
     }
@@ -158,9 +170,9 @@ function AppRouter() {
     // window.close() only works on script-opened windows; on _top redirects it's
     // a no-op (browser ignores it), so it's safe to call unconditionally.
     if (gmail === "connected") {
-      try { localStorage.setItem("bb_user", JSON.stringify({ email })); } catch {}
+      try { localStorage.setItem("bb_user", JSON.stringify({ email, name })); } catch {}
       window.history.replaceState({}, "", window.location.pathname);
-      handleLogin(email);
+      handleLogin(email, name);
       setTimeout(() => { try { window.close(); } catch {} }, 400);
       return;
     }
@@ -170,7 +182,7 @@ function AppRouter() {
     // ── Case 3: opener — listen for postMessage from popup
     const onMessage = (e: MessageEvent) => {
       if (e.data?.type === "GMAIL_CONNECTED") {
-        handleLogin(e.data.email ?? "");
+        handleLogin(e.data.email ?? "", e.data.name ?? null);
       }
     };
     window.addEventListener("message", onMessage);

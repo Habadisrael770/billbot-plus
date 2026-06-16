@@ -57,7 +57,7 @@ export function getGoogleLoginUrl(): string {
 }
 
 // ── Handle Google Login callback (basic scopes only) ───────────────────────
-export async function handleGoogleLoginCallback(code: string): Promise<{ id: string; email: string }> {
+export async function handleGoogleLoginCallback(code: string): Promise<{ id: string; email: string; name: string | null }> {
   const oAuth2Client = getOAuth2Client();
   const { tokens }   = await oAuth2Client.getToken(code);
 
@@ -75,12 +75,13 @@ export async function handleGoogleLoginCallback(code: string): Promise<{ id: str
   }
 
   // Create/update user in users table
-  return upsertGoogleUser({
+  const upserted = await upsertGoogleUser({
     email,
     name:      data.name    ?? null,
     avatarUrl: data.picture ?? null,
     googleId:  data.id      ?? null,
   });
+  return { ...upserted, name: data.name ?? null };
 }
 
 // ── Gmail Scan URL (restricted scopes — requires verified app / test user) ──

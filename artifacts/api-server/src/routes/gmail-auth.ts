@@ -147,13 +147,15 @@ router.get("/callback", async (req, res) => {
       ? await handleGoogleLoginCallback(code)
       : await handleGmailCallback(code);
     const email = result.email;
+    const name  = (result as { name?: string | null }).name ?? null;
     // Set session cookie so the browser is now authenticated.
     if (result.id) {
       setSessionCookie(res, result.id);
     }
     const appBase = getAppBaseUrl(req);
     const emailEncoded = encodeURIComponent(email ?? "");
-    const fallbackUrl = `${appBase}/?gmail=connected&email=${emailEncoded}`;
+    const nameEncoded  = name ? `&name=${encodeURIComponent(name)}` : "";
+    const fallbackUrl = `${appBase}/?gmail=connected&email=${emailEncoded}${nameEncoded}`;
 
     res.send(`<!DOCTYPE html>
 <html dir="rtl" lang="he">
