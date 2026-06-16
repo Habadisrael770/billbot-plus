@@ -20,7 +20,6 @@ import inboundEmailRouter from "./inbound-email.js";
 import twilioWhatsappRouter from "./twilio-whatsapp.js";
 import loyaltyRouter from "./loyalty.js";
 import automationsRouter from "./automations.js";
-import adminResetRouter from "./admin-reset.js";
 import { requireAuth, readSessionUserId } from "../middleware/auth.js";
 import { createHermesRouter, type ResolvedUser } from "../hermes/routes.js";
 import { db } from "@workspace/db";
@@ -76,6 +75,5 @@ router.use("/internal/api-keys",   requireAuth, internalApiKeysRouter);
 router.use("/invoice4u",           requireAuth, invoice4uRouter);
 router.use("/imap-auth",           requireAuth, imapAuthRouter);
 router.use("/automations",         requireAuth, automationsRouter);
-router.use("/admin",               adminResetRouter);
 
 export default router;
