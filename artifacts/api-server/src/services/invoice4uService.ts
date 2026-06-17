@@ -30,7 +30,7 @@ async function callPost<T>(endpoint: string, body: Record<string, unknown>): Pro
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface I4UDocument {
-  ID: number;
+  ID: string;
   DocumentNumber: number;
   DocType: number;
   DocTypeName: string;
@@ -43,6 +43,7 @@ export interface I4UDocument {
   StatusName: string;
   BranchId: number;
   PaymentTypeName?: string;
+  PdfLink?: string;
 }
 
 export interface I4UBranch {
@@ -78,6 +79,50 @@ function parseI4UDate(raw: string): Date | null {
   if (m) return new Date(parseInt(m[1], 10));
   const d = new Date(raw);
   return isNaN(d.getTime()) ? null : d;
+}
+
+const DOC_TYPE_NAMES: Record<number, string> = {
+  1: "חשבונית מס",
+  2: "חשבונית מס/קבלה",
+  3: "קבלה",
+  4: "חשבון עסקה",
+  5: "הצעת מחיר",
+  6: "חשבונית זיכוי",
+  7: "תעודת משלוח",
+  10: "הזמנת רכש",
+};
+
+// Invoice4U requires ISO DateTime (YYYY-MM-DDT00:00:00). Accept DD/MM/YYYY or ISO.
+function toIso(s: string, endOfDay = false): string {
+  const t = endOfDay ? "T23:59:59" : "T00:00:00";
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10) + t;
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) {
+    const [, d, mo, y] = m;
+    return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}${t}`;
+  }
+  return s;
+}
+
+// Map the raw Invoice4U Document object to our normalized I4UDocument.
+function mapDoc(raw: Record<string, unknown>): I4UDocument {
+  const docType = Number(raw["DocumentType"]) || 0;
+  return {
+    ID: (raw["ID"] as string) ?? (raw["UniqueID"] as string) ?? "",
+    DocumentNumber: Number(raw["DocumentNumber"]) || 0,
+    DocType: docType,
+    DocTypeName: DOC_TYPE_NAMES[docType] ?? String(docType),
+    DocumentDate: (raw["IssueDate"] as string) ?? "",
+    ClientName: (raw["ClientName"] as string) ?? "",
+    Total: Number(raw["Total"]) || 0,
+    Vat: Number(raw["TotalTaxAmount"]) || 0,
+    BeforeVat: Number(raw["TotalWithoutTax"]) || 0,
+    Status: Number(raw["Status"] ?? raw["StatusID"]) || 0,
+    StatusName: (raw["StatusName"] as string) ?? "",
+    BranchId: Number(raw["BranchID"]) || 0,
+    PaymentTypeName: (raw["PaymentTypeName"] as string) ?? undefined,
+    PdfLink: (raw["PrintOriginalPDFLink"] as string) || undefined,
+  };
 }
 
 // ─── IsAuthenticated — validate the token ────────────────────────────────────
@@ -116,37 +161,107 @@ export async function getBranches(): Promise<I4UBranch[]> {
   return wrapped.Response ?? [];
 }
 
+// Document types we fetch for reports (income + expense). DocumentType is REQUIRED
+// by the Invoice4U API — without it GetDocuments silently returns null.
+const FETCH_TYPES = [...INCOME_TYPES, ...EXPENSE_TYPES];
+
+type DocResult = {
+  Response: Record<string, unknown>[] | null;
+  Errors?: { Error: string }[];
+} | null;
+
+// Fetch every page of a single DocumentType within a date range.
+async function fetchDocsOfType(
+  token: string,
+  docType: number,
+  fromIso: string,
+  toIso: string,
+  pageSize: number,
+  branchId?: number,
+): Promise<{ docs: I4UDocument[]; authError: boolean }> {
+  const out: I4UDocument[] = [];
+  const seen = new Set<string>();
+  for (let page = 1; page <= 50; page++) {
+    const dr: Record<string, unknown> = {
+      Token: token,
+      FromDate: fromIso,
+      ToDate: toIso,
+      PageNumber: page,
+      PageSize: pageSize,
+      DocumentType: docType,
+    };
+    if (branchId) dr.BranchID = branchId;
+
+    const data = await callPost<DocResult>("GetDocuments", { dr, token });
+    if (!data) break;
+
+    const wrapper = data as { Response?: Record<string, unknown>[] | null; Errors?: { Error: string }[] };
+    if (wrapper.Errors?.some(e => e.Error === "UnauthorizedUser")) {
+      return { docs: out, authError: true };
+    }
+    const resp = wrapper.Response ?? [];
+    if (resp.length === 0) break;
+
+    let added = 0;
+    for (const raw of resp) {
+      const doc = mapDoc(raw);
+      const id = doc.ID || `num:${doc.DocumentNumber}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      out.push(doc);
+      added++;
+    }
+    // Stop when the API returns a short page or no new documents (avoids dup loops).
+    if (resp.length < pageSize || added === 0) break;
+  }
+  return { docs: out, authError: false };
+}
+
 export async function getDocuments(opts: {
   dateFrom?: string;
   dateTo?: string;
-  docTypeId?: number;
+  docTypes?: number[];
   branchId?: number;
-  pageNumber?: number;
   pageSize?: number;
 }): Promise<{ documents: I4UDocument[]; empty: boolean }> {
   const token = getToken();
-  const dr: Record<string, unknown> = {
-    PageNumber: opts.pageNumber ?? 1,
-    PageSize:   opts.pageSize   ?? 200,
-  };
-  if (opts.dateFrom)  dr.DateFrom  = opts.dateFrom;
-  if (opts.dateTo)    dr.DateTo    = opts.dateTo;
-  if (opts.docTypeId) dr.DocTypeID = opts.docTypeId;
-  if (opts.branchId)  dr.BranchId  = opts.branchId;
+  const pageSize = opts.pageSize ?? 200;
+  const types = opts.docTypes ?? FETCH_TYPES;
 
-  type DocResult = { Response: I4UDocument[] | null; Errors: { Error: string }[] } | null;
-  const data = await callPost<DocResult>("GetDocuments", { dr, token });
+  // Invoice4U needs ISO DateTime; date filtering can be loose, so we also filter client-side.
+  const fromIso = opts.dateFrom ? toIso(opts.dateFrom, false) : "2000-01-01T00:00:00";
+  const toIsoStr = opts.dateTo ? toIso(opts.dateTo, true) : "2100-12-31T23:59:59";
+  const fromTime = new Date(fromIso).getTime();
+  const toTime = new Date(toIsoStr).getTime();
 
-  if (!data) return { documents: [], empty: true };
-  if (Array.isArray(data)) return { documents: data as I4UDocument[], empty: false };
-
-  const wrapper = data as { Response?: I4UDocument[] | null; Errors?: { Error: string }[] };
-  const hasAuthError = wrapper.Errors?.some(e => e.Error === "UnauthorizedUser");
-  if (hasAuthError) {
-    throw new Error("UnauthorizedUser — API access not enabled in Invoice4U settings");
+  const all: I4UDocument[] = [];
+  const seen = new Set<string>();
+  for (const t of types) {
+    const { docs, authError } = await fetchDocsOfType(token, t, fromIso, toIsoStr, pageSize, opts.branchId);
+    if (authError) {
+      throw new Error("UnauthorizedUser — API access not enabled in Invoice4U settings");
+    }
+    for (const d of docs) {
+      const id = d.ID || `num:${d.DocumentNumber}`;
+      if (seen.has(id)) continue;
+      // Safety net: Invoice4U ignores the date params, so enforce the range client-side.
+      const dt = d.DocumentDate ? parseI4UDate(d.DocumentDate) : null;
+      if (dt) {
+        const time = dt.getTime();
+        if (time < fromTime || time > toTime) continue;
+      }
+      seen.add(id);
+      all.push(d);
+    }
   }
-  const docs = wrapper.Response ?? [];
-  return { documents: docs, empty: docs.length === 0 };
+
+  all.sort((a, b) => {
+    const da = parseI4UDate(a.DocumentDate)?.getTime() ?? 0;
+    const db = parseI4UDate(b.DocumentDate)?.getTime() ?? 0;
+    return da - db;
+  });
+
+  return { documents: all, empty: all.length === 0 };
 }
 
 export async function getMonthlyReport(year: number): Promise<{
