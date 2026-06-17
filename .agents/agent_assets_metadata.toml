@@ -24,3 +24,9 @@ id = "QFzePZFIc0ivufLDEniHj"
 uri = "file://artifacts/billbot-video/public/audio/bg_music.mp3"
 type = "audio"
 title = "background music"
+
+[[outputs]]
+id = "JNtmsmMDABk6jgwB2AjdB"
+uri = "file://exports/חשבוניות-מעמ_נובמבר2025-יוני2026.xlsx"
+type = "table"
+title = "חשבוניות מע\"מ — נובמבר 2025 עד יוני 2026"

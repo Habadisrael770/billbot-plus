@@ -14,6 +14,7 @@ import businessProfileRouter from "./businessProfile.js";
 import gmailAuthRouter from "./gmail-auth.js";
 import { publicRouter, internalApiKeysRouter } from "./public-api.js";
 import invoice4uRouter from "./invoice4u.js";
+import vatReportRouter from "./vat-report.js";
 import authRouter from "./auth.js";
 import imapAuthRouter from "./imap-auth.js";
 import inboundEmailRouter from "./inbound-email.js";
@@ -75,6 +76,7 @@ router.use("/entities",            requireAuth, entitiesRouter);
 router.use("/business-profile",    requireAuth, businessProfileRouter);
 router.use("/internal/api-keys",   requireAuth, internalApiKeysRouter);
 router.use("/invoice4u",           requireAuth, invoice4uRouter);
+router.use("/vat-report",          requireAuth, vatReportRouter);
 router.use("/imap-auth",           requireAuth, imapAuthRouter);
 router.use("/automations",         requireAuth, automationsRouter);
 
