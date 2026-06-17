@@ -122,31 +122,6 @@ router.post("/login", async (req, res) => {
   }
 });
 
-// ── Guest login ──────────────────────────────────────────────────────────────
-// Creates a guest user row and signs the user in so the gated API routes work
-// instead of returning 401. Guest accounts have no password and use a synthetic
-// email so they can never collide with a real Google / email login.
-// NOTE: invoice/vendor data is currently NOT scoped per user, so a guest sees the
-// same shared dataset as everyone else. True per-guest isolation would require
-// adding user ownership to those tables and scoping every query by req.userId.
-router.post("/guest", async (_req, res) => {
-  try {
-    const suffix = crypto.randomBytes(9).toString("hex");
-    const email = `guest-${suffix}@guest.billibot.local`;
-    const [user] = await db.insert(usersTable).values({
-      email,
-      name:        "אורח",
-      lastLoginAt: new Date(),
-    }).returning();
-
-    setSessionCookie(res, user!.id);
-    res.json({ ok: true, email: user!.email, name: user!.name, guest: true });
-  } catch (err) {
-    console.error("[auth/guest]", err);
-    res.status(500).json({ error: "שגיאת שרת פנימית" });
-  }
-});
-
 // ── Me ───────────────────────────────────────────────────────────────────────
 router.get("/me", requireAuth, async (req, res) => {
   try {

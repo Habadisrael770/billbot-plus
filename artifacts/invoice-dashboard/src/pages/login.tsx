@@ -6,12 +6,11 @@ const API_BASE = `${import.meta.env.BASE_URL}api`.replace(/\/+/g, "/").replace(/
 
 interface LoginPageProps {
   onLogin: (email: string) => void;
-  onSkip: () => void;
 }
 
 type Mode = "login" | "register" | "forgot";
 
-export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
+export default function LoginPage({ onLogin }: LoginPageProps) {
   const [mode, setMode]               = useState<Mode>("login");
   const [email, setEmail]             = useState("");
   const [password, setPassword]       = useState("");
@@ -462,17 +461,6 @@ export default function LoginPage({ onLogin, onSkip }: LoginPageProps) {
                 )}
               </p>
 
-              {/* Guest skip */}
-              <p className="text-center">
-                <button
-                  type="button"
-                  onClick={onSkip}
-                  className="text-[12px] transition-opacity hover:opacity-70"
-                  style={{ color: "#4a5a7a" }}
-                >
-                  המשך כאורח ←
-                </button>
-              </p>
             </motion.form>
           )}
           </AnimatePresence>

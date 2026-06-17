@@ -20,6 +20,7 @@ import inboundEmailRouter from "./inbound-email.js";
 import twilioWhatsappRouter from "./twilio-whatsapp.js";
 import loyaltyRouter from "./loyalty.js";
 import automationsRouter from "./automations.js";
+import adminRouter from "./admin.js";
 import { requireAuth, readSessionUserId } from "../middleware/auth.js";
 import { createHermesRouter, type ResolvedUser } from "../hermes/routes.js";
 import { db } from "@workspace/db";
@@ -58,6 +59,7 @@ router.use("/telegram", telegramRouter);              // Telegram bot webhook
 router.use("/whatsapp", whatsappRouter);              // Meta WhatsApp webhook
 router.use("/loyalty", loyaltyRouter);                // Twilio webhook + member signup (own validation)
 router.use("/hermes", createHermesRouter(resolveHermesUser)); // /health public; others self-guard via resolveUser
+router.use("/admin", adminRouter);                    // guarded internally by ADMIN_RESET_TOKEN header
 
 // ── Authenticated routes (require valid session cookie) ────────────────────
 // Every protected mount goes through `requireAuth`, which rejects requests

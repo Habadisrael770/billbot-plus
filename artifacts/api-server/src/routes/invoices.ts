@@ -955,19 +955,4 @@ router.post("/send-accountant", async (_req, res) => {
   }
 });
 
-// ── DELETE /invoices/all — wipe every invoice + related rows ──────────────
-router.delete("/all", async (_req, res) => {
-  try {
-    await db.execute(sql`DELETE FROM invoice_line_items`);
-    await db.execute(sql`DELETE FROM invoice_extraction_jobs`);
-    await db.execute(sql`DELETE FROM invoices`);
-    await db.execute(sql`DELETE FROM vendor_aliases`);
-    await db.execute(sql`DELETE FROM vendors`);
-    return res.json({ ok: true });
-  } catch (err) {
-    console.error("[invoices/delete-all]", err);
-    return res.status(500).json({ error: String(err) });
-  }
-});
-
 export default router;
