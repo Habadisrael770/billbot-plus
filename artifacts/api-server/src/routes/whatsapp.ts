@@ -276,7 +276,7 @@ router.get("/status", (_req, res) => {
   res.json({
     configured: !!(phoneNumberId && accessToken),
     phoneNumberId: phoneNumberId || null,
-    verifyToken: verifyToken || null,
+    verifyTokenSet: !!verifyToken,
     provider: "meta",
   });
 });
