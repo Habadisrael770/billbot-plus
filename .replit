@@ -41,3 +41,27 @@ GOOGLE_REDIRECT_URI = "https://billibot.net/api/gmail-auth/callback"
 HERMES_BRIDGE_URL = "http://srv1412520.hstgr.cloud/hermes"
 
 [userenv.production]
+
+[[ports]]
+localPort = 8080
+externalPort = 8080
+
+[[ports]]
+localPort = 8081
+externalPort = 80
+
+[[ports]]
+localPort = 19180
+externalPort = 3000
+
+[[ports]]
+localPort = 21928
+externalPort = 3001
+
+[[ports]]
+localPort = 22657
+externalPort = 3002
+
+[[ports]]
+localPort = 26108
+externalPort = 3003
