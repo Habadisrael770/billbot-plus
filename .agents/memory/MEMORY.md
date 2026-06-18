@@ -1,4 +1,5 @@
 - [Hermes kit integration](hermes-kit.md) — plug-and-play AI chat + credit ledger wired into api-server/invoice-dashboard; adaptation decisions and gotchas.
+- [Deploy is GitHub-sourced](deploy-from-github.md) — prod deploys from GitHub origin, not workspace; "publish says no changes" means push commits to GitHub first.
 - [Invoice4U GetDocuments quirks](invoice4u-getdocuments.md) — DocumentType required, API ignores date params, ID is a GUID string (not number); caused false "empty account".
 - [Gmail restricted scopes vs Replit integration](gmail-oauth-restricted-scopes.md) — in-app Gmail popup is blocked by Google on prod; prefer the verified Replit google-mail integration (status already reflects it).
 - [Dashboard large-dataset render freeze](dashboard-large-dataset-render.md) — invoice-dashboard freezes on mobile with many invoices; lists render all rows (mobile+desktop both mounted); fix = client render-cap pagination.
