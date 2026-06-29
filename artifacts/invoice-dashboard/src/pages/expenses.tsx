@@ -51,7 +51,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useToast } from "@/hooks/use-toast";
+
+const BASE_URL = import.meta.env.BASE_URL ?? "/";
+const API_BASE = BASE_URL.replace(/\/$/, "") + "/api";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -120,7 +122,6 @@ function CatTooltip({ active, payload, label }: any) {
 export default function ExpensesPage() {
   const { data: invoices = [] } = useInvoices();
   const { approve } = useInvoiceMutations();
-  const { toast } = useToast();
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -258,8 +259,9 @@ export default function ExpensesPage() {
 
   // ── actions ──
   const handleApprove = (id: string) => approve(id);
-  const handleDownload = () =>
-    toast({ title: "הורדה", description: "הורדת קובץ PDF תתחיל בקרוב." });
+  const handleDownload = () => {
+    window.location.assign(`${API_BASE}/invoices/export`);
+  };
 
   const hasData = invoices.length > 0;
 
@@ -275,7 +277,7 @@ export default function ExpensesPage() {
         </div>
         <button onClick={handleDownload} className="btn-secondary h-10">
           <Download className="w-4 h-4" />
-          הורד קובץ
+          הורד Excel
         </button>
       </div>
 
@@ -613,7 +615,7 @@ export default function ExpensesPage() {
                               <CheckCircle2 className="w-3.5 h-3.5" />אשר
                             </DropdownMenuItem>
                             <DropdownMenuItem className="gap-2 cursor-pointer focus:bg-elevated" onClick={handleDownload}>
-                              <FileDown className="w-3.5 h-3.5" />הורד PDF
+                              <FileDown className="w-3.5 h-3.5" />הורד Excel
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -795,7 +797,7 @@ export default function ExpensesPage() {
                             onClick={handleDownload}
                           >
                             <FileDown className="w-3.5 h-3.5" />
-                            הורד PDF
+                            הורד Excel
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

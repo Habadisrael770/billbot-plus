@@ -80,19 +80,21 @@ function usePlanStats() {
   const [outlookCount, setOutlookCount] = useState(0);
 
   useEffect(() => {
-    fetch(`${_PROFILE_BASE}/invoices`).then(r => r.json()).then((data: unknown[]) => {
+    fetch(`${_PROFILE_BASE}/invoices`, { credentials: "include" }).then(r => r.json()).then((data: unknown[]) => {
       if (Array.isArray(data)) setTotalInvoices(data.length);
     }).catch(() => {});
 
-    fetch(`${_PROFILE_BASE}/vendors`).then(r => r.json()).then((data: unknown[]) => {
+    fetch(`${_PROFILE_BASE}/vendors`, { credentials: "include" }).then(r => r.json()).then((data: unknown[]) => {
       if (Array.isArray(data)) {
         const blocked = (data as { isBlocked?: boolean }[]).filter(v => v.isBlocked).length;
         setBlockedVendors(blocked);
       }
     }).catch(() => {});
 
-    const token = localStorage.getItem("bb_gmail_token");
-    setGmailConnected(!!token);
+    fetch(`${_PROFILE_BASE}/gmail-auth/status`, { credentials: "include" })
+      .then(r => (r.ok ? r.json() : null))
+      .then((data) => setGmailConnected(data?.connected === true))
+      .catch(() => setGmailConnected(false));
 
     try {
       const outlookRaw = localStorage.getItem("bb_outlook_accounts");
@@ -240,16 +242,63 @@ function PlanCard() {
 
 function SecurityCard() {
   const { toast } = useToast();
-  const gmailConnected = !!localStorage.getItem("bb_gmail_token");
+  const [gmailConnected, setGmailConnected] = useState(false);
 
-  const handleExport = () => {
-    toast({ title: "ייצוא נתונים", description: "הנתונים יורדו בקרוב" });
+  useEffect(() => {
+    fetch(`${_PROFILE_BASE}/gmail-auth/status`, { credentials: "include" })
+      .then(r => (r.ok ? r.json() : null))
+      .then((data) => setGmailConnected(data?.connected === true))
+      .catch(() => setGmailConnected(false));
+  }, []);
+
+  const handleExport = async () => {
+    const read = async (path: string) => {
+      const response = await fetch(`${_PROFILE_BASE}${path}`, { credentials: "include" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    };
+
+    try {
+      const entries = await Promise.all(
+        [
+          ["user", "/auth/me"],
+          ["invoices", "/invoices"],
+          ["vendors", "/vendors"],
+          ["categories", "/categories"],
+          ["entities", "/entities"],
+          ["businessProfile", "/business-profile"],
+        ].map(async ([key, path]) => {
+          try {
+            return [key, await read(path)] as const;
+          } catch (error) {
+            return [key, { error: error instanceof Error ? error.message : String(error) }] as const;
+          }
+        }),
+      );
+
+      const payload = Object.fromEntries(entries);
+      const blob = new Blob(
+        [JSON.stringify({ exportedAt: new Date().toISOString(), ...payload }, null, 2)],
+        { type: "application/json" },
+      );
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `billbot-export-${new Date().toISOString().slice(0, 10)}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      toast({ title: "ייצוא נתונים", description: "קובץ JSON ירד בהצלחה." });
+    } catch {
+      toast({ title: "שגיאה", description: "לא הצלחנו לייצא את הנתונים.", variant: "destructive" });
+    }
   };
 
   const handleDelete = () => {
-    if (window.confirm("האם אתה בטוח? פעולה זו אינה הפיכה.")) {
-      toast({ title: "בקשה התקבלה", description: "החשבון ימחק תוך 24 שעות", variant: "destructive" });
-    }
+    toast({
+      title: "מחיקת חשבון",
+      description: "מחיקה עצמאית עדיין לא זמינה. יש לפנות לתמיכה כדי לבצע מחיקה מאובטחת.",
+      variant: "destructive",
+    });
   };
 
   return (

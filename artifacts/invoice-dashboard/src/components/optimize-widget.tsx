@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Check, Mail, FileText, Eye, HardDrive, MessageCircle, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Check, Mail, FileText, Eye, MessageCircle, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
 
 const BASE_URL = import.meta.env.BASE_URL ?? "/";
 const API_BASE = BASE_URL.replace(/\/$/, "") + "/api";
@@ -16,19 +16,14 @@ interface CheckItem {
 
 export function OptimizeWidget({ invoiceCount = 0 }: { invoiceCount?: number }) {
   const [gmailConnected, setGmailConnected] = useState(false);
-  const [driveConnected] = useState(false);
   const [whatsappConnected, setWhatsappConnected] = useState(false);
   const [viewedReceipts] = useState(() => !!localStorage.getItem("bb_viewed_expenses"));
   const [collapsed, setCollapsed] = useState(() => !!localStorage.getItem("bb_optimize_collapsed"));
 
   useEffect(() => {
-    fetch(`${API_BASE}/email-connectors`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (Array.isArray(d) && d.some((c: { status: string }) => c.status === "connected")) {
-          setGmailConnected(true);
-        }
-      })
+    fetch(`${API_BASE}/gmail-auth/status`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setGmailConnected(d?.connected === true))
       .catch(() => {});
 
     fetch(`${API_BASE}/whatsapp/status`)
@@ -52,6 +47,7 @@ export function OptimizeWidget({ invoiceCount = 0 }: { invoiceCount?: number }) 
       desc: "העלה חשבונית ראשונה למערכת",
       icon: <FileText className="w-4 h-4" />,
       done: invoiceCount > 0,
+      href: "/expenses",
     },
     {
       id: "view",
@@ -60,14 +56,6 @@ export function OptimizeWidget({ invoiceCount = 0 }: { invoiceCount?: number }) 
       icon: <Eye className="w-4 h-4" />,
       done: viewedReceipts,
       href: "/expenses",
-    },
-    {
-      id: "drive",
-      label: "חבר Google Drive",
-      desc: "שמור קבלות אוטומטית ב-Drive",
-      icon: <HardDrive className="w-4 h-4" />,
-      done: driveConnected,
-      href: "/settings",
     },
     {
       id: "whatsapp",

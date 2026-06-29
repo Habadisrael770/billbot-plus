@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Mail, CheckCircle2, XCircle, Loader2, Lock,
@@ -39,44 +39,6 @@ const DATE_PRESETS: { key: DatePreset; label: string; months?: number }[] = [
 
 function isPaidPlan() {
   return true;
-}
-
-function ClearImportButton({ onCleared }: { onCleared: () => void }) {
-  const { toast } = useToast();
-  const [confirm, setConfirm] = React.useState(false);
-  const [loading, setLoading] = React.useState(false);
-
-  const handleClear = async () => {
-    if (!confirm) { setConfirm(true); return; }
-    setLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/invoices/all`, { method: "DELETE", credentials: "include" });
-      if (!res.ok) throw new Error("שגיאה");
-      toast({ title: "היבוא נוקה", description: "כל החשבוניות נמחקו בהצלחה" });
-      onCleared();
-    } catch {
-      toast({ title: "שגיאה", description: "לא הצלחנו למחוק את היבוא", variant: "destructive" });
-    } finally {
-      setLoading(false);
-      setConfirm(false);
-    }
-  };
-
-  return (
-    <button
-      onClick={handleClear}
-      disabled={loading}
-      className="w-full h-9 rounded-xl flex items-center justify-center gap-2 text-[12px] font-semibold transition-all"
-      style={{
-        background: confirm ? "rgba(239,68,68,0.15)" : "transparent",
-        border: confirm ? "1px solid rgba(239,68,68,0.4)" : "1px solid rgba(255,255,255,0.08)",
-        color: confirm ? "#f87171" : "rgba(255,255,255,0.35)",
-      }}
-    >
-      {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
-      {loading ? "מוחק..." : confirm ? "לחץ שוב לאישור — זה ימחק הכל!" : "רוקן יבוא"}
-    </button>
-  );
 }
 
 interface ScanResult {
@@ -511,11 +473,6 @@ export function GmailScanDialog({ isOpen, onClose, onViewInvoices }: Props) {
                 </button>
               </motion.div>
 
-              {scanResult.processed > 0 && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.55 }} className="w-full">
-                  <ClearImportButton onCleared={() => { setScanResult(null); setPhase("idle"); onClose(); queryClient.invalidateQueries(); }} />
-                </motion.div>
-              )}
             </motion.div>
           )}
 
