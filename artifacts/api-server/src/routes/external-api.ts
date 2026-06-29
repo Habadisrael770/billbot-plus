@@ -45,6 +45,51 @@ const SERVICES: Record<string, { name: string; baseUrl: string; testPath: string
   },
 };
 
+type ApiConnectionRow = typeof apiConnectionsTable.$inferSelect;
+
+function redactConnection(row: ApiConnectionRow) {
+  return {
+    ...row,
+    api_key: row.api_key ? "********" : null,
+    api_secret: row.api_secret ? "********" : null,
+  };
+}
+
+function getAllowedCustomApiHosts(): Set<string> {
+  return new Set(
+    (process.env.EXTERNAL_API_ALLOWED_HOSTS ?? "")
+      .split(",")
+      .map((host) => host.trim().toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+function resolveServiceBaseUrl(service: string, requestedBaseUrl?: string): string {
+  const svcDef = SERVICES[service];
+  if (!svcDef) throw new Error("Unknown service");
+
+  if (service !== "custom") {
+    return svcDef.baseUrl;
+  }
+
+  const rawUrl = requestedBaseUrl?.trim();
+  if (!rawUrl) return "";
+
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    throw new Error("Invalid base_url");
+  }
+
+  const allowedHosts = getAllowedCustomApiHosts();
+  if (parsed.protocol !== "https:" || !allowedHosts.has(parsed.hostname.toLowerCase())) {
+    throw new Error("Custom base_url is not allowed");
+  }
+
+  return parsed.origin + parsed.pathname.replace(/\/$/, "");
+}
+
 // GET /api/external-api/connections
 router.get("/connections", async (_req, res) => {
   try {
@@ -52,7 +97,7 @@ router.get("/connections", async (_req, res) => {
       .select()
       .from(apiConnectionsTable)
       .orderBy(apiConnectionsTable.created_at);
-    res.json({ connections: rows });
+    res.json({ connections: rows.map(redactConnection) });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -76,8 +121,12 @@ router.post("/connections", async (req, res) => {
     }
 
     const svcDef = SERVICES[service];
+    if (!svcDef) {
+      res.status(400).json({ error: "service לא מוכר" });
+      return;
+    }
     const name = display_name || svcDef?.name || service;
-    const resolvedUrl = base_url || svcDef?.baseUrl || "";
+    const resolvedUrl = resolveServiceBaseUrl(service, base_url);
 
     if (id) {
       await db
@@ -139,7 +188,7 @@ router.post("/test", async (req, res) => {
       return;
     }
 
-    const resolvedBase = base_url || svcDef.baseUrl;
+    const resolvedBase = resolveServiceBaseUrl(service, base_url);
     if (!resolvedBase) {
       // Can't auto-test without a URL — mark as untested success
       res.json({ ok: true, message: "לא ניתן לבדוק אוטומטית — נשמר בהצלחה" });

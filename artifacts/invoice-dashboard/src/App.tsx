@@ -159,7 +159,7 @@ function AppRouter() {
       // Set localStorage first so opener's "storage" event fires immediately
       try { localStorage.setItem("bb_user", JSON.stringify({ email, name })); } catch {}
       window.history.replaceState({}, "", window.location.pathname);
-      try { window.opener.postMessage({ type: "GMAIL_CONNECTED", email, name }, "*"); } catch {}
+      try { window.opener.postMessage({ type: "GMAIL_CONNECTED", email, name }, window.location.origin); } catch {}
       setTimeout(() => window.close(), 600);
       return;
     }
@@ -181,6 +181,7 @@ function AppRouter() {
 
     // ── Case 3: opener — listen for postMessage from popup
     const onMessage = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
       if (e.data?.type === "GMAIL_CONNECTED") {
         handleLogin(e.data.email ?? "", e.data.name ?? null);
       }

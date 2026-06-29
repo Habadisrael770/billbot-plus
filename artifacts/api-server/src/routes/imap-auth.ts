@@ -8,15 +8,41 @@ import {
 
 const router: IRouter = Router();
 
+function getAllowedImapHosts(): Set<string> {
+  const configured = process.env.IMAP_ALLOWED_HOSTS;
+  const hosts = configured
+    ? configured.split(",").map((h) => h.trim().toLowerCase()).filter(Boolean)
+    : ["imap.gmail.com"];
+  return new Set(hosts);
+}
+
+function getAllowedImapPorts(): Set<number> {
+  const configured = process.env.IMAP_ALLOWED_PORTS;
+  const ports = configured
+    ? configured.split(",").map((p) => Number(p.trim())).filter((p) => Number.isInteger(p) && p > 0 && p <= 65535)
+    : [993];
+  return new Set(ports);
+}
+
+function resolveImapTarget(host: unknown, port: unknown): { host: string; port: number } {
+  const resolvedHost = String(host || "imap.gmail.com").trim().toLowerCase();
+  const resolvedPort = Number(port || 993);
+
+  if (!getAllowedImapHosts().has(resolvedHost) || !getAllowedImapPorts().has(resolvedPort)) {
+    throw new Error("IMAP target is not allowed");
+  }
+
+  return { host: resolvedHost, port: resolvedPort };
+}
+
 // ── Test + save IMAP App Password ───────────────────────────────────────────
 router.post("/connect", async (req, res) => {
   const { email, appPassword, host, port } = req.body ?? {};
   if (!email || !appPassword) {
     return res.status(400).json({ ok: false, error: "נדרש מייל וסיסמת אפליקציה" });
   }
-  const h = host ?? "imap.gmail.com";
-  const p = Number(port) || 993;
   try {
+    const { host: h, port: p } = resolveImapTarget(host, port);
     await testImapConnection(email, appPassword, h, p);
     await saveImapAccount(email, appPassword, h, p);
     return res.json({ ok: true, email });

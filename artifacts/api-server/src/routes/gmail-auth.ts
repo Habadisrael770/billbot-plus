@@ -3,7 +3,7 @@
 // GET  /api/gmail-auth/callback   → handles redirect from Google, stores tokens
 // GET  /api/gmail-auth/status     → { connected, email, credentialsConfigured }
 // POST /api/gmail-auth/disconnect → removes stored tokens
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import {
   getGmailAuthUrl,
   getGoogleLoginUrl,
@@ -16,7 +16,19 @@ import { setSessionCookie, requireAuth } from "../middleware/auth.js";
 
 const router: IRouter = Router();
 
-function getAppBaseUrl(req: Parameters<typeof router.get>[1] extends (req: infer R, ...args: any[]) => any ? R : never): string {
+function escapeHtml(value: unknown): string {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getAppBaseUrl(req: Request): string {
+  const configured = process.env.BILLBOT_PUBLIC_BASE_URL || process.env.APP_PUBLIC_URL;
+  if (configured) return configured.replace(/\/$/, "");
+
   // Prefer the host the user is actually on (billibot.net in production,
   // *.replit.dev in workspace) — that way the OAuth popup returns to the same
   // origin that opened it, and its session cookie is readable. Trust-proxy is
@@ -27,6 +39,12 @@ function getAppBaseUrl(req: Parameters<typeof router.get>[1] extends (req: infer
   const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(",")[0];
   if (domain) return `https://${domain}`;
   return "http://localhost:8080";
+}
+
+function canSelfConnectGmail(): boolean {
+  if (process.env.GMAIL_CONNECTION_MODE === "replit") return false;
+  if (process.env.ENABLE_GOOGLE_GMAIL_OAUTH === "true") return true;
+  return process.env.NODE_ENV !== "production";
 }
 
 // ── Google Login URL (basic scopes — works for any Google account, no 403) ──
@@ -40,8 +58,20 @@ router.get("/login-url", (_req, res) => {
 });
 
 // ── Gmail Scan URL (restricted scopes — for connecting inbox scanning) ─────
-router.get("/url", (_req, res) => {
+router.get("/url", requireAuth, (_req, res) => {
   try {
+    if (!canSelfConnectGmail()) {
+      res.status(409).json({
+        url: null,
+        code: "GMAIL_MANAGED_CONNECTION",
+        connected: false,
+        canSelfConnect: false,
+        provider: "managed",
+        error: "Gmail connection is managed by the system administrator",
+      });
+      return;
+    }
+
     const url = getGmailAuthUrl();
     res.json({ url });
   } catch (err) {
@@ -68,6 +98,8 @@ router.get("/callback", async (req, res) => {
     }
     const fallbackUrl = `${appBase}/?gmail=error&msg=${encodeURIComponent(heMsg)}`;
     const consoleUrl  = "https://console.cloud.google.com/apis/credentials/consent";
+    const heMsgHtml = escapeHtml(heMsg);
+    const googleErrorHtml = escapeHtml(googleError);
     res.send(`<!DOCTYPE html>
 <html dir="rtl" lang="he">
 <head>
@@ -108,7 +140,7 @@ router.get("/callback", async (req, res) => {
   <div class="card">
     <div class="icon">🔒</div>
     <h2>גישה חסומה — שגיאה 403</h2>
-    <p class="msg">${heMsg}</p>
+    <p class="msg">${heMsgHtml}</p>
     <div class="steps">
       <p class="steps-title">⚡ כך מתקנים (פחות מ-2 דקות):</p>
       <p class="step">1. לחץ "פתח Google Console" למטה</p>
@@ -121,12 +153,12 @@ router.get("/callback", async (req, res) => {
       <a href="${consoleUrl}" target="_blank" rel="noopener" class="btn-primary">🔧 פתח Google Console</a>
       <a href="${fallbackUrl}" class="btn-back">← חזרה לאפליקציה</a>
     </div>
-    <p class="code">error: ${googleError}${isAdminBlock ? " (admin_policy_enforced)" : ""}</p>
+    <p class="code">error: ${googleErrorHtml}${isAdminBlock ? " (admin_policy_enforced)" : ""}</p>
   </div>
   <script>
     var FALLBACK = ${JSON.stringify(fallbackUrl)};
     if (window.opener) {
-      try { window.opener.postMessage({ type: 'GMAIL_ERROR', error: ${JSON.stringify(heMsg)} }, '*'); } catch(e) {}
+      try { window.opener.postMessage({ type: 'GMAIL_ERROR', error: ${JSON.stringify(heMsg)} }, ${JSON.stringify(appBase)}); } catch(e) {}
     }
   </script>
 </body>
@@ -156,6 +188,7 @@ router.get("/callback", async (req, res) => {
     const emailEncoded = encodeURIComponent(email ?? "");
     const nameEncoded  = name ? `&name=${encodeURIComponent(name)}` : "";
     const fallbackUrl = `${appBase}/?gmail=connected&email=${emailEncoded}${nameEncoded}`;
+    const emailHtml = escapeHtml(email ?? "");
 
     res.send(`<!DOCTYPE html>
 <html dir="rtl" lang="he">
@@ -231,7 +264,7 @@ router.get("/callback", async (req, res) => {
   <div class="card">
     <div class="icon">✓</div>
     <h2>!Gmail מחובר</h2>
-    <p class="email">${email}</p>
+    <p class="email">${emailHtml}</p>
     <div class="bar-wrap"><div class="bar" id="bar"></div></div>
     <p class="hint" id="hint">חוזרים לאפליקציה...</p>
     <a href="${fallbackUrl}" class="btn" id="btn" style="display:none">חזרה לאפליקציה</a>
@@ -256,8 +289,10 @@ router.get("/callback", async (req, res) => {
 </html>`);
   } catch (err) {
     const appBase = getAppBaseUrl(req);
-    const errMsg = encodeURIComponent(String(err));
+    const errText = String(err);
+    const errMsg = encodeURIComponent(errText);
     const fallbackUrl = `${appBase}/?gmail=error&msg=${errMsg}`;
+    const errHtml = escapeHtml(errText);
 
     res.send(`<!DOCTYPE html>
 <html dir="rtl" lang="he">
@@ -306,13 +341,13 @@ router.get("/callback", async (req, res) => {
   <div class="card">
     <div class="icon">✕</div>
     <h2>שגיאה בחיבור Gmail</h2>
-    <p class="msg">${String(err)}</p>
+    <p class="msg">${errHtml}</p>
     <a href="${fallbackUrl}" class="btn">חזרה לאפליקציה</a>
   </div>
   <script>
     var FALLBACK = ${JSON.stringify(fallbackUrl)};
     if (window.opener) {
-      try { window.opener.postMessage({ type: 'GMAIL_ERROR', error: ${JSON.stringify(String(err))} }, '*'); } catch(e) {}
+      try { window.opener.postMessage({ type: 'GMAIL_ERROR', error: ${JSON.stringify(errText)} }, ${JSON.stringify(appBase)}); } catch(e) {}
       setTimeout(function() { window.close(); }, 3000);
     } else {
       setTimeout(function() { window.location.replace(FALLBACK); }, 3000);

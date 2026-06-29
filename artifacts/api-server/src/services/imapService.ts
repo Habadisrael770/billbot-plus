@@ -4,7 +4,16 @@ import crypto from "crypto";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
-const ENC_KEY = (process.env.SECRET_KEY ?? "billbot-imap-key-32-chars-padded!").slice(0, 32);
+function getEncryptionSecret(): string {
+  const secret = process.env.SECRET_KEY;
+  if (secret && secret.length >= 32) return secret;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("SECRET_KEY environment variable is required in production for IMAP credential encryption (min 32 chars).");
+  }
+  return "billbot-imap-key-32-chars-padded!";
+}
+
+const ENC_KEY = getEncryptionSecret().slice(0, 32);
 const IV_LEN  = 16;
 
 function encrypt(text: string): string {
