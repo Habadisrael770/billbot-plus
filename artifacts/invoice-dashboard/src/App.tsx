@@ -220,6 +220,7 @@ function AppRouter() {
         >
           <Switch>
             <Route path="/" component={Dashboard} />
+            <Route path="/dashboard" component={Dashboard} />
             <Route path="/expenses" component={ExpensesPage} />
             <Route path="/export" component={ExpensesPage} />
             <Route path="/suppliers" component={SuppliersPage} />
